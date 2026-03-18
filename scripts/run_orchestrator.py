@@ -1,4 +1,4 @@
-from agents.orchestrator import main
+from studio_agents.orchestrator import main
 import asyncio
 
 if __name__ == "__main__":

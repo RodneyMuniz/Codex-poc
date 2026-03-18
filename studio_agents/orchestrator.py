@@ -2,10 +2,8 @@ import asyncio
 from dotenv import load_dotenv
 from agents import Agent, Runner
 
-# Load env
 load_dotenv()
 
-# Define your orchestrator agent
 orchestrator = Agent(
     name="Program Orchestrator",
     instructions="""
@@ -27,7 +25,6 @@ Rules:
 
 async def main():
     user_input = input("Enter your request: ")
-
     result = await Runner.run(orchestrator, user_input)
 
     print("\n--- Orchestrator Output ---\n")
