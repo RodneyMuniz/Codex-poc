@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 
 from .schemas import (
+    ArtifactWriteInput,
+    ArtifactWriteOutput,
     CodeDiffInput,
     CodeDiffOutput,
     FileSearchHit,
@@ -138,4 +140,28 @@ def run_unit_tests(pytest_args: str = "-q", max_lines: int = 120) -> dict:
         return_code=result.returncode,
         passed=result.returncode == 0,
         output=trimmed,
+    ).model_dump()
+
+
+def write_project_artifact(relative_path: str, content: str, mode: str = "overwrite") -> dict:
+    request = ArtifactWriteInput(relative_path=relative_path, content=content, mode=mode)
+    repo_root = _repo_root()
+    artifacts_root = (repo_root / "projects" / "tactics-game" / "artifacts").resolve()
+    target_path = (repo_root / request.relative_path).resolve()
+
+    if not str(target_path).startswith(str(artifacts_root)):
+        raise ValueError("Artifacts may only be written under projects/tactics-game/artifacts/.")
+    if request.mode not in {"overwrite", "append"}:
+        raise ValueError("Mode must be 'overwrite' or 'append'.")
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    existing = ""
+    if request.mode == "append" and target_path.exists():
+        existing = target_path.read_text(encoding="utf-8")
+    final_content = request.content if request.mode == "overwrite" else existing + request.content
+    target_path.write_text(final_content, encoding="utf-8")
+    return ArtifactWriteOutput(
+        path=target_path.relative_to(repo_root).as_posix(),
+        bytes_written=len(final_content.encode("utf-8")),
+        mode=request.mode,
     ).model_dump()

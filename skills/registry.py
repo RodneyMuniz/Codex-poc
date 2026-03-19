@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from autogen_core.tools import FunctionTool
 
-from .tools import code_diff, file_search, run_unit_tests, summarize_text_or_file
+from .tools import code_diff, file_search, run_unit_tests, summarize_text_or_file, write_project_artifact
 
 
 def build_skill_tools() -> list[FunctionTool]:
@@ -26,5 +26,10 @@ def build_skill_tools() -> list[FunctionTool]:
             run_unit_tests,
             name="run_unit_tests",
             description="Run the project's test suite with pytest and return the outcome.",
+        ),
+        FunctionTool(
+            write_project_artifact,
+            name="write_project_artifact",
+            description="Write a text artifact under projects/tactics-game/artifacts/ for the active scenario.",
         ),
     ]
