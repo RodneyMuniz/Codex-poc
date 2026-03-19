@@ -28,4 +28,4 @@ dev = [
 testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
-include = ["agents", "skills"]
+include = ["agents", "skills", "sessions"]

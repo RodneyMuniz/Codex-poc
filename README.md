@@ -34,3 +34,15 @@ The next implementation phase will replace markdown-only orchestration with:
 - a real Project PO, Architect, and Developer crew
 - observability and token-usage tracking
 
+## Phase 1 CLI
+
+The current Phase 1 slice is driven from `scripts/cli.py`.
+
+Examples:
+
+- `python scripts/cli.py task create --title "Add turn order tracker" --description "Plan and delegate the turn order tracker task."`
+- `python scripts/cli.py run --project tactics-game`
+- `python scripts/cli.py approvals list`
+- `python scripts/cli.py approve <approval-id>`
+- `python scripts/cli.py resume <run-id>`
+
