@@ -6,7 +6,6 @@ from openai import OpenAI
 
 # Load env
 load_dotenv()
-load_dotenv(".env.local", override=False)
 api_key = os.getenv("OPENAI_API_KEY")
 
 if not api_key:

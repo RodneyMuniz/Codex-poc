@@ -1,4 +1,4 @@
-from agents.orchestrator import ProgramOrchestrator
+from studio_agents.orchestrator import ProgramOrchestrator
 
 
 def main() -> None:

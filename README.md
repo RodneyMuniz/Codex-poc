@@ -1,88 +1,36 @@
-\# AI Studio POC
+# AI Studio POC
 
+This repository is being rebuilt from a manual markdown-driven studio into a persistent multi-agent framework.
 
+## Purpose
 
-This repository contains a local proof of concept for a multi-agent AI studio using the OpenAI ecosystem.
+The repository is the foundation for:
 
+- governance-driven orchestration
+- project-specific execution
+- reusable agent skills
+- durable session state
+- observable, Git-backed delivery loops
 
+## Active Structure
 
-\## Purpose
+- `governance/` global studio policy, rules, vision, and decision records
+- `projects/tactics-game/` the first active project, with project governance and execution views
+- `agents/` active orchestrator and crew agent modules
+- `skills/` reusable Python tools and helper functions
+- `sessions/` runtime state and persistent stores
+- `logs/` runtime logs and telemetry outputs
+- `scripts/` launchers, utilities, and upcoming CLI entry points
+- `archive/legacy-manual-studio/` preserved snapshot of the original manual prototype
 
+## Current Status
 
+Phase 0 has normalized the repository layout, archived the legacy manual prototype, and prepared the project for a persistent AutoGen-based rebuild on Python 3.14.
 
-The goal of this repository is to provide a structured environment for:
+The next implementation phase will replace markdown-only orchestration with:
 
-\- governance-driven agent orchestration
-
-\- project-specific execution
-
-\- reusable agent skills
-
-\- persistent session handling
-
-\- artifact-first workflows
-
-
-
-\## Repository Structure
-
-
-
-\- `governance/` global governance documents, rules, templates, and framework files
-
-\- `projects/` project-specific folders containing governance and execution artifacts
-
-\- `agents/` agent definitions such as orchestrator and workers
-
-\- `skills/` reusable helper modules and functions
-
-\- `sessions/` persistent session data
-
-\- `logs/` runtime and debug logs
-
-\- `scripts/` launchers, test scripts, and utilities
-
-
-
-\## First Project
-
-
-
-The first active project is located under:
-
-
-
-`projects/tactics-game/`
-
-
-
-This project separates governance artifacts from execution artifacts to preserve authority boundaries.
-
-
-
-\## Current Status
-
-
-
-Phase 1 completed:
-
-\- Python environment configured
-
-\- virtual environment working
-
-\- Git repository initialized
-
-\- GitHub remote connected
-
-\- first orchestrator tested
-
-
-
-Phase 2 in progress:
-
-\- repository restructuring
-
-\- governance file placement
-
-\- project folder organization
+- a persistent session store
+- approval pause and resume gates
+- a real Project PO, Architect, and Developer crew
+- observability and token-usage tracking
 
