@@ -4,46 +4,60 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from autogen_agentchat.base import TaskResult
-
+from agents.architect import ArchitectAgent
 from agents.config import load_environment
+from agents.design import DesignAgent
 from agents.git_service import GitService
-from agents.project_po import build_project_team
+from agents.pm import ProjectManagerAgent
+from agents.prompt_specialist import PromptSpecialistAgent
+from agents.qa import QAAgent
+from agents.developer import DeveloperAgent
+from agents.schemas import HealthCheckResult
 from agents.telemetry import TelemetryRecorder
 from sessions import SessionStore
 
 
-class ProgramOrchestrator:
+class Orchestrator:
     def __init__(self, repo_root: str | Path | None = None) -> None:
         self.repo_root = Path(repo_root or Path.cwd()).resolve()
         load_environment(self.repo_root)
         self.store = SessionStore(self.repo_root)
         self.telemetry = TelemetryRecorder(self.repo_root)
         self.git = GitService(self.repo_root)
+        self.prompt_specialist = PromptSpecialistAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry)
 
     def _read_text(self, relative_path: str) -> str:
         return (self.repo_root / relative_path).read_text(encoding="utf-8")
 
-    def load_governance_context(self) -> str:
-        parts = [
-            self._read_text("governance/FRAMEWORK.md"),
-            self._read_text("governance/GOVERNANCE_RULES.md"),
-            self._read_text("governance/VISION.md"),
-            self._read_text("governance/MODEL_REASONING_MATRIX.md"),
-            self._read_text("governance/MEMORY_MAP.md"),
-        ]
-        return "\n\n".join(parts)
-
     def load_project_brief(self, project_name: str) -> str:
         return self._read_text(f"projects/{project_name}/governance/PROJECT_BRIEF.md")
 
-    def create_task(self, project_name: str, title: str, description: str, requires_approval: bool = False) -> dict[str, Any]:
-        task = self.store.create_task(project_name, title, description, requires_approval)
-        self.telemetry.info("task_created", task_id=task["id"], project_name=project_name, requires_approval=requires_approval)
-        return task
+    async def intake_request(self, project_name: str, user_text: str) -> dict[str, Any]:
+        packet = await self.prompt_specialist.process_input(user_text)
+        title = packet.objective[:80]
+        task = self.store.create_task(
+            project_name,
+            title,
+            packet.details,
+            objective=packet.objective,
+            status="backlog",
+            requires_approval=packet.requires_approval,
+            owner_role="Orchestrator",
+            task_kind="request",
+            priority=packet.priority,
+            raw_request=user_text,
+        )
+        self.telemetry.info(
+            "task_intake",
+            task_id=task["id"],
+            project_name=project_name,
+            priority=packet.priority,
+            requires_approval=packet.requires_approval,
+        )
+        return {"packet": packet.model_dump(), "task": task}
 
-    def list_tasks(self, project_name: str | None = None) -> list[dict[str, Any]]:
-        return self.store.list_tasks(project_name)
+    def list_tasks(self, project_name: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+        return self.store.list_tasks(project_name, status=status)
 
     def list_approvals(self, status: str | None = None) -> list[dict[str, Any]]:
         return self.store.list_approvals(status)
@@ -55,17 +69,82 @@ class ProgramOrchestrator:
 
     def reject(self, approval_id: str, note: str | None = None) -> dict[str, Any]:
         approval = self.store.decide_approval(approval_id, "reject", note)
-        self.store.update_run(approval["run_id"], status="cancelled", stop_reason="approval_rejected", completed=True)
-        self.telemetry.info("approval_decided", approval_id=approval_id, decision="rejected", run_id=approval["run_id"])
+        run_id = approval["run_id"]
+        if run_id:
+            self.store.update_run(run_id, status="cancelled", stop_reason="approval_rejected", completed=True)
+        self.telemetry.info("approval_decided", approval_id=approval_id, decision="rejected", run_id=run_id)
         return approval
 
+    def health_check(self) -> dict[str, Any]:
+        required_files = [
+            "governance/FRAMEWORK.md",
+            "governance/GOVERNANCE_RULES.md",
+            "governance/VISION.md",
+            "governance/MODEL_REASONING_MATRIX.md",
+            "governance/MEMORY_MAP.md",
+            "projects/tactics-game/governance/PROJECT_BRIEF.md",
+            "memory/framework_health.json",
+            "memory/session_summaries.json",
+        ]
+        required_agents = [
+            "agents/prompt_specialist.py",
+            "agents/orchestrator.py",
+            "agents/pm.py",
+            "agents/architect.py",
+            "agents/developer.py",
+            "agents/design.py",
+            "agents/qa.py",
+        ]
+        issues: list[str] = []
+        checked_files: list[str] = []
+        checked_agents: list[str] = []
+
+        schema = self.store.schema_health()
+        for relative_path in required_files:
+            checked_files.append(relative_path)
+            if not (self.repo_root / relative_path).exists():
+                issues.append(f"Missing required file: {relative_path}")
+        for relative_path in required_agents:
+            checked_agents.append(relative_path)
+            if not (self.repo_root / relative_path).exists():
+                issues.append(f"Missing registered agent file: {relative_path}")
+
+        for task in self.store.list_tasks():
+            if task["status"] not in {"backlog", "ready", "in_progress", "in_review", "completed", "blocked"}:
+                issues.append(f"Invalid task status for {task['id']}: {task['status']}")
+            if task["parent_task_id"] and not self.store.get_task(task["parent_task_id"]):
+                issues.append(f"Subtask {task['id']} has missing parent {task['parent_task_id']}")
+            if task["task_kind"] == "subtask" and task["parent_task_id"]:
+                parent = self.store.get_task(task["parent_task_id"])
+                if parent and parent["status"] in {"completed", "blocked"} and task["status"] not in {"completed", "blocked"}:
+                    issues.append(
+                        f"Subtask {task['id']} is {task['status']} while parent {parent['id']} is {parent['status']}"
+                    )
+
+        payload = HealthCheckResult(
+            ok=schema["ok"] and not issues,
+            checked_tables=schema["tables"],
+            checked_files=checked_files,
+            checked_agents=checked_agents,
+            issues=schema["issues"] + issues,
+        ).model_dump()
+        self.store.write_health_snapshot(payload)
+        self.telemetry.append_event("health_check", payload)
+        return payload
+
     async def run_next_task(self, project_name: str) -> dict[str, Any]:
+        health = self.health_check()
+        if not health["ok"]:
+            return {"status": "health_check_failed", "issues": health["issues"]}
         task = self.store.get_next_runnable_task(project_name)
         if task is None:
-            return {"status": "idle", "message": f"No queued tasks for {project_name}."}
-        run = self.store.create_run(project_name, task["id"])
-        prompt = self._build_initial_prompt(task)
-        return await self._execute_run(run["id"], task, prompt, resume=False)
+            return {"status": "idle", "message": f"No backlog or ready tasks for {project_name}."}
+        run = self.store.create_run(project_name, task["id"], team_state={"phase": "intake"})
+        if task["requires_approval"] and self.store.approval_required_and_missing(task["id"]):
+            approval = self.store.create_approval(run["id"], task["id"], requested_by="Orchestrator", reason=task["objective"])
+            self.store.update_run(run["id"], status="paused_approval", stop_reason="awaiting_operator_approval", team_state={"phase": "awaiting_approval"})
+            return {"status": "paused_approval", "run_id": run["id"], "task_id": task["id"], "approval_id": approval["id"]}
+        return await self._execute_run(run["id"], task)
 
     async def resume_run(self, run_id: str) -> dict[str, Any]:
         run = self.store.get_run(run_id)
@@ -79,122 +158,60 @@ class ProgramOrchestrator:
         approval = self.store.latest_approval_for_task(task["id"])
         if approval is None or approval["status"] != "approved":
             raise ValueError(f"Run {run_id} cannot resume until its approval is approved.")
-        self.store.update_task(task["id"], status="in_progress", owner_role="ProjectPO")
-        self.store.update_run(run_id, status="running", stop_reason=None, last_error=None)
-        prompt = (
-            f"Operator decision received. Approval {approval['id']} was approved."
-            " Continue the task, record any final summary, and close it when ready."
-        )
-        return await self._execute_run(run_id, task, prompt, resume=True)
+        self.store.update_run(run_id, status="running", stop_reason=None, team_state={"phase": "resumed"})
+        return await self._execute_run(run_id, task)
 
     def create_git_checkpoint(self, message: str) -> str:
         sha = self.git.create_checkpoint(message)
         self.telemetry.info("git_checkpoint", commit=sha, message=message)
         return sha
 
-    def _build_initial_prompt(self, task: dict[str, Any]) -> str:
-        return (
-            "Operate on the active project task using the ProjectPO -> Architect -> Developer workflow.\n"
-            f"Task title: {task['title']}\n"
-            f"Task description: {task['description']}\n"
-            f"Requires approval: {'yes' if task['requires_approval'] else 'no'}\n"
-            "ProjectPO must manage the queue, delegate through the team, and either request approval or complete the task."
-        )
-
-    async def _execute_run(self, run_id: str, task: dict[str, Any], prompt: str, *, resume: bool) -> dict[str, Any]:
-        governance_context = self.load_governance_context()
+    async def _execute_run(self, run_id: str, task: dict) -> dict[str, Any]:
         project_brief = self.load_project_brief(task["project_name"])
-        team, model_clients = build_project_team(
+        architect = ArchitectAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry, project_brief=project_brief)
+        developer = DeveloperAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry, project_brief=project_brief)
+        design = DesignAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry, project_brief=project_brief)
+        qa = QAAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry, project_brief=project_brief)
+        pm = ProjectManagerAgent(
+            repo_root=self.repo_root,
             store=self.store,
-            run_id=run_id,
-            task_record=task,
-            governance_context=governance_context,
+            telemetry=self.telemetry,
             project_brief=project_brief,
+            architect=architect,
+            developer=developer,
+            design=design,
+            qa=qa,
         )
         try:
-            if resume:
-                prior_state = self.store.load_team_state(run_id)
-                if prior_state:
-                    await team.load_state(prior_state)
-            task_result: TaskResult | None = None
-            async for event in team.run_stream(task=prompt):
-                if isinstance(event, TaskResult):
-                    task_result = event
-                    continue
-                self._record_event(run_id, task["id"], event)
-            team_state = await team.save_state()
-            self.store.save_team_state(run_id, team_state)
-            final_task = self.store.get_task(task["id"]) or task
-            stop_reason = task_result.stop_reason if task_result else None
-            status = "running"
-            completed = False
-            if final_task["status"] == "awaiting_approval":
-                status = "paused_approval"
-            elif final_task["status"] == "completed":
-                status = "completed"
-                completed = True
-            elif final_task["status"] in {"failed", "rejected"}:
-                status = final_task["status"]
-                completed = True
-            self.store.update_run(run_id, status=status, stop_reason=stop_reason, team_state=team_state, completed=completed)
-            for role, client in model_clients.items():
-                usage = client.total_usage()
-                self.telemetry.append_event(
-                    "model_usage_totals",
-                    {
-                        "run_id": run_id,
-                        "task_id": task["id"],
-                        "role": role,
-                        "prompt_tokens": usage.prompt_tokens,
-                        "completion_tokens": usage.completion_tokens,
-                    },
-                )
-            outcome = {
+            result = await pm.execute_request(run_id=run_id, task=task)
+            completed = bool(result.get("completed"))
+            status = "completed" if completed else "blocked"
+            stop_reason = "completed" if completed else "review_or_execution_issue"
+            self.store.update_run(run_id, status=status, stop_reason=stop_reason, team_state={"phase": status}, completed=completed)
+            summary = {
                 "run_id": run_id,
                 "task_id": task["id"],
-                "task_status": final_task["status"],
+                "task_status": self.store.get_task(task["id"])["status"],
                 "run_status": status,
-                "stop_reason": stop_reason,
-                "result_summary": final_task.get("result_summary"),
+                "result_summary": result.get("summary"),
             }
-            self.telemetry.info("run_finished", **outcome)
-            return outcome
+            self.store.append_session_summary(summary)
+            self.telemetry.info("run_finished", **summary)
+            return summary
         except Exception as exc:
-            self.store.update_task(task["id"], status="failed", owner_role="ProjectPO")
+            self.store.update_task(task["id"], status="blocked", owner_role="Orchestrator", review_notes=str(exc))
             self.store.update_run(run_id, status="failed", last_error=str(exc), completed=True)
             self.telemetry.error("run_failed", run_id=run_id, task_id=task["id"], error=str(exc))
             raise
         finally:
-            for client in model_clients.values():
-                await client.close()
+            await pm.close()
+            await architect.close()
+            await developer.close()
+            await design.close()
+            await qa.close()
 
-    def _record_event(self, run_id: str, task_id: str, event: Any) -> None:
-        payload = event.model_dump(mode="json") if hasattr(event, "model_dump") else {"repr": repr(event)}
-        usage = getattr(event, "models_usage", None)
-        prompt_tokens = getattr(usage, "prompt_tokens", None)
-        completion_tokens = getattr(usage, "completion_tokens", None)
-        source = getattr(event, "source", None)
-        event_type = event.__class__.__name__
-        self.store.record_message(
-            run_id,
-            task_id,
-            event_type,
-            payload,
-            source=source,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-        )
-        self.telemetry.append_event(
-            event_type,
-            {
-                "run_id": run_id,
-                "task_id": task_id,
-                "source": source,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "payload": payload,
-            },
-        )
+
+ProgramOrchestrator = Orchestrator
 
 
 def run_async(coro):

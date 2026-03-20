@@ -7,9 +7,9 @@ from agents.schemas import ArtifactResult
 from skills.tools import write_project_artifact
 
 
-class ArchitectAgent(StudioRoleAgent):
+class DesignAgent(StudioRoleAgent):
     def __init__(self, *, repo_root: str | Path, store, telemetry, project_brief: str) -> None:
-        super().__init__(role_name="Architect", model_role="architect", repo_root=repo_root, store=store, telemetry=telemetry)
+        super().__init__(role_name="Design", model_role="design", repo_root=repo_root, store=store, telemetry=telemetry)
         self.project_brief = project_brief
 
     async def produce_artifact(
@@ -21,13 +21,12 @@ class ArchitectAgent(StudioRoleAgent):
     ) -> ArtifactResult:
         subject_name = Path(task["expected_artifact_path"]).stem.replace("-", " ").replace("_", " ").title()
         system_prompt = f"""
-You are the Architect for the tactics-game project.
+You are the Design agent for the tactics-game project.
 
 Project brief:
 {self.project_brief}
 
-Write concise, implementation-ready markdown. Follow the requested headings exactly when they are provided.
-Return markdown only.
+Produce concise markdown describing UI and visual direction. Return markdown only.
 """.strip()
         user_prompt = f"""
 Create the artifact for this task.
@@ -38,12 +37,11 @@ Details: {task['details']}
 Expected artifact path: {task['expected_artifact_path']}
 
 Required headings:
-- Overview
-- Attributes
-- Abilities
-- Acceptance Criteria
+- UI Concepts
+- Visual Direction
+- Player Feedback
 
-Name the unit or feature clearly as {subject_name}.
+Reference the subject as {subject_name}.
 
 If correction notes are present, fix the artifact accordingly.
 Correction notes: {correction_notes or 'None'}
@@ -55,6 +53,6 @@ Correction notes: {correction_notes or 'None'}
             task_id=task["id"],
         )
         write_project_artifact(task["expected_artifact_path"], content)
-        summary = f"Architect produced {task['expected_artifact_path']}."
-        self.store.record_artifact(run_id, task["id"], "architect_output", summary)
+        summary = f"Design produced {task['expected_artifact_path']}."
+        self.store.record_artifact(run_id, task["id"], "design_output", summary)
         return ArtifactResult(artifact_path=task["expected_artifact_path"], summary=summary)

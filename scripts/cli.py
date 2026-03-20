@@ -10,16 +10,25 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from agents.orchestrator import ProgramOrchestrator, run_async
+from agents.orchestrator import Orchestrator, run_async
 
 
-def _orchestrator() -> ProgramOrchestrator:
-    return ProgramOrchestrator()
+def _orchestrator() -> Orchestrator:
+    return Orchestrator()
 
 
 @click.group()
 def cli() -> None:
-    """AI Studio Phase 1 CLI."""
+    """Lean AI Studio CLI."""
+
+
+@cli.command()
+@click.argument("text", nargs=-1, required=True)
+@click.option("--project", "project_name", default="tactics-game", show_default=True)
+def request(text: tuple[str, ...], project_name: str) -> None:
+    """Create a task from natural language input using the Prompt Specialist."""
+    request_text = " ".join(text).strip()
+    click.echo(json.dumps(run_async(_orchestrator().intake_request(project_name, request_text)), indent=2))
 
 
 @cli.group()
@@ -30,10 +39,19 @@ def task() -> None:
 @task.command("create")
 @click.option("--project", "project_name", default="tactics-game", show_default=True)
 @click.option("--title", required=True)
-@click.option("--description", required=True)
+@click.option("--details", required=True)
+@click.option("--priority", default="medium", show_default=True)
 @click.option("--requires-approval/--no-requires-approval", default=False, show_default=True)
-def create_task(project_name: str, title: str, description: str, requires_approval: bool) -> None:
-    task_record = _orchestrator().create_task(project_name, title, description, requires_approval)
+def create_task(project_name: str, title: str, details: str, priority: str, requires_approval: bool) -> None:
+    task_record = _orchestrator().store.create_task(
+        project_name,
+        title,
+        details,
+        objective=title,
+        priority=priority,
+        requires_approval=requires_approval,
+        owner_role="Orchestrator",
+    )
     click.echo(json.dumps(task_record, indent=2))
 
 
@@ -44,8 +62,14 @@ def tasks() -> None:
 
 @tasks.command("list")
 @click.option("--project", "project_name", default="tactics-game", show_default=True)
-def list_tasks(project_name: str) -> None:
-    click.echo(json.dumps(_orchestrator().list_tasks(project_name), indent=2))
+@click.option("--state", "status", default=None)
+def list_tasks(project_name: str, status: str | None) -> None:
+    click.echo(json.dumps(_orchestrator().list_tasks(project_name, status), indent=2))
+
+
+@cli.command("health-check")
+def health_check() -> None:
+    click.echo(json.dumps(_orchestrator().health_check(), indent=2))
 
 
 @cli.command()

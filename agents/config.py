@@ -20,9 +20,12 @@ class RoleModelPolicy:
 MODEL_POLICIES: dict[str, RoleModelPolicy] = {
     "selector": RoleModelPolicy("selector", "AISTUDIO_MODEL_SELECTOR", "gpt-4.1-mini", "low", "low"),
     "orchestrator": RoleModelPolicy("orchestrator", "AISTUDIO_MODEL_ORCHESTRATOR", "gpt-4.1-mini", "low", "low"),
-    "project_po": RoleModelPolicy("project_po", "AISTUDIO_MODEL_PROJECT_PO", "gpt-4.1-mini", "medium", "low"),
+    "prompt_specialist": RoleModelPolicy("prompt_specialist", "AISTUDIO_MODEL_PROMPT_SPECIALIST", "gpt-4.1-mini", "low", "low"),
+    "pm": RoleModelPolicy("pm", "AISTUDIO_MODEL_PM", "gpt-4.1-mini", "medium", "low"),
     "architect": RoleModelPolicy("architect", "AISTUDIO_MODEL_ARCHITECT", "gpt-4.1-mini", "high", "medium"),
     "developer": RoleModelPolicy("developer", "AISTUDIO_MODEL_DEVELOPER", "gpt-4.1-mini", "medium", "low"),
+    "design": RoleModelPolicy("design", "AISTUDIO_MODEL_DESIGN", "gpt-4.1-mini", "medium", "low"),
+    "qa": RoleModelPolicy("qa", "AISTUDIO_MODEL_QA", "gpt-4.1-mini", "low", "low"),
 }
 
 
