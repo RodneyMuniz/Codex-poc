@@ -7,6 +7,7 @@ from typing import Any
 from autogen_core.models import SystemMessage, UserMessage
 
 from agents.config import create_model_client
+from agents.config import resolve_model
 
 
 class StudioRoleAgent:
@@ -85,7 +86,12 @@ class StudioRoleAgent:
     def _record(self, *, run_id: str | None, task_id: str | None, event_type: str, content: str, usage: Any) -> None:
         prompt_tokens = getattr(usage, "prompt_tokens", None)
         completion_tokens = getattr(usage, "completion_tokens", None)
-        payload = {"role": self.role_name, "content": content}
+        payload = {
+            "role": self.role_name,
+            "model_role": self.model_role,
+            "model": resolve_model(self.model_role),
+            "content": content,
+        }
         if run_id and task_id:
             self.store.record_message(
                 run_id,

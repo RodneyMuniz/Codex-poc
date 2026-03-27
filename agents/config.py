@@ -28,6 +28,8 @@ MODEL_POLICIES: dict[str, RoleModelPolicy] = {
     "qa": RoleModelPolicy("qa", "AISTUDIO_MODEL_QA", "gpt-4.1-mini", "low", "low"),
 }
 
+RUNTIME_MODES = {"custom", "sdk"}
+
 
 def load_environment(repo_root: str | Path | None = None) -> None:
     root = Path(repo_root or Path.cwd())
@@ -45,6 +47,11 @@ def require_api_key() -> str:
 def resolve_model(role: str) -> str:
     policy = MODEL_POLICIES[role]
     return os.getenv(policy.env_var, policy.default_model)
+
+
+def resolve_runtime_mode() -> str:
+    value = os.getenv("AISTUDIO_RUNTIME_MODE", "custom").strip().lower()
+    return value if value in RUNTIME_MODES else "custom"
 
 
 def create_model_client(role: str) -> OpenAIChatCompletionClient:

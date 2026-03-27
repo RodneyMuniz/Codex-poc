@@ -18,15 +18,23 @@ class DeveloperAgent(StudioRoleAgent):
         run_id: str,
         task: dict,
         correction_notes: str | None = None,
+        agent_run_id: str | None = None,
+        input_artifact_path: str | None = None,
     ) -> ArtifactResult:
         class_name = Path(task["expected_artifact_path"]).stem.replace("-", "_").title().replace("_", "")
+        design_context = ""
+        if input_artifact_path:
+            design_path = self.repo_root / input_artifact_path
+            if design_path.exists():
+                design_context = design_path.read_text(encoding="utf-8")
         system_prompt = f"""
 You are the Developer for the tactics-game project.
 
 Project brief:
 {self.project_brief}
 
-Return only the final artifact text. For Python tasks, return valid Python source code only.
+Transform upstream design intent into working implementation. Return only the final artifact text.
+For Python tasks, return valid Python source code only.
 """.strip()
         user_prompt = f"""
 Create the artifact for this task.
@@ -42,6 +50,11 @@ Required implementation details:
 - include methods take_damage, heal, cast_spell, is_alive
 - validate invalid initialization or invalid spell use
 
+Upstream design artifact:
+Path: {input_artifact_path or 'None'}
+Content:
+{design_context or 'None'}
+
 If correction notes are present, fix the artifact accordingly.
 Correction notes: {correction_notes or 'None'}
 """.strip()
@@ -55,7 +68,16 @@ Correction notes: {correction_notes or 'None'}
             content = self._strip_code_fences(content)
         write_project_artifact(task["expected_artifact_path"], content)
         summary = f"Developer produced {task['expected_artifact_path']}."
-        self.store.record_artifact(run_id, task["id"], "developer_output", summary)
+        self.store.record_artifact(
+            run_id,
+            task["id"],
+            "developer_output",
+            summary,
+            artifact_path=task["expected_artifact_path"],
+            produced_by="Developer",
+            source_agent_run_id=agent_run_id,
+            input_artifact_paths=[input_artifact_path] if input_artifact_path else [],
+        )
         return ArtifactResult(artifact_path=task["expected_artifact_path"], summary=summary)
 
     def _strip_code_fences(self, content: str) -> str:

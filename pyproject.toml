@@ -14,6 +14,7 @@ dependencies = [
     "click",
     "GitPython",
     "openai",
+    "openai-agents>=0.12.4,<1",
     "pydantic>=2",
     "python-dotenv",
     "SQLAlchemy",

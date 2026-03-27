@@ -72,6 +72,33 @@ def health_check() -> None:
     click.echo(json.dumps(_orchestrator().health_check(), indent=2))
 
 
+@cli.group()
+def runs() -> None:
+    """Run inspection commands."""
+
+
+@cli.group()
+def projects() -> None:
+    """Project inspection commands."""
+
+
+@projects.command("list")
+def list_projects() -> None:
+    click.echo(json.dumps(_orchestrator().store.list_projects(), indent=2))
+
+
+@runs.command("list")
+@click.option("--project", "project_name", default=None)
+def list_runs(project_name: str | None) -> None:
+    click.echo(json.dumps(_orchestrator().store.list_runs(project_name), indent=2))
+
+
+@runs.command("show")
+@click.argument("run_id")
+def show_run(run_id: str) -> None:
+    click.echo(json.dumps(_orchestrator().store.get_run_evidence(run_id), indent=2))
+
+
 @cli.command()
 @click.option("--project", "project_name", default="tactics-game", show_default=True)
 def run(project_name: str) -> None:
@@ -113,6 +140,21 @@ def resume(run_id: str) -> None:
 @click.argument("message")
 def git_checkpoint(message: str) -> None:
     click.echo(_orchestrator().create_git_checkpoint(message))
+
+
+@cli.command("wall-snapshot")
+@click.option("--project", "project_name", default="all", show_default=True)
+def wall_snapshot(project_name: str) -> None:
+    from scripts.operator_wall_snapshot import build_snapshot
+
+    click.echo(json.dumps(build_snapshot(ROOT, project_name=project_name), indent=2))
+
+
+@cli.command("import-legacy")
+def import_legacy() -> None:
+    from scripts.import_legacy_projects import import_legacy_sources
+
+    click.echo(json.dumps(import_legacy_sources(ROOT), indent=2))
 
 
 if __name__ == "__main__":

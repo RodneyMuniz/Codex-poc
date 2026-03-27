@@ -10,7 +10,7 @@ class PromptSpecialistAgent(StudioRoleAgent):
     def __init__(self, *, repo_root: str | Path, store, telemetry) -> None:
         super().__init__(role_name="PromptSpecialist", model_role="prompt_specialist", repo_root=repo_root, store=store, telemetry=telemetry)
 
-    async def process_input(self, user_text: str) -> DelegationPacket:
+    async def process_input(self, user_text: str, *, run_id: str | None = None, task_id: str | None = None) -> DelegationPacket:
         system_prompt = """
 You convert free-text studio lead requests into delegation packets.
 
@@ -19,15 +19,20 @@ Return strict JSON with:
 - details
 - priority: low, medium, or high
 - requires_approval: true or false
+- assumptions: array of short inferred assumptions
+- risks: array of short risks or ambiguities
 
 Mark requires_approval true for code changes, structural refactors, schema changes, or destructive operations.
 Keep objective concise and details practical.
+Keep assumptions and risks short and operator-facing.
 """.strip()
         try:
             return await self.generate_json(
                 system_prompt=system_prompt,
                 user_prompt=user_text,
                 schema=DelegationPacket,
+                run_id=run_id,
+                task_id=task_id,
             )
         except Exception:
             lowered = user_text.lower()
@@ -38,4 +43,6 @@ Keep objective concise and details practical.
                 details=user_text.strip(),
                 priority=priority,
                 requires_approval=requires_approval,
+                assumptions=["The request targets the active project unless redirected."],
+                risks=["The framework may need operator approval before downstream dispatch."],
             )

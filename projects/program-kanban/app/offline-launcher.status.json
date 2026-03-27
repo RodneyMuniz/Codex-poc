@@ -1,0 +1,27 @@
+﻿{
+    "generated_at":  "2026-03-26T21:37:03.3934991Z",
+    "workspace_root":  "C:\\Users\\rodne\\OneDrive\\Documentos\\_AIStudio_POC",
+    "launcher_root":  "C:\\Users\\rodne\\OneDrive\\Documentos\\_AIStudio_POC\\projects\\program-kanban\\app",
+    "apps":  [
+                 {
+                     "name":  "Program Kanban",
+                     "url":  "http://localhost:4187",
+                     "port":  4187,
+                     "state":  "started",
+                     "status_code":  200,
+                     "pid":  24452,
+                     "stdout_log":  "C:\\Users\\rodne\\OneDrive\\Documentos\\_AIStudio_POC\\sessions\\runtime_logs\\program-kanban.out.log",
+                     "stderr_log":  "C:\\Users\\rodne\\OneDrive\\Documentos\\_AIStudio_POC\\sessions\\runtime_logs\\program-kanban.err.log"
+                 },
+                 {
+                     "name":  "TacticsGame",
+                     "url":  "http://127.0.0.1:4173",
+                     "port":  4173,
+                     "state":  "started",
+                     "status_code":  200,
+                     "pid":  3792,
+                     "stdout_log":  "C:\\Users\\rodne\\OneDrive\\Documentos\\_AIStudio_POC\\sessions\\runtime_logs\\tactics-game.out.log",
+                     "stderr_log":  "C:\\Users\\rodne\\OneDrive\\Documentos\\_AIStudio_POC\\sessions\\runtime_logs\\tactics-game.err.log"
+                 }
+             ]
+}

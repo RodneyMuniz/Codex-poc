@@ -60,7 +60,7 @@ class UnitTestOutput(BaseModel):
 
 
 class ArtifactWriteInput(BaseModel):
-    relative_path: str = Field(..., description="Relative path under projects/tactics-game/artifacts/.")
+    relative_path: str = Field(..., description="Relative path under projects/<project>/artifacts/.")
     content: str = Field(..., description="Text content to write.")
     mode: str = Field("overwrite", description="Write mode: overwrite or append.")
 

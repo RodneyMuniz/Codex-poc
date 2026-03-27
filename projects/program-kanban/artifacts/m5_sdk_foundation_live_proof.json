@@ -1,0 +1,290 @@
+{
+  "request_text": "Create a test-only tactics-game support unit called Beacon for the SDK migration proof.",
+  "clarification": "Keep the scope to one bounded implementation slice. Include explicit proof and evidence in the final result.",
+  "runtime_mode": "sdk",
+  "run_id": "run_1ad770a13951",
+  "task_id": "task_ac500b518bd8",
+  "task_title": "Add a test-only support unit called 'Beacon' for tactics-game SDK migration proo",
+  "run_status": "completed",
+  "approval_ids": [
+    "approval_6f225b616151",
+    "approval_7b5d0bfdedd7"
+  ],
+  "sdk_handoff_event": {
+    "id": "msg_52eeeeeae952",
+    "run_id": "run_1ad770a13951",
+    "task_id": "task_ac500b518bd8",
+    "source": "Orchestrator",
+    "event_type": "sdk_orchestrator_handoff_prepared",
+    "payload_json": "{\"packet\": {\"assumptions\": [], \"manager_summary\": \"Approve and implement a test-only 'Beacon' support unit within the tactics-game SDK migration scope. The work is focused on a single bounded slice of functionality to provide explicit proof of correct implementation for testing purposes only.\", \"model\": \"gpt-4.1-mini\", \"pm_details\": \"Implement the 'Beacon' unit as a test-only support entity within the tactics-game project. This unit should be designed to demonstrate and validate SDK migration correctness without impacting production gameplay. Deliverables must include explicit proof and evidence of correct implementation, such as test cases, logs, or validation reports. The scope is strictly limited to this single unit and its test functionality.\", \"pm_objective\": \"Develop and integrate a test-only 'Beacon' unit in the tactics-game SDK to support migration proof, ensuring it is a minimal, bounded feature with clear evidence of correct functionality.\", \"response_id\": \"resp_0dde9cfd6ac14d660069c2167b4cc0819097d3be43d74785e2\", \"risks\": [], \"runtime\": \"sdk\", \"session_id\": \"studio-orchestrator-run_1ad770a13951\", \"trace_id\": null}, \"raw_json\": {\"assumptions\": [], \"manager_summary\": \"Approve and implement a test-only 'Beacon' support unit within the tactics-game SDK migration scope. The work is focused on a single bounded slice of functionality to provide explicit proof of correct implementation for testing purposes only.\", \"model\": \"gpt-4.1-mini\", \"pm_details\": \"Implement the 'Beacon' unit as a test-only support entity within the tactics-game project. This unit should be designed to demonstrate and validate SDK migration correctness without impacting production gameplay. Deliverables must include explicit proof and evidence of correct implementation, such as test cases, logs, or validation reports. The scope is strictly limited to this single unit and its test functionality.\", \"pm_objective\": \"Develop and integrate a test-only 'Beacon' unit in the tactics-game SDK to support migration proof, ensuring it is a minimal, bounded feature with clear evidence of correct functionality.\", \"response_id\": \"resp_0dde9cfd6ac14d660069c2167b4cc0819097d3be43d74785e2\", \"risks\": [], \"runtime\": \"sdk\", \"session_id\": \"studio-orchestrator-run_1ad770a13951\", \"trace_id\": null}, \"route\": {\"cost_tier\": \"low\", \"model\": \"gpt-4.1-mini\", \"model_role\": \"orchestrator\", \"profile_label\": \"Project Orchestrator\", \"profile_summary\": \"Owns operator interaction, validates scope, and decides when the PM flow should start or pause.\", \"reasoning_depth\": \"low\", \"route_reason\": \"Keeps the Studio Lead in the loop and protects framework integrity before downstream delegation.\", \"runtime_mode\": \"sdk\", \"runtime_role\": \"Orchestrator\", \"skill_metadata\": [{\"description\": \"Turns preview packets into a reviewable operator-facing brief.\", \"name\": \"Operator Coaching\", \"type\": \"internal_profile\"}, {\"description\": \"Pauses and resumes runs at approval boundaries.\", \"name\": \"Approval Control\", \"type\": \"internal_profile\"}]}, \"summary\": \"Approve and implement a test-only 'Beacon' support unit within the tactics-game SDK migration scope. The work is focused on a single bounded slice of functionality to provide explicit proof of correct implementation for testing purposes only.\"}",
+    "prompt_tokens": null,
+    "completion_tokens": null,
+    "created_at": "2026-03-24T04:43:44+00:00",
+    "payload": {
+      "packet": {
+        "assumptions": [],
+        "manager_summary": "Approve and implement a test-only 'Beacon' support unit within the tactics-game SDK migration scope. The work is focused on a single bounded slice of functionality to provide explicit proof of correct implementation for testing purposes only.",
+        "model": "gpt-4.1-mini",
+        "pm_details": "Implement the 'Beacon' unit as a test-only support entity within the tactics-game project. This unit should be designed to demonstrate and validate SDK migration correctness without impacting production gameplay. Deliverables must include explicit proof and evidence of correct implementation, such as test cases, logs, or validation reports. The scope is strictly limited to this single unit and its test functionality.",
+        "pm_objective": "Develop and integrate a test-only 'Beacon' unit in the tactics-game SDK to support migration proof, ensuring it is a minimal, bounded feature with clear evidence of correct functionality.",
+        "response_id": "resp_0dde9cfd6ac14d660069c2167b4cc0819097d3be43d74785e2",
+        "risks": [],
+        "runtime": "sdk",
+        "session_id": "studio-orchestrator-run_1ad770a13951",
+        "trace_id": null
+      },
+      "raw_json": {
+        "assumptions": [],
+        "manager_summary": "Approve and implement a test-only 'Beacon' support unit within the tactics-game SDK migration scope. The work is focused on a single bounded slice of functionality to provide explicit proof of correct implementation for testing purposes only.",
+        "model": "gpt-4.1-mini",
+        "pm_details": "Implement the 'Beacon' unit as a test-only support entity within the tactics-game project. This unit should be designed to demonstrate and validate SDK migration correctness without impacting production gameplay. Deliverables must include explicit proof and evidence of correct implementation, such as test cases, logs, or validation reports. The scope is strictly limited to this single unit and its test functionality.",
+        "pm_objective": "Develop and integrate a test-only 'Beacon' unit in the tactics-game SDK to support migration proof, ensuring it is a minimal, bounded feature with clear evidence of correct functionality.",
+        "response_id": "resp_0dde9cfd6ac14d660069c2167b4cc0819097d3be43d74785e2",
+        "risks": [],
+        "runtime": "sdk",
+        "session_id": "studio-orchestrator-run_1ad770a13951",
+        "trace_id": null
+      },
+      "route": {
+        "cost_tier": "low",
+        "model": "gpt-4.1-mini",
+        "model_role": "orchestrator",
+        "profile_label": "Project Orchestrator",
+        "profile_summary": "Owns operator interaction, validates scope, and decides when the PM flow should start or pause.",
+        "reasoning_depth": "low",
+        "route_reason": "Keeps the Studio Lead in the loop and protects framework integrity before downstream delegation.",
+        "runtime_mode": "sdk",
+        "runtime_role": "Orchestrator",
+        "skill_metadata": [
+          {
+            "description": "Turns preview packets into a reviewable operator-facing brief.",
+            "name": "Operator Coaching",
+            "type": "internal_profile"
+          },
+          {
+            "description": "Pauses and resumes runs at approval boundaries.",
+            "name": "Approval Control",
+            "type": "internal_profile"
+          }
+        ]
+      },
+      "summary": "Approve and implement a test-only 'Beacon' support unit within the tactics-game SDK migration scope. The work is focused on a single bounded slice of functionality to provide explicit proof of correct implementation for testing purposes only."
+    }
+  },
+  "artifacts": [
+    {
+      "kind": "pm_plan",
+      "artifact_path": null,
+      "produced_by": null,
+      "source_agent_run_id": null
+    },
+    {
+      "kind": "architect_output",
+      "artifact_path": "projects/tactics-game/artifacts/functionality_design.md",
+      "produced_by": "Architect",
+      "source_agent_run_id": "agent_run_3250f2560d0f"
+    },
+    {
+      "kind": "qa_review",
+      "artifact_path": null,
+      "produced_by": null,
+      "source_agent_run_id": null
+    },
+    {
+      "kind": "pm_plan",
+      "artifact_path": null,
+      "produced_by": null,
+      "source_agent_run_id": null
+    },
+    {
+      "kind": "developer_output",
+      "artifact_path": "projects/tactics-game/artifacts/functionality.py",
+      "produced_by": "Developer",
+      "source_agent_run_id": "agent_run_bef7c62ac1da"
+    },
+    {
+      "kind": "qa_review",
+      "artifact_path": null,
+      "produced_by": null,
+      "source_agent_run_id": null
+    },
+    {
+      "kind": "design_output",
+      "artifact_path": "projects/tactics-game/artifacts/functionality_ui_notes.md",
+      "produced_by": "Design",
+      "source_agent_run_id": "agent_run_97e8fe72334a"
+    },
+    {
+      "kind": "qa_review",
+      "artifact_path": null,
+      "produced_by": null,
+      "source_agent_run_id": null
+    }
+  ],
+  "validations": [
+    {
+      "id": "validation_15c94695c282",
+      "run_id": "run_1ad770a13951",
+      "task_id": "task_2c1d3caf961c",
+      "agent_run_id": "agent_run_3250f2560d0f",
+      "validator_role": "QA",
+      "artifact_path": "projects/tactics-game/artifacts/functionality_design.md",
+      "artifact_sha256": "bb4ce33336df9005cf6a4ba1f64b1a1eeb01a805238dcdee1a91bedc633bf436",
+      "status": "passed",
+      "checks_json": "{\"artifact_exists\": true, \"required_headings\": true, \"required_keywords\": true, \"required_strings\": true}",
+      "summary": "QA approved the artifact.",
+      "created_at": "2026-03-24T04:43:57+00:00",
+      "checks": {
+        "artifact_exists": true,
+        "required_headings": true,
+        "required_keywords": true,
+        "required_strings": true
+      }
+    },
+    {
+      "id": "validation_5a6bfd08346a",
+      "run_id": "run_1ad770a13951",
+      "task_id": "task_0446fa742027",
+      "agent_run_id": "agent_run_bef7c62ac1da",
+      "validator_role": "QA",
+      "artifact_path": "projects/tactics-game/artifacts/functionality.py",
+      "artifact_sha256": "04cc3585cf29369d65a1eaccdf7d8c4b00d6556886a32a905c1566f8d37d7f9c",
+      "status": "passed",
+      "checks_json": "{\"artifact_exists\": true, \"input_artifact_consumed\": true, \"python_compile\": true, \"required_headings\": true, \"required_keywords\": true, \"required_strings\": true}",
+      "summary": "QA approved the artifact.",
+      "created_at": "2026-03-24T04:44:09+00:00",
+      "checks": {
+        "artifact_exists": true,
+        "input_artifact_consumed": true,
+        "python_compile": true,
+        "required_headings": true,
+        "required_keywords": true,
+        "required_strings": true
+      }
+    },
+    {
+      "id": "validation_d496f5a27199",
+      "run_id": "run_1ad770a13951",
+      "task_id": "task_ebc5deeb3a6f",
+      "agent_run_id": "agent_run_97e8fe72334a",
+      "validator_role": "QA",
+      "artifact_path": "projects/tactics-game/artifacts/functionality_ui_notes.md",
+      "artifact_sha256": "658fbf594d01caefcfe083d67a4d990ebd12546ab0e68d3d8c224d72e2dc3ccf",
+      "status": "passed",
+      "checks_json": "{\"artifact_exists\": true, \"required_headings\": true, \"required_keywords\": true, \"required_strings\": true}",
+      "summary": "QA approved the artifact.",
+      "created_at": "2026-03-24T04:44:20+00:00",
+      "checks": {
+        "artifact_exists": true,
+        "required_headings": true,
+        "required_keywords": true,
+        "required_strings": true
+      }
+    }
+  ],
+  "agent_runs": [
+    {
+      "id": "agent_run_3250f2560d0f",
+      "role": "Architect",
+      "status": "completed",
+      "pid": 38856,
+      "input_artifact_path": null,
+      "output_artifact_path": "projects/tactics-game/artifacts/functionality_design.md"
+    },
+    {
+      "id": "agent_run_c2b2213204eb",
+      "role": "QA",
+      "status": "completed",
+      "pid": 22964,
+      "input_artifact_path": null,
+      "output_artifact_path": null
+    },
+    {
+      "id": "agent_run_bef7c62ac1da",
+      "role": "Developer",
+      "status": "completed",
+      "pid": 35884,
+      "input_artifact_path": "projects/tactics-game/artifacts/functionality_design.md",
+      "output_artifact_path": "projects/tactics-game/artifacts/functionality.py"
+    },
+    {
+      "id": "agent_run_604c306c68c6",
+      "role": "QA",
+      "status": "completed",
+      "pid": 10524,
+      "input_artifact_path": null,
+      "output_artifact_path": null
+    },
+    {
+      "id": "agent_run_97e8fe72334a",
+      "role": "Design",
+      "status": "completed",
+      "pid": 36888,
+      "input_artifact_path": null,
+      "output_artifact_path": "projects/tactics-game/artifacts/functionality_ui_notes.md"
+    },
+    {
+      "id": "agent_run_56176b01ea2d",
+      "role": "QA",
+      "status": "completed",
+      "pid": 7508,
+      "input_artifact_path": null,
+      "output_artifact_path": null
+    }
+  ],
+  "trace_event_types": [
+    "dispatch_backup_created",
+    "operator_request_confirmed",
+    "approval_requested",
+    "approval_approved",
+    "run_resumed",
+    "sdk_orchestrator_handoff_prepared",
+    "orchestrator_to_pm_handoff",
+    "pm_plan_created",
+    "pm_subtasks_ready",
+    "pm_worker_dispatch_packet_created",
+    "worker_started",
+    "agent_text",
+    "worker_completed",
+    "pm_worker_result_received",
+    "worker_started",
+    "qa_review",
+    "worker_completed",
+    "pm_qa_review_received",
+    "pm_dispatch_approval_requested",
+    "orchestrator_pause_summary",
+    "approval_approved",
+    "run_resumed",
+    "orchestrator_to_pm_handoff",
+    "pm_plan_created",
+    "pm_subtasks_ready",
+    "pm_worker_dispatch_packet_created",
+    "worker_started",
+    "agent_text",
+    "worker_completed",
+    "pm_worker_result_received",
+    "worker_started",
+    "qa_review",
+    "worker_completed",
+    "pm_qa_review_received",
+    "pm_worker_dispatch_packet_created",
+    "worker_started",
+    "agent_text",
+    "worker_completed",
+    "pm_worker_result_received",
+    "worker_started",
+    "qa_review",
+    "worker_completed",
+    "pm_qa_review_received",
+    "qa_parent_review",
+    "pm_parent_review_complete",
+    "orchestrator_final_summary"
+  ],
+  "evidence_excerpt": {
+    "approval_count": 2,
+    "artifact_count": 8,
+    "validation_count": 3,
+    "delegation_count": 3,
+    "agent_run_count": 6
+  }
+}

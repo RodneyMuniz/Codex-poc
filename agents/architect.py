@@ -18,6 +18,7 @@ class ArchitectAgent(StudioRoleAgent):
         run_id: str,
         task: dict,
         correction_notes: str | None = None,
+        agent_run_id: str | None = None,
     ) -> ArtifactResult:
         subject_name = Path(task["expected_artifact_path"]).stem.replace("-", " ").replace("_", " ").title()
         system_prompt = f"""
@@ -56,5 +57,13 @@ Correction notes: {correction_notes or 'None'}
         )
         write_project_artifact(task["expected_artifact_path"], content)
         summary = f"Architect produced {task['expected_artifact_path']}."
-        self.store.record_artifact(run_id, task["id"], "architect_output", summary)
+        self.store.record_artifact(
+            run_id,
+            task["id"],
+            "architect_output",
+            summary,
+            artifact_path=task["expected_artifact_path"],
+            produced_by="Architect",
+            source_agent_run_id=agent_run_id,
+        )
         return ArtifactResult(artifact_path=task["expected_artifact_path"], summary=summary)

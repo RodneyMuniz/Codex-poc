@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studio Offline Launcher</title>
+    <hta:application
+      id="studioLauncher"
+      applicationname="Studio Offline Launcher"
+      border="thin"
+      borderstyle="complex"
+      caption="yes"
+      maximizebutton="yes"
+      minimizebutton="yes"
+      scroll="no"
+      singleinstance="yes"
+      sysmenu="yes"
+      windowstate="normal"
+    />
+    <style>
+      :root {
+        --ink: #1a1714;
+        --muted: #6a6159;
+        --canvas: #efe4d2;
+        --card: rgba(255, 251, 245, 0.94);
+        --line: rgba(26, 23, 20, 0.11);
+        --accent: #0f766e;
+        --accent-strong: #115e59;
+        --sun: #c96d24;
+        --success: #166534;
+        --danger: #a04412;
+        --shadow: 0 26px 60px rgba(40, 27, 17, 0.14);
+        --radius-xl: 30px;
+        --radius-lg: 22px;
+        --radius-md: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 36%),
+          radial-gradient(circle at top right, rgba(201, 109, 36, 0.18), transparent 28%),
+          linear-gradient(180deg, #f8f4ec 0%, var(--canvas) 100%);
+      }
+
+      .shell {
+        width: min(1500px, calc(100vw - 40px));
+        margin: 0 auto;
+        padding: 26px 0 34px;
+      }
+
+      .hero,
+      .panel,
+      .app-card,
+      .utility-card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius-xl);
+        background: var(--card);
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr);
+        gap: 22px;
+        padding: 28px;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 12px;
+        font-family: "IBM Plex Serif", Georgia, serif;
+        font-size: clamp(2.2rem, 4vw, 4.3rem);
+        line-height: 0.98;
+      }
+
+      .lede,
+      .meta-note,
+      .app-card__meta,
+      .hint,
+      .status-row span:last-child {
+        color: var(--muted);
+      }
+
+      .hero__controls,
+      .hero__actions,
+      .utility-grid,
+      .app-grid,
+      .status-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .hero__actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 20px;
+      }
+
+      .hero__controls {
+        align-content: start;
+      }
+
+      .panel {
+        margin-top: 18px;
+        padding: 20px;
+      }
+
+      .panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .panel__header h2 {
+        margin-bottom: 0;
+      }
+
+      .panel__header span {
+        font-size: 0.9rem;
+        color: var(--accent-strong);
+        font-weight: 700;
+      }
+
+      .app-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .app-card,
+      .utility-card {
+        padding: 20px;
+      }
+
+      .app-card__header,
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .app-card__header h3 {
+        margin-bottom: 6px;
+      }
+
+      .status-pill {
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        background: rgba(15, 118, 110, 0.12);
+        color: var(--accent-strong);
+      }
+
+      .status-pill--offline {
+        background: rgba(160, 68, 18, 0.12);
+        color: var(--danger);
+      }
+
+      .button {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 12px 16px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        text-align: center;
+        transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .button--primary {
+        background: linear-gradient(135deg, var(--accent) 0%, #169489 100%);
+        color: #f9f6ef;
+        border-color: rgba(17, 94, 89, 0.22);
+        box-shadow: 0 18px 36px rgba(15, 118, 110, 0.22);
+      }
+
+      .button--secondary {
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--ink);
+      }
+
+      .button--ghost {
+        background: rgba(245, 240, 232, 0.92);
+        color: var(--ink);
+      }
+
+      .button[disabled] {
+        cursor: wait;
+        opacity: 0.7;
+        transform: none;
+      }
+
+      .status-list {
+        margin-top: 14px;
+      }
+
+      .status-row {
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--line);
+        background: rgba(247, 242, 235, 0.9);
+      }
+
+      .status-row strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .utility-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .utility-card h3 {
+        margin-bottom: 10px;
+      }
+
+      .utility-actions {
+        display: grid;
+        gap: 10px;
+      }
+
+      .path-card {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--line);
+        background: rgba(247, 242, 235, 0.88);
+      }
+
+      .path-card__value {
+        margin-top: 10px;
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        border: 1px dashed rgba(17, 94, 89, 0.24);
+        background: rgba(255, 255, 255, 0.82);
+        font-family: "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
+        font-size: 0.86rem;
+        word-break: break-all;
+      }
+
+      .banner {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(201, 109, 36, 0.28);
+        background: rgba(255, 244, 232, 0.96);
+        color: #8a4714;
+      }
+
+      .banner strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .footer {
+        margin-top: 16px;
+        text-align: right;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 1080px) {
+        .hero,
+        .app-grid,
+        .utility-grid,
+        .hero__actions {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Local Studio Utility</p>
+          <h1>Bring The Board And The Game Online In One Move</h1>
+          <p class="lede">
+            This launcher is the offline companion for Program Kanban. It is designed for local Windows use, so the
+            launch button can start both applications without requiring this Codex chat to do it for you.
+          </p>
+          <div class="hero__actions">
+            <button class="button button--primary" id="start-apps-button" type="button">Start Apps</button>
+            <button class="button button--secondary" id="refresh-button" type="button">Refresh Status</button>
+          </div>
+        </div>
+        <div class="hero__controls">
+          <div class="utility-card">
+            <h3>What This Starts</h3>
+            <p class="meta-note">Program Kanban on <strong>http://localhost:4187</strong> and TacticsGame on <strong>http://127.0.0.1:4173</strong>.</p>
+            <p class="hint">
+              For reliable local automation, open this page with
+              <strong>open-studio-launcher.cmd</strong>. In a regular browser it falls back to guidance mode.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="banner" id="mode-banner">
+        <strong>Launcher mode unavailable</strong>
+        Open this page with <strong>open-studio-launcher.cmd</strong> to enable one-click startup and live local status checks.
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h2>Application Status</h2>
+          <span id="last-refresh-text">Checking...</span>
+        </div>
+        <div class="app-grid">
+          <article class="app-card" data-app="program-kanban">
+            <div class="app-card__header">
+              <div>
+                <p class="eyebrow">Operator Wall</p>
+                <h3>Program Kanban</h3>
+              </div>
+              <span class="status-pill status-pill--offline" data-status-pill>Offline</span>
+            </div>
+            <p class="app-card__meta">The canonical planning wall and operator surface.</p>
+            <div class="status-list">
+              <div class="status-row">
+                <span>
+                  <strong>Local URL</strong>
+                  <span data-app-url>http://localhost:4187</span>
+                </span>
+                <button class="button button--ghost" type="button" data-open-url>Open</button>
+              </div>
+              <div class="status-row">
+                <span>
+                  <strong>Output Log</strong>
+                  <span data-stdout-log>sessions/runtime_logs/program-kanban.out.log</span>
+                </span>
+                <button class="button button--ghost" type="button" data-open-stdout>Log</button>
+              </div>
+              <div class="status-row">
+                <span>
+                  <strong>Error Log</strong>
+                  <span data-stderr-log>sessions/runtime_logs/program-kanban.err.log</span>
+                </span>
+                <button class="button button--ghost" type="button" data-open-stderr>Error</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="app-card" data-app="tactics-game">
+            <div class="app-card__header">
+              <div>
+                <p class="eyebrow">Playable App</p>
+                <h3>TacticsGame</h3>
+              </div>
+              <span class="status-pill status-pill--offline" data-status-pill>Offline</span>
+            </div>
+            <p class="app-card__meta">The migrated tactics prototype running from the new project structure.</p>
+            <div class="status-list">
+              <div class="status-row">
+                <span>
+                  <strong>Local URL</strong>
+                  <span data-app-url>http://127.0.0.1:4173</span>
+                </span>
+                <button class="button button--ghost" type="button" data-open-url>Open</button>
+              </div>
+              <div class="status-row">
+                <span>
+                  <strong>Output Log</strong>
+                  <span data-stdout-log>sessions/runtime_logs/tactics-game.out.log</span>
+                </span>
+                <button class="button button--ghost" type="button" data-open-stdout>Log</button>
+              </div>
+              <div class="status-row">
+                <span>
+                  <strong>Error Log</strong>
+                  <span data-stderr-log>sessions/runtime_logs/tactics-game.err.log</span>
+                </span>
+                <button class="button button--ghost" type="button" data-open-stderr>Error</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__header">
+          <h2>Quick Utilities</h2>
+          <span>Local files and shortcuts</span>
+        </div>
+        <div class="utility-grid">
+          <article class="utility-card">
+            <h3>Launch Helper</h3>
+            <p class="hint">Download or open the Windows launcher wrapper if you prefer the fully local helper mode.</p>
+            <div class="utility-actions">
+              <button class="button button--secondary" id="open-wrapper-button" type="button">Open Launcher Wrapper</button>
+              <button class="button button--secondary" id="download-launcher-button" type="button">Download Launch Cmd</button>
+            </div>
+          </article>
+          <article class="utility-card">
+            <h3>Status File</h3>
+            <p class="hint">Review the last launch payload captured by the launcher flow.</p>
+            <div class="utility-actions">
+              <button class="button button--secondary" id="open-status-button" type="button">Open Status File</button>
+            </div>
+          </article>
+          <article class="utility-card">
+            <h3>Launcher Folder</h3>
+            <p class="hint">Use the folder path below if you want to jump directly to the local launcher files.</p>
+            <div class="utility-actions">
+              <button class="button button--secondary" id="copy-folder-button" type="button">Copy Folder Path</button>
+              <button class="button button--secondary" id="open-wall-button" type="button">Open Wall</button>
+            </div>
+          </article>
+        </div>
+        <div class="path-card">
+          <strong>Launcher Folder</strong>
+          <div class="path-card__value" id="launcher-folder-path">Waiting for launcher status...</div>
+        </div>
+      </section>
+
+      <p class="footer" id="footer-text">Waiting for local status.</p>
+    </main>
+
+    <script>
+      const APP_DEFAULTS = {
+        "program-kanban": {
+          name: "Program Kanban",
+          url: "http://localhost:4187",
+          stdout_log: "sessions\\\\runtime_logs\\\\program-kanban.out.log",
+          stderr_log: "sessions\\\\runtime_logs\\\\program-kanban.err.log",
+        },
+        "tactics-game": {
+          name: "TacticsGame",
+          url: "http://127.0.0.1:4173",
+          stdout_log: "sessions\\\\runtime_logs\\\\tactics-game.out.log",
+          stderr_log: "sessions\\\\runtime_logs\\\\tactics-game.err.log",
+        },
+      };
+
+      const SERVER_BASE = "http://localhost:4187";
+      let latestServerStatus = null;
+      let lastServerAttachWorked = false;
+
+      function supportsLocalAutomation() {
+        try {
+          return !!new ActiveXObject("WScript.Shell");
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function supportsServerLauncher() {
+        return window.location.protocol === "http:" || window.location.protocol === "https:";
+      }
+
+      function isFileMode() {
+        return window.location.protocol === "file:";
+      }
+
+      function serverUrl(path) {
+        if (/^https?:\/\//i.test(path)) {
+          return path;
+        }
+        return new URL(path, SERVER_BASE).toString();
+      }
+
+      function currentFilePath() {
+        const raw = decodeURIComponent(window.location.pathname || "");
+        return raw.replace(/^\/([A-Za-z]:)/, "$1").replace(/\//g, "\\");
+      }
+
+      function currentDirectory() {
+        return currentFilePath().replace(/\\[^\\]+$/, "");
+      }
+
+      function joinWindowsPath(left, right) {
+        if (!left.endsWith("\\")) {
+          return left + "\\" + right;
+        }
+        return left + right;
+      }
+
+      function createShell() {
+        return new ActiveXObject("WScript.Shell");
+      }
+
+      function createFso() {
+        return new ActiveXObject("Scripting.FileSystemObject");
+      }
+
+      function readJsonFile(filePath) {
+        try {
+          const fso = createFso();
+          if (!fso.FileExists(filePath)) {
+            return null;
+          }
+          const handle = fso.OpenTextFile(filePath, 1, false, -1);
+          const text = handle.ReadAll();
+          handle.Close();
+          return JSON.parse(text);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function httpStatus(url) {
+        try {
+          const request = new ActiveXObject("MSXML2.XMLHTTP");
+          request.open("GET", url, false);
+          request.send();
+          return request.status;
+        } catch (error) {
+          return 0;
+        }
+      }
+
+      function runLocalCommand(command) {
+        createShell().Run(command, 0, false);
+      }
+
+      function openUrl(url) {
+        if (supportsLocalAutomation()) {
+          runLocalCommand(url);
+          return;
+        }
+        const resolved = isFileMode() && url.startsWith("/") ? serverUrl(url) : url;
+        window.open(resolved, "_blank", "noopener");
+      }
+
+      function openPath(filePath) {
+        if (!supportsLocalAutomation()) {
+          alert("This action needs local launcher mode. Open the page with open-studio-launcher.cmd.");
+          return;
+        }
+        runLocalCommand(`explorer.exe "${filePath}"`);
+      }
+
+      async function fetchJson(url, options) {
+        const response = await fetch(serverUrl(url), Object.assign({ cache: "no-store", mode: "cors" }, options || {}));
+        if (!response.ok) {
+          throw new Error(`Request failed with ${response.status}`);
+        }
+        return await response.json();
+      }
+
+      function tryOpenRelativeHelper(fileName) {
+        try {
+          const link = document.createElement("a");
+          link.href = fileName;
+          link.download = "";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (error) {
+        }
+        return false;
+      }
+
+      function launcherPaths() {
+        const directory = currentDirectory();
+        return {
+          directory,
+          wrapper: joinWindowsPath(directory, "open-studio-launcher.cmd"),
+          command: joinWindowsPath(directory, "launch-studio.cmd"),
+          status: joinWindowsPath(directory, "offline-launcher.status.json"),
+          workspace: currentDirectory().replace(/\\projects\\program-kanban\\app$/i, ""),
+        };
+      }
+
+      function setModeBanner() {
+        const banner = document.querySelector("#mode-banner");
+        if (supportsLocalAutomation()) {
+          banner.innerHTML = "<strong>Launcher mode ready</strong> One-click startup and local file actions are enabled in this window.";
+          banner.style.borderColor = "rgba(22, 101, 52, 0.24)";
+          banner.style.background = "rgba(240, 253, 244, 0.94)";
+          banner.style.color = "#166534";
+          return;
+        }
+        if (supportsServerLauncher()) {
+          banner.innerHTML = "<strong>Browser mode ready</strong> This page can start the apps through the local Program Kanban server. The helper wrapper remains available if you want a fully local launcher window.";
+          banner.style.borderColor = "rgba(22, 101, 52, 0.24)";
+          banner.style.background = "rgba(240, 253, 244, 0.94)";
+          banner.style.color = "#166534";
+          return;
+        }
+        if (lastServerAttachWorked) {
+          banner.innerHTML = "<strong>File mode attached</strong> The local launcher server is online, so this page can now refresh status and logs through localhost. Startup still requires the helper wrapper when the server is offline.";
+          banner.style.borderColor = "rgba(22, 101, 52, 0.24)";
+          banner.style.background = "rgba(240, 253, 244, 0.94)";
+          banner.style.color = "#166534";
+          return;
+        }
+        banner.innerHTML = "<strong>File mode limited</strong> A normal browser cannot directly execute local commands from a file page. If the launcher server is offline, use <strong>open-studio-launcher.cmd</strong> once; after that this page can attach to localhost and refresh status.";
+      }
+
+      function applyStatus(appKey, data) {
+        const card = document.querySelector(`[data-app="${appKey}"]`);
+        if (!card) {
+          return;
+        }
+
+        const url = data.url || APP_DEFAULTS[appKey].url;
+        const pill = card.querySelector("[data-status-pill]");
+        const stdout = data.stdout_log || APP_DEFAULTS[appKey].stdout_log;
+        const stderr = data.stderr_log || APP_DEFAULTS[appKey].stderr_log;
+        const online = Number(data.status_code || 0) >= 200 && Number(data.status_code || 0) < 500;
+
+        pill.textContent = online ? "Online" : "Offline";
+        pill.className = online ? "status-pill" : "status-pill status-pill--offline";
+        card.querySelector("[data-app-url]").textContent = url;
+        card.querySelector("[data-stdout-log]").textContent = stdout;
+        card.querySelector("[data-stderr-log]").textContent = stderr;
+        card.querySelector("[data-open-url]").onclick = function () { openUrl(url); };
+        card.querySelector("[data-open-stdout]").onclick = function () {
+          if (supportsLocalAutomation()) {
+            openPath(stdout);
+            return;
+          }
+          openUrl(data.stdout_view_url || url);
+        };
+        card.querySelector("[data-open-stderr]").onclick = function () {
+          if (supportsLocalAutomation()) {
+            openPath(stderr);
+            return;
+          }
+          openUrl(data.stderr_view_url || url);
+        };
+      }
+
+      function applyStatusPayload(statusPayload) {
+        latestServerStatus = statusPayload;
+        const payloadByName = {};
+        for (let index = 0; index < (statusPayload.apps || []).length; index += 1) {
+          const app = statusPayload.apps[index];
+          payloadByName[(app.name || "").toLowerCase()] = app;
+        }
+
+        Object.keys(APP_DEFAULTS).forEach(function (appKey) {
+          const defaultData = APP_DEFAULTS[appKey];
+          const payload = payloadByName[defaultData.name.toLowerCase()] || {};
+          const fallbackPathRoot = launcherPaths().workspace;
+          applyStatus(appKey, {
+            url: defaultData.url,
+            stdout_log: payload.stdout_log || joinWindowsPath(fallbackPathRoot, defaultData.stdout_log),
+            stderr_log: payload.stderr_log || joinWindowsPath(fallbackPathRoot, defaultData.stderr_log),
+            status_code: payload.status_code || 0,
+            stdout_view_url: payload.stdout_view_url,
+            stderr_view_url: payload.stderr_view_url,
+          });
+        });
+
+        const refreshText = document.querySelector("#last-refresh-text");
+        const footer = document.querySelector("#footer-text");
+        const folderPath = document.querySelector("#launcher-folder-path");
+        const stamp = new Date();
+        refreshText.textContent = "Refreshed at " + stamp.toLocaleTimeString();
+        footer.textContent = statusPayload.generated_at
+          ? "Last launcher update: " + statusPayload.generated_at
+          : "No launcher update recorded yet.";
+        folderPath.textContent = statusPayload.launcher_root || launcherPaths().directory;
+      }
+
+      function localStatusPayload() {
+        const paths = launcherPaths();
+        const statusPayload = readJsonFile(paths.status) || { apps: [] };
+        const payloadByName = {};
+        for (let index = 0; index < statusPayload.apps.length; index += 1) {
+          const app = statusPayload.apps[index];
+          payloadByName[(app.name || "").toLowerCase()] = app;
+        }
+
+        Object.keys(APP_DEFAULTS).forEach(function (appKey) {
+          const defaultData = APP_DEFAULTS[appKey];
+          const payload = payloadByName[defaultData.name.toLowerCase()] || {};
+          const statusCode = supportsLocalAutomation() ? httpStatus(defaultData.url) : 0;
+          payload.url = defaultData.url;
+          payload.stdout_log = payload.stdout_log || joinWindowsPath(paths.workspace, defaultData.stdout_log);
+          payload.stderr_log = payload.stderr_log || joinWindowsPath(paths.workspace, defaultData.stderr_log);
+          payload.status_code = statusCode || payload.status_code || 0;
+          payloadByName[defaultData.name.toLowerCase()] = payload;
+        });
+
+        return {
+          generated_at: statusPayload.generated_at || null,
+          apps: Object.values(payloadByName),
+        };
+      }
+
+      async function refreshStatus() {
+        try {
+          const statusPayload = await fetchJson("/api/launcher/status");
+          lastServerAttachWorked = true;
+          setModeBanner();
+          applyStatusPayload(statusPayload);
+          return;
+        } catch (error) {
+          lastServerAttachWorked = false;
+          setModeBanner();
+        }
+
+        if (supportsLocalAutomation()) {
+          applyStatusPayload(localStatusPayload());
+          return;
+        }
+
+        document.querySelector("#footer-text").textContent = "Launcher server is offline. Use open-studio-launcher.cmd once, then refresh.";
+      }
+
+      async function startApps() {
+        const button = document.querySelector("#start-apps-button");
+        button.disabled = true;
+        button.textContent = "Starting...";
+
+        try {
+          applyStatusPayload(await fetchJson("/api/launcher/start", { method: "POST" }));
+          lastServerAttachWorked = true;
+          setModeBanner();
+          button.disabled = false;
+          button.textContent = "Start Apps";
+          return;
+        } catch (error) {
+          lastServerAttachWorked = false;
+          setModeBanner();
+        }
+
+        if (!supportsLocalAutomation()) {
+          const helperTriggered = tryOpenRelativeHelper("./open-studio-launcher.cmd") || tryOpenRelativeHelper("./launch-studio.cmd");
+          button.disabled = false;
+          button.textContent = "Start Apps";
+
+          if (!helperTriggered) {
+            alert("This browser cannot directly launch local commands from a file page. Use open-studio-launcher.cmd once, then this page can attach to localhost.");
+          }
+          return;
+        }
+
+        const paths = launcherPaths();
+        runLocalCommand(`cmd.exe /c ""${paths.command}""`);
+        window.setTimeout(function () {
+          button.disabled = false;
+          button.textContent = "Start Apps";
+          refreshStatus();
+        }, 4500);
+      }
+
+      document.querySelector("#start-apps-button").addEventListener("click", startApps);
+      document.querySelector("#refresh-button").addEventListener("click", refreshStatus);
+      document.querySelector("#open-wrapper-button").addEventListener("click", function () {
+        if (supportsLocalAutomation()) {
+          openPath(launcherPaths().wrapper);
+          return;
+        }
+        if (lastServerAttachWorked || supportsServerLauncher()) {
+          openUrl((latestServerStatus && latestServerStatus.helper_download_url) || "/open-studio-launcher.cmd");
+          return;
+        }
+        tryOpenRelativeHelper("./open-studio-launcher.cmd");
+      });
+      document.querySelector("#download-launcher-button").addEventListener("click", function () {
+        if (lastServerAttachWorked || supportsServerLauncher()) {
+          openUrl((latestServerStatus && latestServerStatus.command_download_url) || "/launch-studio.cmd");
+          return;
+        }
+        tryOpenRelativeHelper("./launch-studio.cmd");
+      });
+      document.querySelector("#open-status-button").addEventListener("click", function () {
+        if (supportsLocalAutomation()) {
+          openPath(launcherPaths().status);
+          return;
+        }
+        if (lastServerAttachWorked || supportsServerLauncher()) {
+          openUrl((latestServerStatus && latestServerStatus.status_file_url) || "/api/launcher/status");
+          return;
+        }
+        tryOpenRelativeHelper("./offline-launcher.status.json");
+      });
+      document.querySelector("#copy-folder-button").addEventListener("click", async function () {
+        const folder = (latestServerStatus && latestServerStatus.launcher_root) || launcherPaths().directory;
+        const copied = await copyText(folder);
+        if (!copied) {
+          alert(folder);
+        }
+      });
+      document.querySelector("#open-wall-button").addEventListener("click", function () {
+        openUrl("http://localhost:4187");
+      });
+
+      setModeBanner();
+      refreshStatus();
+      if (supportsLocalAutomation() || supportsServerLauncher()) {
+        window.setInterval(refreshStatus, 5000);
+      }
+    </script>
+  </body>
+</html>

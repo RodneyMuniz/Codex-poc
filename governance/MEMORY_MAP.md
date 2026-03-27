@@ -12,6 +12,7 @@
 | Project brief | `projects/tactics-game/governance/PROJECT_BRIEF.md` | Project-specific goals and scope |
 | Runtime tasks | `sessions/studio.db` table `tasks` | Source of truth for task queue |
 | Runtime runs | `sessions/studio.db` table `runs` | Stores orchestration run lifecycle and team state |
+| Runtime backups | `sessions/backups/studio_pre_dispatch_*.db` with adjacent `.json` manifests | Automatic pre-dispatch safety snapshots of the canonical runtime database |
 | Pending approvals | `sessions/studio.db` table `approvals` | Replaces legacy `sessions/approvals.json` |
 | Delegation chain | `sessions/studio.db` table `delegation_edges` | Tracks handoffs between Project PO, Architect, and Developer |
 | Agent message history | `sessions/studio.db` table `messages` | Structured stream of framework events and chat messages |
@@ -24,6 +25,8 @@
 ## Update Rules
 
 - Markdown files may describe state, but SQLite is the source of truth for runtime execution.
+- The Orchestrator must create a pre-dispatch backup of `sessions/studio.db` before starting a new run.
+- Specialist worker writes are restricted to `projects/<project>/artifacts/`; runtime agents must not write directly into governance, memory, or execution surfaces.
 - Approval decisions must be written to SQLite before a paused run can resume.
 - `projects/tactics-game/execution/KANBAN.md` must be regenerated after task state changes.
 - Logs are append-only and should never be treated as the canonical source of task status.
