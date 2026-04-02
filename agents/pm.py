@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Any
 
 from agents.architect import ArchitectAgent
+from agents.config import get_capability_registry, get_deliverable_spec, infer_output_format, resolve_model, resolve_subtask_tier
 from agents.developer import DeveloperAgent
 from agents.design import DesignAgent
 from agents.qa import QAAgent
 from agents.role_base import StudioRoleAgent
-from agents.schemas import AcceptanceCriteria, ArtifactResult, PlanSummary, QAReviewResult, SubtaskPlan
+from agents.schemas import AcceptanceCriteria, ArtifactResult, DeliverableContract, PlanSummary, QAReviewResult, SubtaskPlan
 from skills.tools import WORKER_WRITE_MANIFEST_ENV, compute_worker_manifest_seal
 
 WORKER_MANIFEST_ENV = WORKER_WRITE_MANIFEST_ENV
@@ -72,61 +73,43 @@ class ProjectManagerAgent(StudioRoleAgent):
             return {"completed": False, "issues": final_review.issues, "task_id": task["id"]}
 
         summary = "PM completed all subtasks and QA approved the final deliverables."
-        self.store.update_task(task["id"], status="completed", owner_role="QA", result_summary=summary, review_notes=final_review.summary)
+        self.store.update_task(
+            task["id"],
+            status="completed",
+            owner_role="QA",
+            result_summary=summary,
+            review_notes=final_review.summary,
+            review_state="Accepted",
+        )
         return {"completed": True, "summary": summary, "task_id": task["id"]}
 
     def _build_plan(self, task: dict) -> PlanSummary:
         subject = self._infer_subject(task["objective"], task["details"])
         subject_slug = self._slugify(subject)
         class_name = "".join(part.capitalize() for part in subject_slug.split("-")) or "Feature"
-
-        design_doc = f"projects/tactics-game/artifacts/{subject_slug}_design.md"
-        code_path = f"projects/tactics-game/artifacts/{subject_slug}.py"
-        ui_path = f"projects/tactics-game/artifacts/{subject_slug}_ui_notes.md"
-
+        subject_label = subject.replace("-", " ").replace("_", " ").strip().title() or "Feature"
+        context = {
+            "project_name": task["project_name"],
+            "subject": subject,
+            "subject_slug": subject_slug,
+            "subject_label": subject_label,
+            "class_name": class_name,
+        }
+        registry = get_capability_registry(task["project_name"])
+        requested_deliverables = (task.get("acceptance") or {}).get("requested_deliverables") or registry["default_deliverables"]
+        subtasks = [self._build_subtask_plan(task, deliverable_type, context) for deliverable_type in requested_deliverables]
+        deliverable_labels = ", ".join(plan.deliverable_type for plan in subtasks)
         return PlanSummary(
-            summary=f"PM decomposed the request into architecture, code, and UI subtasks for {class_name}.",
-            subtasks=[
-                SubtaskPlan(
-                    title=f"{class_name} Architecture Design",
-                    assignee="Architect",
-                    objective=f"Create the architecture and gameplay design document for {class_name}.",
-                    details=f"Document the {class_name} unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.",
-                    expected_artifact_path=design_doc,
-                    acceptance=AcceptanceCriteria(
-                        required_headings=["Overview", "Attributes", "Abilities", "Acceptance Criteria"],
-                        required_keywords=[class_name],
-                    ),
-                ),
-                SubtaskPlan(
-                    title=f"{class_name} Python Module",
-                    assignee="Developer",
-                    objective=f"Implement the {class_name} class in Python.",
-                    details=f"Write a Python module for {class_name} suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.",
-                    expected_artifact_path=code_path,
-                    acceptance=AcceptanceCriteria(
-                        required_strings=[f"class {class_name}", "cast_spell", "take_damage", "heal", "is_alive"],
-                        required_keywords=["mana", "spell_power"],
-                        python_compile=True,
-                    ),
-                    requires_dispatch_approval=True,
-                ),
-                SubtaskPlan(
-                    title=f"{class_name} UI Notes",
-                    assignee="Design",
-                    objective=f"Create UI and visual notes for presenting {class_name}.",
-                    details=f"Describe how the UI should communicate {class_name} identity, spellcasting feedback, and player readability.",
-                    expected_artifact_path=ui_path,
-                    acceptance=AcceptanceCriteria(
-                        required_headings=["UI Concepts", "Visual Direction", "Player Feedback"],
-                        required_keywords=[class_name, "spell"],
-                    ),
-                ),
-            ],
+            summary=f"PM decomposed the request into capability-backed deliverables for {subject_label}: {deliverable_labels}.",
+            subtasks=subtasks,
         )
 
     def _infer_subject(self, objective: str, details: str) -> str:
         text = f"{objective} {details}"
+        lowered = text.lower()
+        for phrase in ("capability registry", "context receipts", "context receipt", "compliance truth", "workflow repair"):
+            if phrase in lowered:
+                return phrase
         match = re.search(r"\b(mage|warrior|archer|healer)\b", text, flags=re.IGNORECASE)
         if match:
             return match.group(1)
@@ -136,8 +119,66 @@ class ProjectManagerAgent(StudioRoleAgent):
     def _slugify(self, text: str) -> str:
         return "-".join(part.lower() for part in re.findall(r"[A-Za-z0-9]+", text)) or "feature"
 
+    def _format_spec_value(self, template: str, context: dict[str, str]) -> str:
+        return template.format(**context)
+
+    def _resolve_artifact_path(self, task: dict, spec: dict[str, Any], context: dict[str, str]) -> str:
+        requested_output = (task.get("expected_artifact_path") or "").strip()
+        if requested_output and spec["assigned_role"] == "Developer":
+            return requested_output
+        return self._format_spec_value(spec["artifact_template"], context)
+
+    def _build_subtask_plan(self, task: dict, deliverable_type: str, context: dict[str, str]) -> SubtaskPlan:
+        spec = get_deliverable_spec(task["project_name"], deliverable_type)
+        artifact_path = self._resolve_artifact_path(task, spec, context)
+        acceptance = AcceptanceCriteria(
+            required_headings=[self._format_spec_value(item, context) for item in spec.get("required_headings", ())],
+            required_keywords=[self._format_spec_value(item, context) for item in spec.get("required_keywords", ())],
+            required_strings=[self._format_spec_value(item, context) for item in spec.get("required_strings", ())],
+            python_compile=bool(spec.get("python_compile")),
+            required_input_role=spec.get("required_input_role"),
+            deliverable_contract=DeliverableContract(**spec["deliverable_contract"]) if spec.get("deliverable_contract") else None,
+        )
+        requested_tier = ((task.get("acceptance") or {}).get("tier_assignment") or {}).get("tier")
+        assigned_tier = resolve_subtask_tier(assignee=spec["assigned_role"], requested_tier=requested_tier)
+        output_format = infer_output_format(artifact_path)
+        tier_assignment = (task.get("acceptance") or {}).get("tier_assignment") or {}
+        default_lane = "background_api" if assigned_tier != "tier_3_junior" else "sync_api"
+        execution_lane = str(tier_assignment.get("execution_lane") or default_lane)
+        route_family = str(tier_assignment.get("route_family") or f"execution.{assigned_tier}.{output_format}.v1")
+        cache_policy = dict(tier_assignment.get("cache_policy") or {})
+        budget_policy = dict(tier_assignment.get("budget_policy") or {})
+        acceptance.assigned_tier = assigned_tier
+        acceptance.execution_lane = execution_lane
+        acceptance.route_family = route_family
+        acceptance.cache_policy = cache_policy
+        acceptance.budget_policy = budget_policy
+        acceptance.expected_output_format = output_format
+        return SubtaskPlan(
+            title=self._format_spec_value(spec["title_template"], context),
+            assignee=spec["assigned_role"],
+            deliverable_type=deliverable_type,
+            objective=self._format_spec_value(spec["objective_template"], context),
+            details=self._format_spec_value(spec["details_template"], context),
+            expected_artifact_path=artifact_path,
+            acceptance=acceptance,
+            assigned_tier=assigned_tier,
+            execution_lane=execution_lane,  # type: ignore[arg-type]
+            route_family=route_family,
+            expected_output_format=output_format,
+            allowed_tools=list(spec.get("allowed_tools", ())),
+            requires_dispatch_approval=bool(spec.get("requires_dispatch_approval")),
+            category=spec.get("category", "Implementation"),
+        )
+
     def _create_subtask(self, parent_task: dict, plan: SubtaskPlan) -> dict:
         acceptance = plan.acceptance.model_dump()
+        acceptance["deliverable_type"] = plan.deliverable_type
+        acceptance["allowed_tools"] = list(plan.allowed_tools)
+        acceptance["assigned_tier"] = plan.assigned_tier
+        acceptance["execution_lane"] = plan.execution_lane
+        acceptance["route_family"] = plan.route_family
+        acceptance["expected_output_format"] = plan.expected_output_format
         acceptance["requires_dispatch_approval"] = plan.requires_dispatch_approval
         return self.store.create_subtask(
             parent_task["project_name"],
@@ -161,13 +202,21 @@ class ProjectManagerAgent(StudioRoleAgent):
             self.store.update_task(subtask["id"], status="ready", owner_role="PM")
             self.store.record_delegation(run_id, subtask["id"], from_role="PM", to_role=assignee, note=subtask["objective"])
             self.store.update_task(subtask["id"], status="in_progress", owner_role=assignee)
-            await self._launch_worker_subtask(run_id=run_id, subtask=subtask, correction_notes=correction_notes)
+            worker_result = await self._launch_worker_subtask(run_id=run_id, subtask=subtask, correction_notes=correction_notes)
+            self._register_media_outputs(run_id=run_id, subtask=subtask, worker_result=worker_result, correction_notes=correction_notes)
             self.store.update_task(subtask["id"], status="in_review", owner_role="QA")
             if self.qa is None:
                 raise ValueError("QA agent is required to review delegated worker artifacts.")
             review = await self.qa.review_artifact(run_id=run_id, task=subtask)
             if review.approved:
-                self.store.update_task(subtask["id"], status="completed", owner_role="QA", review_notes=review.summary, result_summary=review.summary)
+                self.store.update_task(
+                    subtask["id"],
+                    status="completed",
+                    owner_role="QA",
+                    review_notes=review.summary,
+                    result_summary=review.summary,
+                    review_state="Accepted",
+                )
                 return {"approved": True, "issues": [], "review": review}
             correction_notes = "\n".join(review.issues)
             self.store.update_task(subtask["id"], status="ready", owner_role=assignee, review_notes=correction_notes)
@@ -215,6 +264,26 @@ class ProjectManagerAgent(StudioRoleAgent):
     def _canonical_manifest_json(self, payload: dict[str, Any]) -> str:
         return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
 
+    def _summarize_worker_manifest(self, manifest: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "manifest_version": manifest["manifest_version"],
+            "execution_mode": manifest["execution_mode"],
+            "run_id": manifest["run_id"],
+            "task_id": manifest["task_id"],
+            "project_name": manifest["project_name"],
+            "role": manifest["role"],
+            "runtime_mode": manifest["runtime_mode"],
+            "write_scope": manifest["write_scope"],
+            "expected_output_path": manifest["expected_output_path"],
+            "allowed_write_paths": list(manifest["allowed_write_paths"]),
+            "allowed_write_modes": list(manifest["allowed_write_modes"]),
+            "input_artifact_paths": list(manifest["input_artifact_paths"]),
+            "allowed_tools": list(manifest.get("allowed_tools", [])),
+            "issued_by": manifest["issued_by"],
+            "issued_at": manifest["issued_at"],
+            "seal_sha256": manifest["seal_sha256"],
+        }
+
     def _manifest_input_artifact_paths(self, subtask: dict[str, Any], correction_notes: str | None) -> list[str]:
         artifact_path = subtask.get("expected_artifact_path")
         if not correction_notes or not artifact_path:
@@ -238,6 +307,7 @@ class ProjectManagerAgent(StudioRoleAgent):
             "allowed_write_paths": [expected_output_path],
             "allowed_write_modes": ["overwrite"],
             "input_artifact_paths": self._manifest_input_artifact_paths(subtask, correction_notes),
+            "allowed_tools": list((subtask.get("acceptance") or {}).get("allowed_tools", [])),
             "issued_by": "PM",
             "issued_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
@@ -252,11 +322,120 @@ class ProjectManagerAgent(StudioRoleAgent):
             "task_id": subtask["id"],
             "role": subtask["owner_role"],
             "expected_output_path": manifest["expected_output_path"],
+            "manifest": self._summarize_worker_manifest(manifest),
         }
         pending_sdk = team_state.get("pending_sdk_approval")
         if isinstance(pending_sdk, dict) and pending_sdk.get("task_id") == subtask["id"]:
             team_state.pop("pending_sdk_approval", None)
         self.store.update_run(run_id, team_state=team_state)
+        self.store.save_context_receipt(
+            run_id,
+            {
+                "active_lane": subtask["id"],
+                "allowed_tools": manifest.get("allowed_tools", []),
+                "allowed_paths": manifest.get("allowed_write_paths", []),
+                "prior_artifact_paths": manifest.get("input_artifact_paths", []),
+                "expected_output": manifest.get("expected_output_path"),
+                "next_reviewer": "QA",
+                "resume_conditions": [
+                    "Resume the same specialist lane unless the continuity receipt changes materially.",
+                    "Keep writes inside the approved manifest paths and tools.",
+                ],
+                "current_owner_role": subtask["owner_role"],
+                "specialist_role": subtask["owner_role"],
+            },
+        )
+
+    def _register_media_outputs(
+        self,
+        *,
+        run_id: str,
+        subtask: dict[str, Any],
+        worker_result: dict[str, Any],
+        correction_notes: str | None,
+    ) -> None:
+        artifact_path = str(worker_result.get("artifact_path") or subtask.get("expected_artifact_path") or "").strip()
+        if not artifact_path:
+            return
+        normalized_path = artifact_path.replace("\\", "/")
+        expected_prefix = f"projects/{subtask['project_name']}/artifacts/design/"
+        if not normalized_path.startswith(expected_prefix):
+            return
+        provider, model = self._resolve_visual_output_model(subtask["owner_role"])
+        metadata = {
+            "registered_by": "Framework",
+            "registration_mode": "deterministic",
+            "service_family": "visual",
+            "owner_role": subtask["owner_role"],
+            "deliverable_type": (subtask.get("acceptance") or {}).get("deliverable_type"),
+            "deliverable_contract_kind": ((subtask.get("acceptance") or {}).get("deliverable_contract") or {}).get("kind"),
+            "runtime_mode": self._runtime_mode(run_id),
+            "agent_run_id": worker_result.get("agent_run_id"),
+            "worker_summary": worker_result.get("summary"),
+        }
+        provenance_fields = (
+            "parent_visual_artifact_id",
+            "lineage_root_visual_artifact_id",
+            "locked_base_visual_artifact_id",
+            "edit_session_id",
+            "edit_intent",
+            "edit_scope",
+            "protected_regions",
+            "mask_reference",
+            "iteration_index",
+        )
+        propagation_kwargs = {
+            field: worker_result[field]
+            for field in provenance_fields
+            if worker_result.get(field) is not None
+        }
+        visual_artifact = self.store.sync_visual_artifact(
+            subtask["project_name"],
+            subtask["id"],
+            artifact_path=normalized_path,
+            run_id=run_id,
+            artifact_kind="image",
+            provider=provider,
+            model=model,
+            prompt_summary=subtask.get("objective"),
+            revised_prompt=correction_notes,
+            review_state="pending_review",
+            selected_direction=False,
+            metadata=metadata,
+            **propagation_kwargs,
+        )
+        self.store.record_trace_event(
+            run_id,
+            subtask["id"],
+            "media_service_visual_registered",
+            source="PM",
+            summary="Framework registered the specialist visual output into canonical visual artifacts.",
+            packet={
+                "visual_artifact_id": visual_artifact["id"],
+                "artifact_path": visual_artifact["artifact_path"],
+                "review_state": visual_artifact["review_state"],
+                "selected_direction": visual_artifact["selected_direction"],
+                "agent_run_id": worker_result.get("agent_run_id"),
+            },
+            route={
+                "runtime_role": "MediaService",
+                "execution_mode": "deterministic",
+                "service_family": "visual",
+                "service_key": "artifact_indexing",
+            },
+            raw_json=visual_artifact,
+        )
+
+    def _resolve_visual_output_model(self, owner_role: str) -> tuple[str | None, str | None]:
+        model_role = {
+            "Architect": "architect",
+            "Developer": "developer",
+            "Design": "design",
+            "QA": "qa",
+        }.get(owner_role)
+        if not model_role:
+            return None, None
+        return "openai", resolve_model(model_role)
 
     async def _launch_worker_subtask(
         self,
@@ -328,6 +507,21 @@ class ProjectManagerAgent(StudioRoleAgent):
             "approval": approval,
             "team_state": None,
         }
+        self.store.save_context_receipt(
+            run_id,
+            {
+                "active_lane": subtask["id"],
+                "allowed_tools": list((subtask.get("acceptance") or {}).get("allowed_tools", [])),
+                "allowed_paths": [subtask["expected_artifact_path"]] if subtask.get("expected_artifact_path") else [],
+                "expected_output": subtask.get("expected_artifact_path"),
+                "next_reviewer": "Operator",
+                "resume_conditions": [
+                    "Dispatch approval is required before the specialist lane can continue.",
+                ],
+                "current_owner_role": assignee,
+                "specialist_role": assignee,
+            },
+        )
         runtime_mode = self._runtime_mode(run_id)
         if runtime_mode == "sdk":
             session_id = f"studio-specialist-{assignee.lower()}-{run_id}"

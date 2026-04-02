@@ -14,6 +14,14 @@ from typing import Any, Iterator
 
 
 PROJECT_NAME = "tactics-game"
+TASK_ID_PREFIXES = {
+    "program-kanban": "PK",
+    "tactics-game": "TG",
+}
+LEGACY_TASK_ID_PREFIXES = {
+    "program-kanban": ("PK", "TGD"),
+    "tactics-game": ("TG",),
+}
 TASK_STATUSES = ("backlog", "ready", "in_progress", "in_review", "completed", "blocked")
 PRIMARY_BOARD_COLUMNS = (
     ("backlog", "Backlog"),
@@ -22,6 +30,81 @@ PRIMARY_BOARD_COLUMNS = (
     ("in_review", "In Review"),
     ("completed", "Complete"),
 )
+COMPLIANCE_RECORD_KINDS = {
+    "breach": "breach",
+    "compliant_delegated_run": "compliant",
+    "local_exception_approved": "approved_exception",
+}
+MEDIA_SERVICE_CONTRACT_CATALOG = {
+    "visual": (
+        {
+            "service_key": "artifact_indexing",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Indexes visual artifacts and stores canonical provenance in SQLite.",
+            "why_not_ai": "Artifact indexing must stay authoritative even when specialist outputs vary.",
+            "evidence_surface": "visual_artifacts, artifacts, and run-details",
+        },
+        {
+            "service_key": "import_bookkeeping",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Normalizes imported visual assets into the canonical project artifact structure.",
+            "why_not_ai": "Import bookkeeping must be repeatable and should not depend on model behavior.",
+            "evidence_surface": "visual_artifacts metadata and file manifests",
+        },
+        {
+            "service_key": "review_state_persistence",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Persists review state and selected-direction truth for visual artifacts.",
+            "why_not_ai": "Approval and review state are control-room truth, not specialist opinion.",
+            "evidence_surface": "visual_artifacts.review_state and selected_direction",
+        },
+        {
+            "service_key": "manifest_generation",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Builds manifests and deterministic handoff metadata for approved visual outputs.",
+            "why_not_ai": "Runtime-facing manifests must be stable and reproducible.",
+            "evidence_surface": "artifacts, worker_manifest, and run-details",
+        },
+    ),
+    "audio": (
+        {
+            "service_key": "artifact_indexing",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Indexes audio artifacts and stores canonical provenance in SQLite.",
+            "why_not_ai": "Artifact indexing must stay authoritative even when specialist outputs vary.",
+            "evidence_surface": "audio artifact metadata, artifacts, and run-details",
+        },
+        {
+            "service_key": "import_bookkeeping",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Normalizes imported audio assets into the canonical project artifact structure.",
+            "why_not_ai": "Import bookkeeping must be repeatable and should not depend on model behavior.",
+            "evidence_surface": "audio artifact metadata and file manifests",
+        },
+        {
+            "service_key": "review_state_persistence",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Persists review state and selected-direction truth for audio artifacts.",
+            "why_not_ai": "Approval and review state are control-room truth, not specialist opinion.",
+            "evidence_surface": "audio review metadata and run-details",
+        },
+        {
+            "service_key": "manifest_generation",
+            "owner": "Framework",
+            "execution_mode": "deterministic",
+            "summary": "Builds manifests and deterministic handoff metadata for approved audio outputs.",
+            "why_not_ai": "Runtime-facing manifests must be stable and reproducible.",
+            "evidence_surface": "artifacts, worker_manifest, and run-details",
+        },
+    ),
+}
 REQUIRED_TABLES = (
     "projects",
     "milestones",
@@ -29,12 +112,25 @@ REQUIRED_TABLES = (
     "runs",
     "agent_runs",
     "approvals",
+    "compliance_records",
     "delegation_edges",
+    "local_exception_approvals",
     "messages",
     "trace_events",
     "validation_results",
     "usage_events",
+    "execution_packets",
+    "execution_job_reservations",
     "artifacts",
+    "visual_artifacts",
+)
+CONTEXT_RECEIPT_LIST_FIELDS = (
+    "accepted_assumptions",
+    "blocked_questions",
+    "allowed_tools",
+    "allowed_paths",
+    "prior_artifact_paths",
+    "resume_conditions",
 )
 
 
@@ -46,6 +142,31 @@ def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
+def _task_id_prefix(project_name: str) -> str:
+    return TASK_ID_PREFIXES.get(project_name, project_name.replace("-", "")[:2].upper() or "TK")
+
+
+def _task_id_aliases(project_name: str) -> tuple[str, ...]:
+    primary = _task_id_prefix(project_name)
+    aliases = list(LEGACY_TASK_ID_PREFIXES.get(project_name, (primary,)))
+    if primary not in aliases:
+        aliases.insert(0, primary)
+    return tuple(aliases)
+
+
+def _format_task_id(prefix: str, sequence: int) -> str:
+    width = max(3, len(str(sequence)))
+    return f"{prefix}-{sequence:0{width}d}"
+
+
+def _task_sequence_from_id(task_id: str, prefixes: tuple[str, ...]) -> int | None:
+    for prefix in prefixes:
+        match = re.fullmatch(rf"{re.escape(prefix)}-(\d+)", task_id)
+        if match:
+            return int(match.group(1))
+    return None
+
+
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, default=str)
 
@@ -54,6 +175,21 @@ def _json_loads(value: str | None, default: Any) -> Any:
     if not value:
         return default
     return json.loads(value)
+
+
+def _normalize_string_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    items = value if isinstance(value, list) else [value]
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        text = str(item).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+    return normalized
 
 
 def _slugify(value: str) -> str:
@@ -234,6 +370,49 @@ class SessionStore:
                     FOREIGN KEY(task_id) REFERENCES tasks(id)
                 );
 
+                CREATE TABLE IF NOT EXISTS local_exception_approvals (
+                    id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    requested_by TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    decided_at TEXT,
+                    decision_note TEXT,
+                    approval_scope TEXT NOT NULL DEFAULT 'local-exception',
+                    target_role TEXT,
+                    exact_task TEXT,
+                    expected_output TEXT,
+                    why_now TEXT,
+                    risks_json TEXT,
+                    one_shot INTEGER NOT NULL DEFAULT 1,
+                    expires_at TEXT,
+                    consumed_at TEXT,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS compliance_records (
+                    id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    record_kind TEXT NOT NULL,
+                    compliance_state TEXT NOT NULL,
+                    policy_area TEXT,
+                    violation_type TEXT,
+                    severity TEXT NOT NULL DEFAULT 'info',
+                    local_exception_approval_id TEXT,
+                    source_role TEXT,
+                    decision_note TEXT,
+                    details TEXT NOT NULL,
+                    evidence_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id),
+                    FOREIGN KEY(local_exception_approval_id) REFERENCES local_exception_approvals(id)
+                );
+
                 CREATE TABLE IF NOT EXISTS delegation_edges (
                     id TEXT PRIMARY KEY,
                     run_id TEXT NOT NULL,
@@ -296,7 +475,54 @@ class SessionStore:
                     source TEXT,
                     prompt_tokens INTEGER NOT NULL,
                     completion_tokens INTEGER NOT NULL,
+                    model TEXT,
+                    tier TEXT,
+                    lane TEXT,
+                    cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+                    reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+                    estimated_cost_usd REAL NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS execution_packets (
+                    authority_packet_id TEXT PRIMARY KEY,
+                    authority_job_id TEXT NOT NULL,
+                    authority_token TEXT NOT NULL,
+                    authority_schema_name TEXT NOT NULL,
+                    authority_execution_tier TEXT NOT NULL,
+                    authority_execution_lane TEXT NOT NULL,
+                    authority_delegated_work INTEGER NOT NULL DEFAULT 0,
+                    priority_class TEXT NOT NULL,
+                    budget_max_tokens INTEGER NOT NULL,
+                    budget_reservation_id TEXT,
+                    retry_limit INTEGER NOT NULL,
+                    early_stop_rule TEXT NOT NULL,
+                    packet_id TEXT NOT NULL,
+                    job_id TEXT NOT NULL,
+                    actual_total_tokens INTEGER NOT NULL DEFAULT 0,
+                    retry_count INTEGER NOT NULL DEFAULT 0,
+                    escalation_target TEXT,
+                    stop_reason TEXT,
+                    status TEXT NOT NULL DEFAULT 'queued',
+                    run_id TEXT,
+                    task_id TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS execution_job_reservations (
+                    job_id TEXT PRIMARY KEY,
+                    priority_class TEXT NOT NULL,
+                    reserved_max_tokens INTEGER NOT NULL DEFAULT 0,
+                    reservation_status TEXT NOT NULL DEFAULT 'unreserved',
+                    run_id TEXT,
+                    task_id TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
                     FOREIGN KEY(run_id) REFERENCES runs(id),
                     FOREIGN KEY(task_id) REFERENCES tasks(id)
                 );
@@ -318,13 +544,50 @@ class SessionStore:
                     FOREIGN KEY(task_id) REFERENCES tasks(id),
                     FOREIGN KEY(source_agent_run_id) REFERENCES agent_runs(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS visual_artifacts (
+                    id TEXT PRIMARY KEY,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    run_id TEXT,
+                    artifact_kind TEXT NOT NULL DEFAULT 'image',
+                    provider TEXT,
+                    model TEXT,
+                    prompt_summary TEXT,
+                    revised_prompt TEXT,
+                    parent_visual_artifact_id TEXT,
+                    lineage_root_visual_artifact_id TEXT,
+                    locked_base_visual_artifact_id TEXT,
+                    edit_session_id TEXT,
+                    edit_intent TEXT,
+                    edit_scope_json TEXT NOT NULL DEFAULT '{}',
+                    protected_regions_json TEXT NOT NULL DEFAULT '[]',
+                    mask_reference_json TEXT NOT NULL DEFAULT '{}',
+                    iteration_index INTEGER NOT NULL DEFAULT 0,
+                    review_state TEXT NOT NULL DEFAULT 'pending_review',
+                    selected_direction INTEGER NOT NULL DEFAULT 0,
+                    artifact_path TEXT NOT NULL,
+                    artifact_sha256 TEXT,
+                    bytes_written INTEGER,
+                    metadata_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(project_name) REFERENCES projects(name),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id),
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(parent_visual_artifact_id) REFERENCES visual_artifacts(id)
+                );
                 """
             )
         self._ensure_project(PROJECT_NAME)
         self._ensure_task_columns()
         self._ensure_milestone_columns()
         self._ensure_approval_columns()
+        self._ensure_local_exception_approval_columns()
+        self._ensure_compliance_record_columns()
         self._ensure_artifact_columns()
+        self._ensure_visual_artifact_columns()
+        self._ensure_usage_event_columns()
         self.migrate_legacy_approvals_file()
         self.normalize_legacy_statuses()
         self.render_kanban(PROJECT_NAME)
@@ -386,6 +649,47 @@ class SessionStore:
                 if column_name not in existing:
                     connection.execute(f"ALTER TABLE approvals ADD COLUMN {column_name} {definition}")
 
+    def _ensure_local_exception_approval_columns(self) -> None:
+        local_exception_columns = {
+            "approval_scope": "TEXT NOT NULL DEFAULT 'local-exception'",
+            "target_role": "TEXT",
+            "exact_task": "TEXT",
+            "expected_output": "TEXT",
+            "why_now": "TEXT",
+            "risks_json": "TEXT",
+            "one_shot": "INTEGER NOT NULL DEFAULT 1",
+            "expires_at": "TEXT",
+            "consumed_at": "TEXT",
+        }
+        with self._connect() as connection:
+            existing = {row["name"] for row in connection.execute("PRAGMA table_info(local_exception_approvals)").fetchall()}
+            if not existing:
+                return
+            for column_name, definition in local_exception_columns.items():
+                if column_name not in existing:
+                    connection.execute(f"ALTER TABLE local_exception_approvals ADD COLUMN {column_name} {definition}")
+
+    def _ensure_compliance_record_columns(self) -> None:
+        compliance_columns = {
+            "record_kind": "TEXT NOT NULL DEFAULT 'breach'",
+            "compliance_state": "TEXT NOT NULL DEFAULT 'breach'",
+            "policy_area": "TEXT",
+            "violation_type": "TEXT",
+            "severity": "TEXT NOT NULL DEFAULT 'info'",
+            "local_exception_approval_id": "TEXT",
+            "source_role": "TEXT",
+            "decision_note": "TEXT",
+            "details": "TEXT NOT NULL DEFAULT ''",
+            "evidence_json": "TEXT NOT NULL DEFAULT '{}'",
+        }
+        with self._connect() as connection:
+            existing = {row["name"] for row in connection.execute("PRAGMA table_info(compliance_records)").fetchall()}
+            if not existing:
+                return
+            for column_name, definition in compliance_columns.items():
+                if column_name not in existing:
+                    connection.execute(f"ALTER TABLE compliance_records ADD COLUMN {column_name} {definition}")
+
     def _ensure_artifact_columns(self) -> None:
         artifact_columns = {
             "artifact_path": "TEXT",
@@ -400,6 +704,42 @@ class SessionStore:
             for column_name, definition in artifact_columns.items():
                 if column_name not in existing:
                     connection.execute(f"ALTER TABLE artifacts ADD COLUMN {column_name} {definition}")
+
+    def _ensure_visual_artifact_columns(self) -> None:
+        visual_artifact_columns = {
+            "lineage_root_visual_artifact_id": "TEXT",
+            "locked_base_visual_artifact_id": "TEXT",
+            "edit_session_id": "TEXT",
+            "edit_intent": "TEXT",
+            "edit_scope_json": "TEXT NOT NULL DEFAULT '{}'",
+            "protected_regions_json": "TEXT NOT NULL DEFAULT '[]'",
+            "mask_reference_json": "TEXT NOT NULL DEFAULT '{}'",
+            "iteration_index": "INTEGER NOT NULL DEFAULT 0",
+        }
+        with self._connect() as connection:
+            existing = {row["name"] for row in connection.execute("PRAGMA table_info(visual_artifacts)").fetchall()}
+            if not existing:
+                return
+            for column_name, definition in visual_artifact_columns.items():
+                if column_name not in existing:
+                    connection.execute(f"ALTER TABLE visual_artifacts ADD COLUMN {column_name} {definition}")
+
+    def _ensure_usage_event_columns(self) -> None:
+        usage_event_columns = {
+            "model": "TEXT",
+            "tier": "TEXT",
+            "lane": "TEXT",
+            "cached_input_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "reasoning_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "estimated_cost_usd": "REAL NOT NULL DEFAULT 0",
+        }
+        with self._connect() as connection:
+            existing = {row["name"] for row in connection.execute("PRAGMA table_info(usage_events)").fetchall()}
+            if not existing:
+                return
+            for column_name, definition in usage_event_columns.items():
+                if column_name not in existing:
+                    connection.execute(f"ALTER TABLE usage_events ADD COLUMN {column_name} {definition}")
 
     def normalize_legacy_statuses(self) -> None:
         mappings = {
@@ -532,6 +872,8 @@ class SessionStore:
             "messages",
             "delegation_edges",
             "approvals",
+            "local_exception_approvals",
+            "compliance_records",
             "usage_events",
         )
         with self._connect() as connection:
@@ -609,6 +951,90 @@ class SessionStore:
     def _task_acceptance(self, task: dict[str, Any]) -> dict[str, Any]:
         acceptance = task.get("acceptance")
         return acceptance if isinstance(acceptance, dict) else {}
+
+    def _contains_media_token(self, text: str, tokens: tuple[str, ...]) -> bool:
+        lowered = text.lower()
+        for token in tokens:
+            pattern = r"\b" + re.escape(token.lower()).replace(r"\ ", r"\s+") + r"\b"
+            if re.search(pattern, lowered):
+                return True
+        return False
+
+    def _media_service_families(
+        self,
+        project_name: str,
+        *,
+        task: dict[str, Any] | None = None,
+        acceptance: dict[str, Any] | None = None,
+        raw_request: str | None = None,
+    ) -> list[str]:
+        task_payload = task or {}
+        acceptance_payload = acceptance if isinstance(acceptance, dict) else self._task_acceptance(task_payload)
+        milestone_title = None
+        milestone_id = task_payload.get("milestone_id")
+        if milestone_id:
+            milestone = self.get_milestone(str(milestone_id))
+            if milestone is not None:
+                milestone_title = str(milestone.get("title") or "")
+        text = "\n".join(
+            [
+                str(raw_request or ""),
+                str(task_payload.get("title") or ""),
+                str(task_payload.get("objective") or ""),
+                str(task_payload.get("details") or ""),
+                str(milestone_title or ""),
+                json.dumps(acceptance_payload, ensure_ascii=True, sort_keys=True),
+            ]
+        )
+        families: list[str] = []
+        if acceptance_payload.get("design_request_preview") or self._contains_media_token(
+            text,
+            ("visual", "design", "image", "gallery", "screen", "layout", "board", "map"),
+        ):
+            families.append("visual")
+        if self._contains_media_token(
+            text,
+            ("audio", "sound", "music", "voice", "speech", "sfx"),
+        ):
+            families.append("audio")
+        if project_name == "program-kanban" and not families and milestone_title:
+            if "visual production" in milestone_title.lower():
+                families.append("visual")
+            if "audio production" in milestone_title.lower():
+                families.append("audio")
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for family in families:
+            if family in seen:
+                continue
+            seen.add(family)
+            ordered.append(family)
+        return ordered
+
+    def media_service_contracts(
+        self,
+        project_name: str,
+        *,
+        task: dict[str, Any] | None = None,
+        acceptance: dict[str, Any] | None = None,
+        raw_request: str | None = None,
+    ) -> list[dict[str, Any]]:
+        contracts: list[dict[str, Any]] = []
+        for family in self._media_service_families(
+            project_name,
+            task=task,
+            acceptance=acceptance,
+            raw_request=raw_request,
+        ):
+            for contract in MEDIA_SERVICE_CONTRACT_CATALOG[family]:
+                contracts.append(
+                    {
+                        "project_name": project_name,
+                        "family": family,
+                        **contract,
+                    }
+                )
+        return contracts
 
     def _milestone_payload(
         self,
@@ -761,6 +1187,21 @@ class SessionStore:
     def task_gate_issues(self, task: dict[str, Any], *, target_status: str | None = None) -> list[str]:
         return self._task_gate_issues(task, target_status=target_status or str(task.get("status") or "backlog"))
 
+    def _next_task_id(self, connection: sqlite3.Connection, project_name: str) -> str:
+        prefixes = _task_id_aliases(project_name)
+        next_sequence = 1
+        for row in connection.execute("SELECT id FROM tasks WHERE project_name = ?", (project_name,)).fetchall():
+            sequence = _task_sequence_from_id(str(row["id"]), prefixes)
+            if sequence is not None and sequence >= next_sequence:
+                next_sequence = sequence + 1
+        return _format_task_id(_task_id_prefix(project_name), next_sequence)
+
+    def _normalize_imported_task_id(self, project_name: str, task_id: str) -> str:
+        sequence = _task_sequence_from_id(task_id, _task_id_aliases(project_name))
+        if sequence is None:
+            return task_id
+        return _format_task_id(_task_id_prefix(project_name), sequence)
+
     def create_task(
         self,
         project_name: str,
@@ -794,9 +1235,9 @@ class SessionStore:
             details=details,
             owner_role=owner_role,
         )
-        task_id = _new_id("task")
         now = _utc_now()
         with self._connect() as connection:
+            task_id = self._next_task_id(connection, project_name)
             connection.execute(
                 """
                 INSERT INTO tasks (
@@ -876,6 +1317,7 @@ class SessionStore:
         if status not in TASK_STATUSES:
             raise ValueError(f"Invalid task status: {status}")
         self._ensure_project(project_name)
+        task_id = self._normalize_imported_task_id(project_name, task_id)
         resolved_milestone_id = milestone_id or self._resolve_milestone_id(
             project_name,
             acceptance,
@@ -943,6 +1385,8 @@ class SessionStore:
         expected_artifact_path: str,
         acceptance: dict[str, Any],
     ) -> dict[str, Any]:
+        parent_task = self.get_task(parent_task_id)
+        inherited_milestone_id = parent_task.get("milestone_id") if parent_task else None
         return self.create_task(
             project_name,
             title,
@@ -957,6 +1401,7 @@ class SessionStore:
             expected_artifact_path=expected_artifact_path,
             acceptance=acceptance,
             assigned_role=owner_role,
+            milestone_id=inherited_milestone_id,
         )
 
     def get_task(self, task_id: str) -> dict[str, Any] | None:
@@ -1017,6 +1462,12 @@ class SessionStore:
         self,
         task_id: str,
         *,
+        title: str | None = None,
+        details: str | None = None,
+        objective: str | None = None,
+        priority: str | None = None,
+        requires_approval: bool | None = None,
+        raw_request: str | None = None,
         status: str | None = None,
         owner_role: str | None = None,
         result_summary: str | None = None,
@@ -1033,6 +1484,19 @@ class SessionStore:
         task = self.get_task(task_id)
         if task is None:
             raise ValueError(f"Task not found: {task_id}")
+        if title is not None:
+            task["title"] = title
+        if details is not None:
+            task["details"] = details
+            task["description"] = details
+        if objective is not None:
+            task["objective"] = objective
+        if priority is not None:
+            task["priority"] = priority
+        if requires_approval is not None:
+            task["requires_approval"] = bool(requires_approval)
+        if raw_request is not None:
+            task["raw_request"] = raw_request
         if status is not None:
             if status not in TASK_STATUSES:
                 raise ValueError(f"Invalid task status: {status}")
@@ -1082,12 +1546,20 @@ class SessionStore:
             connection.execute(
                 """
                 UPDATE tasks
-                SET status = ?, owner_role = ?, result_summary = ?, review_notes = ?,
+                SET title = ?, objective = ?, details = ?, description = ?, priority = ?, requires_approval = ?,
+                    raw_request = ?, status = ?, owner_role = ?, result_summary = ?, review_notes = ?,
                     expected_artifact_path = ?, acceptance_json = ?, assigned_role = ?, review_state = ?,
                     milestone_id = ?, layer = ?, category = ?, completed_at = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
+                    task["title"],
+                    task["objective"],
+                    task["details"],
+                    task["description"],
+                    task["priority"],
+                    int(task["requires_approval"]),
+                    task.get("raw_request"),
                     task["status"],
                     task["owner_role"],
                     task["result_summary"],
@@ -1140,6 +1612,14 @@ class SessionStore:
             rows = connection.execute(query, tuple(params)).fetchall()
         return [dict(row) for row in rows]
 
+    def latest_run_for_task(self, task_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM runs WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
+                (task_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
     def update_run(
         self,
         run_id: str,
@@ -1190,6 +1670,35 @@ class SessionStore:
         if not run or not run.get("team_state_json"):
             return None
         return _json_loads(run["team_state_json"], default=None)
+
+    def load_context_receipt(self, run_id: str) -> dict[str, Any] | None:
+        team_state = self.load_team_state(run_id) or {}
+        receipt = team_state.get("context_receipt")
+        if not isinstance(receipt, dict):
+            return None
+        normalized = dict(receipt)
+        for field in CONTEXT_RECEIPT_LIST_FIELDS:
+            normalized[field] = _normalize_string_list(normalized.get(field))
+        return normalized
+
+    def save_context_receipt(self, run_id: str, receipt: dict[str, Any]) -> dict[str, Any]:
+        run = self.get_run(run_id)
+        if run is None:
+            raise ValueError(f"Run not found: {run_id}")
+        team_state = self.load_team_state(run_id) or {}
+        merged = dict(self.load_context_receipt(run_id) or {})
+        for key, value in receipt.items():
+            if value is None:
+                continue
+            if key in CONTEXT_RECEIPT_LIST_FIELDS:
+                merged[key] = _normalize_string_list(value)
+            else:
+                merged[key] = value
+        merged.setdefault("task_id", run["task_id"])
+        merged["updated_at"] = _utc_now()
+        team_state["context_receipt"] = merged
+        self.update_run(run_id, team_state=team_state)
+        return dict(merged)
 
     def create_approval(
         self,
@@ -1294,6 +1803,278 @@ class SessionStore:
         if decided is None:
             raise ValueError(f"Approval vanished after decision: {approval_id}")
         return decided
+
+    def _validate_run_task_pair(self, run_id: str, task_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        run = self.get_run(run_id)
+        if run is None:
+            raise ValueError(f"Run not found: {run_id}")
+        task = self.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task not found: {task_id}")
+        if run["task_id"] != task_id:
+            raise ValueError(f"Run and task do not align: {run_id} -> {run['task_id']} != {task_id}")
+        return run, task
+
+    def create_local_exception_approval(
+        self,
+        run_id: str,
+        task_id: str,
+        requested_by: str,
+        reason: str,
+        *,
+        approval_scope: str = "local-exception",
+        target_role: str | None = None,
+        exact_task: str | None = None,
+        expected_output: str | None = None,
+        why_now: str | None = None,
+        risks: list[str] | None = None,
+        one_shot: bool = True,
+        expires_at: str | None = None,
+    ) -> dict[str, Any]:
+        self._validate_run_task_pair(run_id, task_id)
+        approval_id = _new_id("local_exception")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO local_exception_approvals (
+                    id, run_id, task_id, requested_by, reason, status, created_at, decided_at, decision_note,
+                    approval_scope, target_role, exact_task, expected_output, why_now, risks_json, one_shot,
+                    expires_at, consumed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    approval_id,
+                    run_id,
+                    task_id,
+                    requested_by,
+                    reason,
+                    "pending",
+                    now,
+                    None,
+                    None,
+                    approval_scope,
+                    target_role,
+                    exact_task,
+                    expected_output,
+                    why_now,
+                    _json_dumps(risks or []),
+                    int(one_shot),
+                    expires_at,
+                    None,
+                ),
+            )
+        approval = self.get_local_exception_approval(approval_id)
+        if approval is None:
+            raise ValueError(f"Failed to create local exception approval: {approval_id}")
+        return approval
+
+    def get_local_exception_approval(self, approval_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM local_exception_approvals WHERE id = ?",
+                (approval_id,),
+            ).fetchone()
+        return self._deserialize_local_exception_approval(row) if row else None
+
+    def latest_local_exception_approval_for_task(self, task_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM local_exception_approvals
+                WHERE task_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (task_id,),
+            ).fetchone()
+        return self._deserialize_local_exception_approval(row) if row else None
+
+    def list_local_exception_approvals(
+        self,
+        run_id: str | None = None,
+        *,
+        status: str | None = None,
+        task_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM local_exception_approvals WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_local_exception_approval(row) for row in rows]
+
+    def decide_local_exception_approval(self, approval_id: str, decision: str, note: str | None = None) -> dict[str, Any]:
+        approval = self.get_local_exception_approval(approval_id)
+        if approval is None:
+            raise ValueError(f"Local exception approval not found: {approval_id}")
+        if approval["status"] != "pending":
+            return approval
+        if decision not in {"approve", "reject"}:
+            raise ValueError(f"Invalid local exception decision: {decision}")
+        status = "approved" if decision == "approve" else "rejected"
+        decided_at = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE local_exception_approvals
+                SET status = ?, decided_at = ?, decision_note = ?
+                WHERE id = ?
+                """,
+                (status, decided_at, note, approval_id),
+            )
+        decided = self.get_local_exception_approval(approval_id)
+        if decided is None:
+            raise ValueError(f"Local exception approval vanished after decision: {approval_id}")
+        return decided
+
+    def record_compliance_record(
+        self,
+        run_id: str,
+        task_id: str,
+        *,
+        record_kind: str,
+        details: str,
+        policy_area: str | None = None,
+        violation_type: str | None = None,
+        severity: str = "info",
+        local_exception_approval_id: str | None = None,
+        source_role: str | None = None,
+        decision_note: str | None = None,
+        evidence: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if record_kind not in COMPLIANCE_RECORD_KINDS:
+            raise ValueError(f"Invalid compliance record kind: {record_kind}")
+        compliance_state = COMPLIANCE_RECORD_KINDS[record_kind]
+        if not details.strip():
+            raise ValueError("Compliance record details are required.")
+        if record_kind == "breach":
+            if not policy_area:
+                raise ValueError("Breach records require a policy area.")
+            if not violation_type:
+                raise ValueError("Breach records require a violation type.")
+        if record_kind == "local_exception_approved":
+            if not local_exception_approval_id:
+                raise ValueError("Local exception records require a local exception approval id.")
+            local_exception = self.get_local_exception_approval(local_exception_approval_id)
+            if local_exception is None:
+                raise ValueError(f"Local exception approval not found: {local_exception_approval_id}")
+            if local_exception["status"] != "approved":
+                raise ValueError("Local exception records require an approved exception.")
+            if local_exception["task_id"] != task_id:
+                raise ValueError("Local exception approval does not match task.")
+            if local_exception["one_shot"] and local_exception.get("consumed_at"):
+                raise ValueError("Local exception approval has already been consumed.")
+        self._validate_run_task_pair(run_id, task_id)
+        record_id = _new_id("compliance")
+        consumed_at = None
+        if record_kind == "local_exception_approved":
+            consumed_at = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO compliance_records (
+                    id, run_id, task_id, record_kind, compliance_state, policy_area, violation_type, severity,
+                    local_exception_approval_id, source_role, decision_note, details, evidence_json, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record_id,
+                    run_id,
+                    task_id,
+                    record_kind,
+                    compliance_state,
+                    policy_area,
+                    violation_type,
+                    severity,
+                    local_exception_approval_id,
+                    source_role,
+                    decision_note,
+                    details,
+                    _json_dumps(evidence or {}),
+                    _utc_now(),
+                ),
+            )
+            if record_kind == "local_exception_approved" and local_exception_approval_id:
+                connection.execute(
+                    """
+                    UPDATE local_exception_approvals
+                    SET consumed_at = ?
+                    WHERE id = ?
+                    """,
+                    (consumed_at, local_exception_approval_id),
+                )
+        record = self.get_compliance_record(record_id)
+        if record is None:
+            raise ValueError(f"Failed to create compliance record: {record_id}")
+        return record
+
+    def record_breach_event(
+        self,
+        run_id: str,
+        task_id: str,
+        *,
+        policy_area: str,
+        violation_type: str,
+        details: str,
+        severity: str = "high",
+        source_role: str | None = None,
+        decision_note: str | None = None,
+        evidence: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self.record_compliance_record(
+            run_id,
+            task_id,
+            record_kind="breach",
+            details=details,
+            policy_area=policy_area,
+            violation_type=violation_type,
+            severity=severity,
+            source_role=source_role,
+            decision_note=decision_note,
+            evidence=evidence,
+        )
+
+    def get_compliance_record(self, record_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM compliance_records WHERE id = ?", (record_id,)).fetchone()
+        return self._deserialize_compliance_record(row) if row else None
+
+    def list_compliance_records(
+        self,
+        run_id: str | None = None,
+        *,
+        task_id: str | None = None,
+        record_kind: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM compliance_records WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if record_kind:
+            if record_kind not in COMPLIANCE_RECORD_KINDS:
+                raise ValueError(f"Invalid compliance record kind filter: {record_kind}")
+            query += " AND record_kind = ?"
+            params.append(record_kind)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_compliance_record(row) for row in rows]
 
     def approval_required_and_missing(self, task_id: str) -> bool:
         task = self.get_task(task_id)
@@ -1498,15 +2279,476 @@ class SessionStore:
                 completion_tokens=completion_tokens or 0,
             )
 
-    def record_usage(self, run_id: str, task_id: str, *, source: str | None, prompt_tokens: int, completion_tokens: int) -> None:
+    def record_usage(
+        self,
+        run_id: str,
+        task_id: str,
+        *,
+        source: str | None,
+        prompt_tokens: int,
+        completion_tokens: int,
+        model: str | None = None,
+        tier: str | None = None,
+        lane: str | None = None,
+        cached_input_tokens: int = 0,
+        reasoning_tokens: int = 0,
+        estimated_cost_usd: float = 0.0,
+    ) -> None:
         with self._connect() as connection:
             connection.execute(
                 """
-                INSERT INTO usage_events (id, run_id, task_id, source, prompt_tokens, completion_tokens, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO usage_events (
+                    id, run_id, task_id, source, prompt_tokens, completion_tokens,
+                    model, tier, lane, cached_input_tokens, reasoning_tokens, estimated_cost_usd, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (_new_id("usage"), run_id, task_id, source, prompt_tokens, completion_tokens, _utc_now()),
+                (
+                    _new_id("usage"),
+                    run_id,
+                    task_id,
+                    source,
+                    int(prompt_tokens),
+                    int(completion_tokens),
+                    model,
+                    tier,
+                    lane,
+                    int(cached_input_tokens),
+                    int(reasoning_tokens),
+                    float(estimated_cost_usd),
+                    _utc_now(),
+                ),
             )
+
+    def list_usage_events(self, run_id: str | None = None, *, task_id: str | None = None) -> list[dict[str, Any]]:
+        query = "SELECT * FROM usage_events WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+
+    def create_execution_packet(
+        self,
+        *,
+        authority_packet_id: str,
+        authority_job_id: str,
+        authority_token: str,
+        authority_schema_name: str,
+        authority_execution_tier: str,
+        authority_execution_lane: str,
+        authority_delegated_work: bool,
+        priority_class: str,
+        budget_max_tokens: int,
+        budget_reservation_id: str | None,
+        retry_limit: int,
+        early_stop_rule: str,
+        run_id: str | None = None,
+        task_id: str | None = None,
+        actual_total_tokens: int = 0,
+        retry_count: int = 0,
+        escalation_target: str | None = None,
+        stop_reason: str | None = None,
+        status: str = "queued",
+    ) -> dict[str, Any]:
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO execution_packets (
+                    authority_packet_id, authority_job_id, authority_token, authority_schema_name,
+                    authority_execution_tier, authority_execution_lane, authority_delegated_work,
+                    priority_class, budget_max_tokens, budget_reservation_id, retry_limit, early_stop_rule,
+                    packet_id, job_id, actual_total_tokens, retry_count, escalation_target, stop_reason,
+                    status, run_id, task_id, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    authority_packet_id,
+                    authority_job_id,
+                    authority_token,
+                    authority_schema_name,
+                    authority_execution_tier,
+                    authority_execution_lane,
+                    int(bool(authority_delegated_work)),
+                    priority_class,
+                    int(budget_max_tokens),
+                    budget_reservation_id,
+                    int(retry_limit),
+                    early_stop_rule,
+                    authority_packet_id,
+                    authority_job_id,
+                    int(actual_total_tokens),
+                    int(retry_count),
+                    escalation_target,
+                    stop_reason,
+                    status,
+                    run_id,
+                    task_id,
+                    now,
+                    now,
+                ),
+            )
+        packet = self.get_execution_packet(authority_packet_id)
+        if packet is None:
+            raise ValueError(f"Failed to create execution packet: {authority_packet_id}")
+        return packet
+
+    def get_execution_packet(self, authority_packet_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM execution_packets WHERE authority_packet_id = ?",
+                (authority_packet_id,),
+            ).fetchone()
+        return self._deserialize_execution_packet(row) if row else None
+
+    def list_execution_packets(
+        self,
+        *,
+        authority_job_id: str | None = None,
+        run_id: str | None = None,
+        task_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM execution_packets WHERE 1 = 1"
+        params: list[Any] = []
+        if authority_job_id:
+            query += " AND authority_job_id = ?"
+            params.append(authority_job_id)
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_execution_packet(row) for row in rows]
+
+    def sync_execution_packet(
+        self,
+        *,
+        authority_packet_id: str,
+        authority_job_id: str,
+        authority_token: str,
+        authority_schema_name: str,
+        authority_execution_tier: str,
+        authority_execution_lane: str,
+        authority_delegated_work: bool,
+        priority_class: str,
+        budget_max_tokens: int,
+        budget_reservation_id: str | None,
+        retry_limit: int,
+        early_stop_rule: str,
+        run_id: str | None = None,
+        task_id: str | None = None,
+        actual_total_tokens: int = 0,
+        retry_count: int = 0,
+        escalation_target: str | None = None,
+        stop_reason: str | None = None,
+        status: str = "queued",
+    ) -> dict[str, Any]:
+        existing = self.get_execution_packet(authority_packet_id)
+        if existing is not None:
+            return self.update_execution_packet(
+                authority_packet_id,
+                authority_job_id=authority_job_id,
+                authority_token=authority_token,
+                authority_schema_name=authority_schema_name,
+                authority_execution_tier=authority_execution_tier,
+                authority_execution_lane=authority_execution_lane,
+                authority_delegated_work=authority_delegated_work,
+                priority_class=priority_class,
+                budget_max_tokens=budget_max_tokens,
+                budget_reservation_id=budget_reservation_id,
+                retry_limit=retry_limit,
+                early_stop_rule=early_stop_rule,
+                run_id=run_id,
+                task_id=task_id,
+                actual_total_tokens=actual_total_tokens,
+                retry_count=retry_count,
+                escalation_target=escalation_target,
+                stop_reason=stop_reason,
+                status=status,
+            )
+        return self.create_execution_packet(
+            authority_packet_id=authority_packet_id,
+            authority_job_id=authority_job_id,
+            authority_token=authority_token,
+            authority_schema_name=authority_schema_name,
+            authority_execution_tier=authority_execution_tier,
+            authority_execution_lane=authority_execution_lane,
+            authority_delegated_work=authority_delegated_work,
+            priority_class=priority_class,
+            budget_max_tokens=budget_max_tokens,
+            budget_reservation_id=budget_reservation_id,
+            retry_limit=retry_limit,
+            early_stop_rule=early_stop_rule,
+            run_id=run_id,
+            task_id=task_id,
+            actual_total_tokens=actual_total_tokens,
+            retry_count=retry_count,
+            escalation_target=escalation_target,
+            stop_reason=stop_reason,
+            status=status,
+        )
+
+    def update_execution_packet(
+        self,
+        authority_packet_id: str,
+        *,
+        authority_job_id: str | None = None,
+        authority_token: str | None = None,
+        authority_schema_name: str | None = None,
+        authority_execution_tier: str | None = None,
+        authority_execution_lane: str | None = None,
+        authority_delegated_work: bool | None = None,
+        priority_class: str | None = None,
+        budget_max_tokens: int | None = None,
+        budget_reservation_id: str | None = None,
+        retry_limit: int | None = None,
+        early_stop_rule: str | None = None,
+        run_id: str | None = None,
+        task_id: str | None = None,
+        actual_total_tokens: int | None = None,
+        retry_count: int | None = None,
+        escalation_target: str | None = None,
+        stop_reason: str | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any]:
+        packet = self.get_execution_packet(authority_packet_id)
+        if packet is None:
+            raise ValueError(f"Execution packet not found: {authority_packet_id}")
+        if authority_job_id is not None:
+            packet["authority_job_id"] = authority_job_id
+            packet["job_id"] = authority_job_id
+        if authority_token is not None:
+            packet["authority_token"] = authority_token
+        if authority_schema_name is not None:
+            packet["authority_schema_name"] = authority_schema_name
+        if authority_execution_tier is not None:
+            packet["authority_execution_tier"] = authority_execution_tier
+        if authority_execution_lane is not None:
+            packet["authority_execution_lane"] = authority_execution_lane
+        if authority_delegated_work is not None:
+            packet["authority_delegated_work"] = int(bool(authority_delegated_work))
+        if priority_class is not None:
+            packet["priority_class"] = priority_class
+        if budget_max_tokens is not None:
+            packet["budget_max_tokens"] = int(budget_max_tokens)
+        if budget_reservation_id is not None:
+            packet["budget_reservation_id"] = budget_reservation_id
+        if retry_limit is not None:
+            packet["retry_limit"] = int(retry_limit)
+        if early_stop_rule is not None:
+            packet["early_stop_rule"] = early_stop_rule
+        if run_id is not None:
+            packet["run_id"] = run_id
+        if task_id is not None:
+            packet["task_id"] = task_id
+        if status is not None:
+            packet["status"] = status
+        if actual_total_tokens is not None:
+            packet["actual_total_tokens"] = int(actual_total_tokens)
+        if retry_count is not None:
+            packet["retry_count"] = int(retry_count)
+        if escalation_target is not None:
+            packet["escalation_target"] = escalation_target
+        if stop_reason is not None:
+            packet["stop_reason"] = stop_reason
+        packet["updated_at"] = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE execution_packets
+                SET authority_job_id = ?, authority_token = ?, authority_schema_name = ?,
+                    authority_execution_tier = ?, authority_execution_lane = ?, authority_delegated_work = ?,
+                    priority_class = ?, budget_max_tokens = ?, budget_reservation_id = ?, retry_limit = ?,
+                    early_stop_rule = ?, packet_id = ?, job_id = ?, actual_total_tokens = ?, retry_count = ?,
+                    escalation_target = ?, stop_reason = ?, status = ?, run_id = ?, task_id = ?, updated_at = ?
+                WHERE authority_packet_id = ?
+                """,
+                (
+                    packet["authority_job_id"],
+                    packet["authority_token"],
+                    packet["authority_schema_name"],
+                    packet["authority_execution_tier"],
+                    packet["authority_execution_lane"],
+                    packet["authority_delegated_work"],
+                    packet["priority_class"],
+                    packet["budget_max_tokens"],
+                    packet["budget_reservation_id"],
+                    packet["retry_limit"],
+                    packet["early_stop_rule"],
+                    packet["authority_packet_id"],
+                    packet["authority_job_id"],
+                    packet["actual_total_tokens"],
+                    packet["retry_count"],
+                    packet["escalation_target"],
+                    packet["stop_reason"],
+                    packet["status"],
+                    packet.get("run_id"),
+                    packet.get("task_id"),
+                    packet["updated_at"],
+                    authority_packet_id,
+                ),
+            )
+        updated = self.get_execution_packet(authority_packet_id)
+        if updated is None:
+            raise ValueError(f"Execution packet vanished after update: {authority_packet_id}")
+        return updated
+
+    def create_execution_job_reservation(
+        self,
+        *,
+        job_id: str,
+        priority_class: str,
+        reserved_max_tokens: int,
+        reservation_status: str,
+        run_id: str | None = None,
+        task_id: str | None = None,
+    ) -> dict[str, Any]:
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO execution_job_reservations (
+                    job_id, priority_class, reserved_max_tokens, reservation_status, run_id, task_id, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    job_id,
+                    priority_class,
+                    int(reserved_max_tokens),
+                    reservation_status,
+                    run_id,
+                    task_id,
+                    now,
+                    now,
+                ),
+            )
+        reservation = self.get_execution_job_reservation(job_id)
+        if reservation is None:
+            raise ValueError(f"Failed to create execution job reservation: {job_id}")
+        return reservation
+
+    def get_execution_job_reservation(self, job_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM execution_job_reservations WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+        return self._deserialize_execution_job_reservation(row) if row else None
+
+    def list_execution_job_reservations(
+        self,
+        *,
+        run_id: str | None = None,
+        task_id: str | None = None,
+        reservation_status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM execution_job_reservations WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if reservation_status:
+            query += " AND reservation_status = ?"
+            params.append(reservation_status)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_execution_job_reservation(row) for row in rows]
+
+    def sync_execution_job_reservation(
+        self,
+        *,
+        job_id: str,
+        priority_class: str,
+        reserved_max_tokens: int,
+        reservation_status: str,
+        run_id: str | None = None,
+        task_id: str | None = None,
+    ) -> dict[str, Any]:
+        existing = self.get_execution_job_reservation(job_id)
+        if existing is not None:
+            return self.update_execution_job_reservation(
+                job_id,
+                priority_class=priority_class,
+                reserved_max_tokens=reserved_max_tokens,
+                reservation_status=reservation_status,
+                run_id=run_id,
+                task_id=task_id,
+            )
+        return self.create_execution_job_reservation(
+            job_id=job_id,
+            priority_class=priority_class,
+            reserved_max_tokens=reserved_max_tokens,
+            reservation_status=reservation_status,
+            run_id=run_id,
+            task_id=task_id,
+        )
+
+    def update_execution_job_reservation(
+        self,
+        job_id: str,
+        *,
+        priority_class: str | None = None,
+        reserved_max_tokens: int | None = None,
+        reservation_status: str | None = None,
+        run_id: str | None = None,
+        task_id: str | None = None,
+    ) -> dict[str, Any]:
+        reservation = self.get_execution_job_reservation(job_id)
+        if reservation is None:
+            raise ValueError(f"Execution job reservation not found: {job_id}")
+        if priority_class is not None:
+            reservation["priority_class"] = priority_class
+        if reserved_max_tokens is not None:
+            reservation["reserved_max_tokens"] = int(reserved_max_tokens)
+        if reservation_status is not None:
+            reservation["reservation_status"] = reservation_status
+        if run_id is not None:
+            reservation["run_id"] = run_id
+        if task_id is not None:
+            reservation["task_id"] = task_id
+        reservation["updated_at"] = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE execution_job_reservations
+                SET priority_class = ?, reserved_max_tokens = ?, reservation_status = ?, run_id = ?, task_id = ?, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (
+                    reservation["priority_class"],
+                    reservation["reserved_max_tokens"],
+                    reservation["reservation_status"],
+                    reservation.get("run_id"),
+                    reservation.get("task_id"),
+                    reservation["updated_at"],
+                    job_id,
+                ),
+            )
+        updated = self.get_execution_job_reservation(job_id)
+        if updated is None:
+            raise ValueError(f"Execution job reservation vanished after update: {job_id}")
+        return updated
 
     def file_metadata(self, relative_path: str) -> dict[str, Any]:
         path = (self.paths.repo_root / relative_path).resolve()
@@ -1534,6 +2776,13 @@ class SessionStore:
             metadata["artifact_sha256"] = _sha256_bytes(content_bytes)
             metadata["bytes_written"] = len(content_bytes)
         return metadata
+
+    def _normalize_visual_artifact_path(self, project_name: str, artifact_path: str) -> str:
+        normalized = artifact_path.replace("\\", "/").strip()
+        expected_prefix = f"projects/{project_name}/artifacts/design/"
+        if not normalized.startswith(expected_prefix):
+            raise ValueError(f"Visual artifacts must live under {expected_prefix}")
+        return normalized
 
     def record_artifact(
         self,
@@ -1594,6 +2843,308 @@ class SessionStore:
                 (run_id,),
             ).fetchall()
         return [self._deserialize_artifact(row) for row in rows]
+
+    def create_visual_artifact(
+        self,
+        project_name: str,
+        task_id: str,
+        *,
+        artifact_path: str,
+        run_id: str | None = None,
+        artifact_kind: str = "image",
+        provider: str | None = None,
+        model: str | None = None,
+        prompt_summary: str | None = None,
+        revised_prompt: str | None = None,
+        parent_visual_artifact_id: str | None = None,
+        lineage_root_visual_artifact_id: str | None = None,
+        locked_base_visual_artifact_id: str | None = None,
+        edit_session_id: str | None = None,
+        edit_intent: str | None = None,
+        edit_scope: dict[str, Any] | None = None,
+        protected_regions: list[Any] | None = None,
+        mask_reference: dict[str, Any] | None = None,
+        iteration_index: int = 0,
+        review_state: str = "pending_review",
+        selected_direction: bool = False,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self._ensure_project(project_name)
+        normalized_path = self._normalize_visual_artifact_path(project_name, artifact_path)
+        file_info = self.file_metadata(normalized_path)
+        visual_artifact_id = _new_id("visual")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO visual_artifacts (
+                    id, project_name, task_id, run_id, artifact_kind, provider, model,
+                    prompt_summary, revised_prompt, parent_visual_artifact_id,
+                    lineage_root_visual_artifact_id, locked_base_visual_artifact_id,
+                    edit_session_id, edit_intent, edit_scope_json, protected_regions_json,
+                    mask_reference_json, iteration_index, review_state, selected_direction,
+                    artifact_path, artifact_sha256, bytes_written, metadata_json, created_at,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    visual_artifact_id,
+                    project_name,
+                    task_id,
+                    run_id,
+                    artifact_kind,
+                    provider,
+                    model,
+                    prompt_summary,
+                    revised_prompt,
+                    parent_visual_artifact_id,
+                    lineage_root_visual_artifact_id or parent_visual_artifact_id,
+                    locked_base_visual_artifact_id or lineage_root_visual_artifact_id or parent_visual_artifact_id,
+                    edit_session_id,
+                    edit_intent,
+                    _json_dumps(edit_scope or {}),
+                    _json_dumps(protected_regions or []),
+                    _json_dumps(mask_reference or {}),
+                    int(iteration_index),
+                    review_state,
+                    int(selected_direction),
+                    normalized_path,
+                    file_info["artifact_sha256"],
+                    file_info["bytes_written"],
+                    _json_dumps(metadata or {}),
+                    now,
+                    now,
+                ),
+            )
+        visual_artifact = self.get_visual_artifact(visual_artifact_id)
+        if visual_artifact is None:
+            raise ValueError(f"Failed to create visual artifact: {visual_artifact_id}")
+        return visual_artifact
+
+    def get_visual_artifact_by_path(
+        self,
+        project_name: str,
+        artifact_path: str,
+        *,
+        task_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        normalized_path = self._normalize_visual_artifact_path(project_name, artifact_path)
+        query = "SELECT * FROM visual_artifacts WHERE project_name = ? AND artifact_path = ?"
+        params: list[Any] = [project_name, normalized_path]
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        query += " ORDER BY updated_at DESC LIMIT 1"
+        with self._connect() as connection:
+            row = connection.execute(query, tuple(params)).fetchone()
+        return self._deserialize_visual_artifact(row) if row else None
+
+    def get_visual_artifact(self, visual_artifact_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM visual_artifacts WHERE id = ?", (visual_artifact_id,)).fetchone()
+        return self._deserialize_visual_artifact(row) if row else None
+
+    def list_visual_artifacts(
+        self,
+        project_name: str,
+        *,
+        task_id: str | None = None,
+        review_state: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM visual_artifacts WHERE project_name = ?"
+        params: list[Any] = [project_name]
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if review_state:
+            query += " AND review_state = ?"
+            params.append(review_state)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_visual_artifact(row) for row in rows]
+
+    def update_visual_artifact(
+        self,
+        visual_artifact_id: str,
+        *,
+        run_id: str | None = None,
+        artifact_kind: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+        prompt_summary: str | None = None,
+        revised_prompt: str | None = None,
+        parent_visual_artifact_id: str | None = None,
+        lineage_root_visual_artifact_id: str | None = None,
+        locked_base_visual_artifact_id: str | None = None,
+        edit_session_id: str | None = None,
+        edit_intent: str | None = None,
+        edit_scope: dict[str, Any] | None = None,
+        protected_regions: list[Any] | None = None,
+        mask_reference: dict[str, Any] | None = None,
+        iteration_index: int | None = None,
+        review_state: str | None = None,
+        selected_direction: bool | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        artifact = self.get_visual_artifact(visual_artifact_id)
+        if artifact is None:
+            raise ValueError(f"Visual artifact not found: {visual_artifact_id}")
+        normalized_path = self._normalize_visual_artifact_path(artifact["project_name"], artifact["artifact_path"])
+        file_info = self.file_metadata(normalized_path)
+        merged_metadata = dict(artifact.get("metadata") or {})
+        if metadata:
+            merged_metadata.update(metadata)
+        if run_id is not None:
+            artifact["run_id"] = run_id
+        if artifact_kind is not None:
+            artifact["artifact_kind"] = artifact_kind
+        if provider is not None:
+            artifact["provider"] = provider
+        if model is not None:
+            artifact["model"] = model
+        if prompt_summary is not None:
+            artifact["prompt_summary"] = prompt_summary
+        if revised_prompt is not None:
+            artifact["revised_prompt"] = revised_prompt
+        if parent_visual_artifact_id is not None:
+            artifact["parent_visual_artifact_id"] = parent_visual_artifact_id
+        if lineage_root_visual_artifact_id is not None:
+            artifact["lineage_root_visual_artifact_id"] = lineage_root_visual_artifact_id
+        if locked_base_visual_artifact_id is not None:
+            artifact["locked_base_visual_artifact_id"] = locked_base_visual_artifact_id
+        if edit_session_id is not None:
+            artifact["edit_session_id"] = edit_session_id
+        if edit_intent is not None:
+            artifact["edit_intent"] = edit_intent
+        if edit_scope is not None:
+            artifact["edit_scope_json"] = _json_dumps(edit_scope)
+        if protected_regions is not None:
+            artifact["protected_regions_json"] = _json_dumps(protected_regions)
+        if mask_reference is not None:
+            artifact["mask_reference_json"] = _json_dumps(mask_reference)
+        if iteration_index is not None:
+            artifact["iteration_index"] = int(iteration_index)
+        if review_state is not None:
+            artifact["review_state"] = review_state
+        if selected_direction is not None:
+            artifact["selected_direction"] = bool(selected_direction)
+        artifact["artifact_sha256"] = file_info["artifact_sha256"]
+        artifact["bytes_written"] = file_info["bytes_written"]
+        artifact["updated_at"] = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE visual_artifacts
+                SET run_id = ?, artifact_kind = ?, provider = ?, model = ?, prompt_summary = ?, revised_prompt = ?, parent_visual_artifact_id = ?,
+                    lineage_root_visual_artifact_id = ?, locked_base_visual_artifact_id = ?, edit_session_id = ?,
+                    edit_intent = ?, edit_scope_json = ?, protected_regions_json = ?, mask_reference_json = ?,
+                    iteration_index = ?, review_state = ?, selected_direction = ?, artifact_sha256 = ?, bytes_written = ?,
+                    metadata_json = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    artifact.get("run_id"),
+                    artifact.get("artifact_kind"),
+                    artifact.get("provider"),
+                    artifact.get("model"),
+                    artifact.get("prompt_summary"),
+                    artifact.get("revised_prompt"),
+                    artifact.get("parent_visual_artifact_id"),
+                    artifact.get("lineage_root_visual_artifact_id"),
+                    artifact.get("locked_base_visual_artifact_id"),
+                    artifact.get("edit_session_id"),
+                    artifact.get("edit_intent"),
+                    artifact.get("edit_scope_json") or _json_dumps({}),
+                    artifact.get("protected_regions_json") or _json_dumps([]),
+                    artifact.get("mask_reference_json") or _json_dumps({}),
+                    int(artifact.get("iteration_index") or 0),
+                    artifact.get("review_state"),
+                    int(artifact.get("selected_direction", False)),
+                    artifact["artifact_sha256"],
+                    artifact["bytes_written"],
+                    _json_dumps(merged_metadata),
+                    artifact["updated_at"],
+                    visual_artifact_id,
+                ),
+            )
+        updated = self.get_visual_artifact(visual_artifact_id)
+        if updated is None:
+            raise ValueError(f"Visual artifact vanished after update: {visual_artifact_id}")
+        return updated
+
+    def sync_visual_artifact(
+        self,
+        project_name: str,
+        task_id: str,
+        *,
+        artifact_path: str,
+        run_id: str | None = None,
+        artifact_kind: str = "image",
+        provider: str | None = None,
+        model: str | None = None,
+        prompt_summary: str | None = None,
+        revised_prompt: str | None = None,
+        parent_visual_artifact_id: str | None = None,
+        lineage_root_visual_artifact_id: str | None = None,
+        locked_base_visual_artifact_id: str | None = None,
+        edit_session_id: str | None = None,
+        edit_intent: str | None = None,
+        edit_scope: dict[str, Any] | None = None,
+        protected_regions: list[Any] | None = None,
+        mask_reference: dict[str, Any] | None = None,
+        iteration_index: int = 0,
+        review_state: str = "pending_review",
+        selected_direction: bool = False,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        existing = self.get_visual_artifact_by_path(project_name, artifact_path, task_id=task_id)
+        if existing is not None:
+            return self.update_visual_artifact(
+                existing["id"],
+                run_id=run_id,
+                artifact_kind=artifact_kind,
+                provider=provider,
+                model=model,
+                prompt_summary=prompt_summary,
+                revised_prompt=revised_prompt,
+                parent_visual_artifact_id=parent_visual_artifact_id,
+                lineage_root_visual_artifact_id=lineage_root_visual_artifact_id,
+                locked_base_visual_artifact_id=locked_base_visual_artifact_id,
+                edit_session_id=edit_session_id,
+                edit_intent=edit_intent,
+                edit_scope=edit_scope,
+                protected_regions=protected_regions,
+                mask_reference=mask_reference,
+                iteration_index=iteration_index,
+                review_state=review_state,
+                selected_direction=selected_direction,
+                metadata=metadata,
+            )
+        return self.create_visual_artifact(
+            project_name,
+            task_id,
+            artifact_path=artifact_path,
+            run_id=run_id,
+            artifact_kind=artifact_kind,
+            provider=provider,
+            model=model,
+            prompt_summary=prompt_summary,
+            revised_prompt=revised_prompt,
+            parent_visual_artifact_id=parent_visual_artifact_id,
+            lineage_root_visual_artifact_id=lineage_root_visual_artifact_id,
+            locked_base_visual_artifact_id=locked_base_visual_artifact_id,
+            edit_session_id=edit_session_id,
+            edit_intent=edit_intent,
+            edit_scope=edit_scope,
+            protected_regions=protected_regions,
+            mask_reference=mask_reference,
+            iteration_index=iteration_index,
+            review_state=review_state,
+            selected_direction=selected_direction,
+            metadata=metadata,
+        )
 
     def record_validation_result(
         self,
@@ -1725,6 +3276,8 @@ class SessionStore:
         manifest_path = self._backup_manifest_path(backup_path)
         shutil.copy2(self.paths.db_path, backup_path)
         sha256 = _sha256_bytes(backup_path.read_bytes())
+        latest_run = self.latest_run_for_task(task_id)
+        source_context_receipt = self.load_context_receipt(latest_run["id"]) if latest_run else None
         manifest = {
             "backup_id": backup_id,
             "project_name": project_name,
@@ -1736,6 +3289,8 @@ class SessionStore:
             "manifest_path": str(manifest_path),
             "sha256": sha256,
             "source_db_path": str(self.paths.db_path),
+            "source_run_id": latest_run["id"] if latest_run else None,
+            "source_context_receipt": source_context_receipt,
         }
         manifest_path.write_text(_json_dumps(manifest) + "\n", encoding="utf-8")
         return manifest
@@ -1759,6 +3314,30 @@ class SessionStore:
                 return backup
         return None
 
+    def list_restore_receipts(
+        self,
+        *,
+        task_id: str | None = None,
+        run_id: str | None = None,
+        limit: int = 8,
+    ) -> list[dict[str, Any]]:
+        receipts: list[dict[str, Any]] = []
+        for receipt_path in sorted(self.paths.restore_receipts_dir.glob("*.json")):
+            try:
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            restored_context = receipt.get("restored_context_receipt")
+            if task_id:
+                restored_task_id = restored_context.get("task_id") if isinstance(restored_context, dict) else None
+                if receipt.get("task_id") != task_id and restored_task_id != task_id:
+                    continue
+            if run_id and receipt.get("restored_run_id") != run_id and receipt.get("source_run_id") != run_id:
+                continue
+            receipts.append(receipt)
+        receipts.sort(key=lambda item: item.get("restored_at") or "", reverse=True)
+        return receipts[:limit]
+
     def restore_dispatch_backup(self, *, backup_id: str, requested_by: str) -> dict[str, Any]:
         backup = self._find_dispatch_backup(backup_id)
         if backup is None:
@@ -1771,13 +3350,20 @@ class SessionStore:
         )
         shutil.copy2(Path(backup["path"]), self.paths.db_path)
         self.initialize()
+        restored_run = self.latest_run_for_task(backup["task_id"])
+        restored_context_receipt = self.load_context_receipt(restored_run["id"]) if restored_run else None
         receipt = {
             "restore_id": _new_id("restore"),
             "backup_id": backup_id,
+            "task_id": backup["task_id"],
             "requested_by": requested_by,
             "restored_at": _utc_now(),
             "pre_restore_backup": pre_restore_backup,
             "store_health": self.schema_health(),
+            "source_run_id": backup.get("source_run_id"),
+            "source_context_receipt": backup.get("source_context_receipt"),
+            "restored_run_id": restored_run["id"] if restored_run else None,
+            "restored_context_receipt": restored_context_receipt,
         }
         receipt_path = self.paths.restore_receipts_dir / f"{receipt['restore_id']}.json"
         receipt["receipt_path"] = str(receipt_path)
@@ -1789,27 +3375,63 @@ class SessionStore:
         if run is None:
             raise ValueError(f"Run not found: {run_id}")
         task = self.get_task(run["task_id"])
+        team_state = self.load_team_state(run["id"]) or {}
+        context_receipt = self.load_context_receipt(run_id)
+        worker_dispatch = team_state.get("worker_dispatch")
+        if isinstance(worker_dispatch, dict):
+            worker_dispatch = dict(worker_dispatch)
+            manifest = worker_dispatch.get("manifest")
+            if isinstance(manifest, dict):
+                worker_dispatch["manifest"] = dict(manifest)
+        else:
+            worker_dispatch = None
         messages = self.list_messages(run_id)
         trace_events = [item for item in messages if item.get("record_type") == "trace"]
         message_events = [item for item in messages if item.get("record_type") == "message"]
         approvals = [approval for approval in self.list_approvals() if approval.get("run_id") == run_id]
+        local_exception_approvals = [
+            approval for approval in self.list_local_exception_approvals() if approval.get("run_id") == run_id
+        ]
+        compliance_records = self.list_compliance_records(run_id)
+        restore_history = self.list_restore_receipts(task_id=run["task_id"], run_id=run_id, limit=16)
         agent_runs = self.list_agent_runs(run_id)
         artifacts = self.list_artifacts(run_id)
         validation_results = self.list_validation_results(run_id)
+        usage_events = self.list_usage_events(run_id)
+        execution_packets = self.list_execution_packets(run_id=run_id, task_id=run["task_id"])
+        execution_job_reservations = self.list_execution_job_reservations(run_id=run_id, task_id=run["task_id"])
         delegations = self.list_delegations(run_id)
         sdk_runtime = self._sdk_runtime_summary(run, trace_events, agent_runs)
+        media_service_contracts = self.media_service_contracts(run["project_name"], task=task) if task else []
+        related_task_ids = [run["task_id"]]
+        if task is not None:
+            related_task_ids.extend(subtask["id"] for subtask in self.get_subtasks(run["task_id"]))
+        visual_artifacts: list[dict[str, Any]] = []
+        for related_task_id in related_task_ids:
+            visual_artifacts.extend(self.list_visual_artifacts(run["project_name"], task_id=related_task_id))
         return {
             "run": run,
             "task": task,
             "project_name": run["project_name"],
             "delegations": delegations,
             "approvals": approvals,
+            "local_exception_approvals": local_exception_approvals,
+            "compliance_records": compliance_records,
+            "context_receipt": context_receipt,
+            "restore_history": restore_history,
+            "worker_dispatch": worker_dispatch,
+            "worker_manifest": worker_dispatch.get("manifest") if worker_dispatch else None,
             "messages": message_events,
             "trace_events": trace_events,
             "agent_runs": agent_runs,
             "artifacts": artifacts,
             "validation_results": validation_results,
+            "usage_events": usage_events,
+            "execution_packets": execution_packets,
+            "execution_job_reservations": execution_job_reservations,
             "sdk_runtime": sdk_runtime,
+            "media_service_contracts": media_service_contracts,
+            "visual_artifacts": visual_artifacts,
         }
 
     def _sdk_runtime_summary(
@@ -1907,6 +3529,8 @@ class SessionStore:
                         lines.append(f"- Milestone: {milestone['title']}")
                 if task["expected_artifact_path"]:
                     lines.append(f"- Expected Artifact: {task['expected_artifact_path']}")
+                if task.get("objective"):
+                    lines.append(f"- Objective: {task['objective']}")
                 lines.append(f"- Details: {task['details']}")
                 if task["result_summary"]:
                     lines.append(f"- Result: {task['result_summary']}")
@@ -1916,6 +3540,11 @@ class SessionStore:
         if blocked_tasks:
             lines.extend(["## Blocked", ""])
             for task in blocked_tasks:
+                milestone_title = None
+                if task.get("milestone_id"):
+                    milestone = self.get_milestone(task["milestone_id"])
+                    if milestone:
+                        milestone_title = milestone["title"]
                 lines.extend(
                     [
                         f"### {task['title']}",
@@ -1923,6 +3552,18 @@ class SessionStore:
                         f"- Status: {task['status']}",
                         f"- Secondary State: {task['status']}",
                         f"- Owner: {task['owner_role']}",
+                    ]
+                )
+                if task.get("assigned_role"):
+                    lines.append(f"- Assigned Role: {task['assigned_role']}")
+                if milestone_title:
+                    lines.append(f"- Milestone: {milestone_title}")
+                if task["expected_artifact_path"]:
+                    lines.append(f"- Expected Artifact: {task['expected_artifact_path']}")
+                if task.get("objective"):
+                    lines.append(f"- Objective: {task['objective']}")
+                lines.extend(
+                    [
                         f"- Details: {task['details']}",
                         "",
                     ]
@@ -1941,6 +3582,17 @@ class SessionStore:
         approval = dict(row)
         approval["risks"] = _json_loads(approval.get("risks_json"), default=[])
         return approval
+
+    def _deserialize_local_exception_approval(self, row: sqlite3.Row) -> dict[str, Any]:
+        approval = dict(row)
+        approval["risks"] = _json_loads(approval.get("risks_json"), default=[])
+        approval["one_shot"] = bool(approval["one_shot"])
+        return approval
+
+    def _deserialize_compliance_record(self, row: sqlite3.Row) -> dict[str, Any]:
+        record = dict(row)
+        record["evidence"] = _json_loads(record.get("evidence_json"), default={})
+        return record
 
     def _deserialize_agent_run(self, row: sqlite3.Row) -> dict[str, Any]:
         return dict(row)
@@ -1961,6 +3613,23 @@ class SessionStore:
         artifact = dict(row)
         artifact["input_artifact_paths"] = _json_loads(artifact.get("input_artifact_paths_json"), default=[])
         return artifact
+
+    def _deserialize_visual_artifact(self, row: sqlite3.Row) -> dict[str, Any]:
+        artifact = dict(row)
+        artifact["selected_direction"] = bool(artifact["selected_direction"])
+        artifact["metadata"] = _json_loads(artifact.get("metadata_json"), default={})
+        artifact["edit_scope"] = _json_loads(artifact.get("edit_scope_json"), default={})
+        artifact["protected_regions"] = _json_loads(artifact.get("protected_regions_json"), default=[])
+        artifact["mask_reference"] = _json_loads(artifact.get("mask_reference_json"), default={})
+        return artifact
+
+    def _deserialize_execution_packet(self, row: sqlite3.Row) -> dict[str, Any]:
+        packet = dict(row)
+        packet["authority_delegated_work"] = bool(packet["authority_delegated_work"])
+        return packet
+
+    def _deserialize_execution_job_reservation(self, row: sqlite3.Row) -> dict[str, Any]:
+        return dict(row)
 
     def _deserialize_validation_result(self, row: sqlite3.Row) -> dict[str, Any]:
         validation = dict(row)

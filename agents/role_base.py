@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 from autogen_core.models import SystemMessage, UserMessage
+from autogen_ext.models.openai import OpenAIChatCompletionClient
 
+from agents.api_router import APIRouter
 from agents.config import create_model_client
 from agents.config import resolve_model
+from agents.config import role_floor_tier
+from agents.cost_tracker import CostTracker
+
+
+class DelegatedExecutionBypassError(BaseException):
+    pass
 
 
 class StudioRoleAgent:
@@ -18,6 +28,9 @@ class StudioRoleAgent:
         self.store = store
         self.telemetry = telemetry
         self.model_client = create_model_client(model_role)
+        self._use_legacy_client = not isinstance(self.model_client, OpenAIChatCompletionClient)
+        self._api_router: APIRouter | None = None
+        self.cost_tracker = CostTracker(repo_root=self.repo_root, store=store)
 
     async def close(self) -> None:
         await self.model_client.close()
@@ -31,6 +44,35 @@ class StudioRoleAgent:
         task_id: str | None = None,
         event_type: str = "agent_text",
     ) -> str:
+        if self._delegated_work_requested(run_id=run_id, task_id=task_id):
+            self._assert_api_router_authority(run_id=run_id, task_id=task_id)
+            authority = self._resolve_authority_context(run_id=run_id, task_id=task_id)
+            routed = await asyncio.to_thread(
+                partial(
+                    self._get_api_router().invoke_text,
+                    run_id=run_id,
+                    task_id=task_id,
+                    tier=self._resolve_execution_tier(task_id),
+                    lane=self._resolve_execution_lane(task_id),
+                    route_family=self._resolve_route_family(task_id),
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    source=self.role_name,
+                    notes=f"{event_type} via StudioRoleAgent",
+                    **authority,
+                )
+            )
+            content = routed.output_text
+            self._record(
+                run_id=run_id,
+                task_id=task_id,
+                event_type=event_type,
+                content=content,
+                usage=routed,
+                model=routed.model,
+                usage_already_recorded=True,
+            )
+            return content
         result = await self.model_client.create(
             [
                 SystemMessage(content=system_prompt),
@@ -57,6 +99,34 @@ class StudioRoleAgent:
         task_id: str | None = None,
         event_type: str = "agent_json",
     ):
+        if self._delegated_work_requested(run_id=run_id, task_id=task_id):
+            self._assert_api_router_authority(run_id=run_id, task_id=task_id)
+            authority = self._resolve_authority_context(run_id=run_id, task_id=task_id)
+            parsed, routed = await asyncio.to_thread(
+                partial(
+                    self._get_api_router().invoke_json,
+                    run_id=run_id,
+                    task_id=task_id,
+                    tier=self._resolve_execution_tier(task_id),
+                    lane=self._resolve_execution_lane(task_id),
+                    route_family=self._resolve_route_family(task_id),
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    schema=schema,
+                    source=self.role_name,
+                    **authority,
+                )
+            )
+            self._record(
+                run_id=run_id,
+                task_id=task_id,
+                event_type=event_type,
+                content=routed.output_text,
+                usage=routed,
+                model=routed.model,
+                usage_already_recorded=True,
+            )
+            return parsed
         result = await self.model_client.create(
             [
                 SystemMessage(content=system_prompt),
@@ -83,13 +153,125 @@ class StudioRoleAgent:
             return content.strip()
         return json.dumps(content, ensure_ascii=True, default=str)
 
-    def _record(self, *, run_id: str | None, task_id: str | None, event_type: str, content: str, usage: Any) -> None:
+    def _get_api_router(self) -> APIRouter:
+        if self._api_router is None:
+            self._api_router = APIRouter(repo_root=self.repo_root, store=self.store)
+        return self._api_router
+
+    def _should_use_api_router(self, *, run_id: str | None, task_id: str | None) -> bool:
+        return bool(run_id and task_id and not self._use_legacy_client)
+
+    def _delegated_work_requested(self, *, run_id: str | None, task_id: str | None) -> bool:
+        return bool(run_id and task_id)
+
+    def _assert_api_router_authority(self, *, run_id: str | None, task_id: str | None) -> None:
+        if self._should_use_api_router(run_id=run_id, task_id=task_id):
+            return
+        raise DelegatedExecutionBypassError(
+            "Delegated work must route through api_router; direct StudioRoleAgent execution is disabled."
+        )
+
+    def _resolve_execution_tier(self, task_id: str | None) -> str:
+        task = self.store.get_task(task_id) if task_id else None
+        acceptance = (task or {}).get("acceptance") or {}
+        assigned_tier = acceptance.get("assigned_tier")
+        if isinstance(assigned_tier, str) and assigned_tier:
+            return assigned_tier
+        tier_assignment = acceptance.get("tier_assignment") or {}
+        tier = tier_assignment.get("tier")
+        if isinstance(tier, str) and tier:
+            return tier
+        return role_floor_tier(self.role_name)
+
+    def _resolve_execution_lane(self, task_id: str | None) -> str:
+        task = self.store.get_task(task_id) if task_id else None
+        acceptance = (task or {}).get("acceptance") or {}
+        lane = acceptance.get("execution_lane")
+        if isinstance(lane, str) and lane:
+            return lane
+        tier_assignment = acceptance.get("tier_assignment") or {}
+        lane = tier_assignment.get("execution_lane")
+        if isinstance(lane, str) and lane:
+            return lane
+        return "sync_api"
+
+    def _resolve_route_family(self, task_id: str | None) -> str | None:
+        task = self.store.get_task(task_id) if task_id else None
+        acceptance = (task or {}).get("acceptance") or {}
+        route_family = acceptance.get("route_family")
+        if isinstance(route_family, str) and route_family:
+            return route_family
+        tier_assignment = acceptance.get("tier_assignment") or {}
+        route_family = tier_assignment.get("route_family")
+        if isinstance(route_family, str) and route_family:
+            return route_family
+        return None
+
+    def _resolve_authority_context(self, *, run_id: str | None, task_id: str | None) -> dict[str, Any]:
+        task = self.store.get_task(task_id) if task_id else None
+        acceptance = (task or {}).get("acceptance") or {}
+        priority_class = acceptance.get("priority_class") or (task or {}).get("priority_class") or (task or {}).get("priority") or "medium"
+        job_id = run_id or task_id or f"{self.role_name.lower()}-job"
+        packet_id = task_id or run_id or f"{self.role_name.lower()}-packet"
+        return {
+            "authority_packet_id": str(acceptance.get("authority_packet_id") or packet_id),
+            "authority_job_id": str(acceptance.get("authority_job_id") or job_id),
+            "authority_token": str(
+                acceptance.get("authority_token") or f"{job_id}:{packet_id}:{self.role_name}"
+            ),
+            "authority_schema_name": str(acceptance.get("authority_schema_name") or "execution_contract_v1"),
+            "authority_execution_tier": str(
+                acceptance.get("authority_execution_tier") or self._resolve_execution_tier(task_id)
+            ),
+            "authority_execution_lane": str(
+                acceptance.get("authority_execution_lane") or self._resolve_execution_lane(task_id)
+            ),
+            "authority_delegated_work": True,
+            "priority_class": str(priority_class),
+            "budget_max_tokens": int(acceptance.get("budget_max_tokens") or (task or {}).get("budget_max_tokens") or 4096),
+            "budget_reservation_id": str(
+                acceptance.get("budget_reservation_id") or (task or {}).get("budget_reservation_id") or f"{job_id}:reservation"
+            ),
+            "retry_limit": int(acceptance.get("retry_limit") or (task or {}).get("retry_limit") or 1),
+            "early_stop_rule": str(
+                acceptance.get("early_stop_rule") or (task or {}).get("early_stop_rule") or "accept_on_first_sufficient_output"
+            ),
+        }
+
+    def _usage_counts(self, usage: Any) -> tuple[int | None, int | None]:
+        if usage is None:
+            return None, None
         prompt_tokens = getattr(usage, "prompt_tokens", None)
         completion_tokens = getattr(usage, "completion_tokens", None)
+        if prompt_tokens is None:
+            prompt_tokens = getattr(usage, "input_tokens", None)
+        if completion_tokens is None:
+            completion_tokens = getattr(usage, "output_tokens", None)
+        if isinstance(usage, dict):
+            prompt_tokens = usage.get("prompt_tokens", usage.get("input_tokens", prompt_tokens))
+            completion_tokens = usage.get("completion_tokens", usage.get("output_tokens", completion_tokens))
+        return (
+            int(prompt_tokens) if prompt_tokens is not None else None,
+            int(completion_tokens) if completion_tokens is not None else None,
+        )
+
+    def _record(
+        self,
+        *,
+        run_id: str | None,
+        task_id: str | None,
+        event_type: str,
+        content: str,
+        usage: Any,
+        model: str | None = None,
+        usage_already_recorded: bool = False,
+    ) -> None:
+        prompt_tokens, completion_tokens = self._usage_counts(usage)
+        resolved_model = model or resolve_model(self.model_role)
         payload = {
             "role": self.role_name,
             "model_role": self.model_role,
-            "model": resolve_model(self.model_role),
+            "model": resolved_model,
             "content": content,
         }
         if run_id and task_id:
@@ -99,9 +281,29 @@ class StudioRoleAgent:
                 event_type,
                 payload,
                 source=self.role_name,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
+                prompt_tokens=None if usage_already_recorded else prompt_tokens,
+                completion_tokens=None if usage_already_recorded else completion_tokens,
             )
+            if prompt_tokens is not None and completion_tokens is not None and not usage_already_recorded:
+                estimate = self.cost_tracker.estimate_cost(
+                    resolved_model,
+                    {
+                        "input_tokens": int(prompt_tokens),
+                        "output_tokens": int(completion_tokens),
+                        "input_tokens_details": {"cached_tokens": 0},
+                        "output_tokens_details": {"reasoning_tokens": 0},
+                    },
+                )
+                self.cost_tracker._append_markdown_log(
+                    run_id=run_id,
+                    task_id=task_id,
+                    source=self.role_name,
+                    model=resolved_model,
+                    tier=role_floor_tier(self.role_name),
+                    artifact_path=None,
+                    notes=f"{event_type} via StudioRoleAgent",
+                    estimate=estimate,
+                )
         self.telemetry.append_event(
             event_type,
             {

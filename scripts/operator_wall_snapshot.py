@@ -30,6 +30,12 @@ def _status_label(value: str | None) -> str:
     return str(value or "unknown").replace("_", " ").title()
 
 
+def _approval_lane(approval: dict[str, Any]) -> tuple[str, str]:
+    if approval.get("approval_scope") == "local-exception" or "one_shot" in approval:
+        return "local_exception", "Local Exception"
+    return "delegated_work", "Delegated Work"
+
+
 def _action_mode(*, runtime_role: str | None = None, source: str | None = None, event_type: str | None = None) -> dict[str, str]:
     specialist_roles = {"Architect", "Developer", "Design", "QA"}
     runtime_value = str(runtime_role or "").strip()
@@ -38,6 +44,178 @@ def _action_mode(*, runtime_role: str | None = None, source: str | None = None, 
     if event_value.startswith("sdk_") or runtime_value in specialist_roles or source_value in specialist_roles:
         return {"key": "ai_delegated", "label": "AI Delegated"}
     return {"key": "framework", "label": "Framework Action"}
+
+
+def _pending_approval_card(
+    approval: dict[str, Any],
+    *,
+    task: dict[str, Any] | None,
+) -> dict[str, Any]:
+    lane_key, lane_label = _approval_lane(approval)
+    return {
+        **approval,
+        "approval_id": approval["id"],
+        "approval_lane": lane_key,
+        "approval_lane_label": lane_label,
+        "approval_status_label": _status_label(approval["status"]),
+        "project_name": task["project_name"] if task else approval.get("project_name"),
+        "project_label": _project_label(task["project_name"]) if task else None,
+        "task_title": task["title"] if task else None,
+        "task_status": task["status"] if task else None,
+        "approval_summary": approval.get("reason") or approval.get("decision_note") or "Approval pending.",
+    }
+
+
+def _worker_manifest_summary(team_state: dict[str, Any]) -> dict[str, Any] | None:
+    worker_dispatch = team_state.get("worker_dispatch")
+    if not isinstance(worker_dispatch, dict):
+        return None
+    manifest = worker_dispatch.get("manifest")
+    if not isinstance(manifest, dict):
+        return None
+    return dict(manifest)
+
+
+def _run_compliance_summary(
+    *,
+    store: SessionStore,
+    run: dict[str, Any],
+    task: dict[str, Any] | None,
+    approvals_by_run: dict[str, list[dict[str, Any]]],
+    local_exception_approvals_by_run: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    team_state = store.load_team_state(run["id"]) or {}
+    compliance_state = team_state.get("compliance_state")
+    if not isinstance(compliance_state, dict):
+        compliance_state = {}
+    worker_manifest = _worker_manifest_summary(team_state)
+    worker_dispatch = team_state.get("worker_dispatch") if isinstance(team_state.get("worker_dispatch"), dict) else None
+    compliance_records = store.list_compliance_records(run["id"])
+    breach_records = [record for record in compliance_records if record["record_kind"] == "breach"]
+    delegated_records = [record for record in compliance_records if record["record_kind"] == "compliant_delegated_run"]
+    local_exception_records = [record for record in compliance_records if record["record_kind"] == "local_exception_approved"]
+    pending_delegated = [approval for approval in approvals_by_run.get(run["id"], []) if approval["status"] == "pending"]
+    pending_local_exception = [
+        approval for approval in local_exception_approvals_by_run.get(run["id"], []) if approval["status"] == "pending"
+    ]
+    latest_local_exception = local_exception_approvals_by_run.get(run["id"], [])
+    latest_local_exception_approval = latest_local_exception[-1] if latest_local_exception else None
+    compliance_mode = compliance_state.get("mode")
+    if not compliance_mode:
+        if breach_records:
+            compliance_mode = "breached"
+        elif local_exception_records:
+            compliance_mode = "local_exception_approved"
+        elif delegated_records:
+            compliance_mode = "delegated"
+        else:
+            compliance_mode = "unverified"
+    return {
+        "run_id": run["id"],
+        "task_id": run["task_id"],
+        "task_title": task["title"] if task else None,
+        "run_status": run["status"],
+        "pause_reason": run.get("stop_reason"),
+        "pause_reason_label": _status_label(run.get("stop_reason")),
+        "phase": team_state.get("phase"),
+        "execution_mode": team_state.get("execution_mode"),
+        "compliance_state": {
+            **compliance_state,
+            "mode": compliance_mode,
+            "breach_count": len(breach_records),
+            "delegated_run_count": len(delegated_records),
+            "local_exception_count": len(local_exception_records),
+            "pause_reason": run.get("stop_reason"),
+            "pause_reason_label": _status_label(run.get("stop_reason")),
+            "worker_manifest": worker_manifest,
+        },
+        "breach_count": len(breach_records),
+        "pending_delegated_approvals": len(pending_delegated),
+        "pending_local_exception_approvals": len(pending_local_exception),
+        "local_exception_state": latest_local_exception_approval,
+        "worker_dispatch": worker_dispatch,
+        "worker_manifest": worker_manifest,
+    }
+
+
+def _decorate_task_compliance(
+    task: dict[str, Any],
+    *,
+    run_compliance_summary: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if run_compliance_summary is None:
+        return {
+            "mode": "unverified",
+            "breach_count": 0,
+            "pause_reason": None,
+            "local_exception_state": None,
+            "pending_delegated_approvals": 0,
+            "pending_local_exception_approvals": 0,
+            "worker_manifest": None,
+        }
+    return {
+        "mode": run_compliance_summary["compliance_state"]["mode"],
+        "summary": run_compliance_summary["compliance_state"].get("summary"),
+        "breach_count": run_compliance_summary["breach_count"],
+        "pause_reason": run_compliance_summary["pause_reason"],
+        "pause_reason_label": run_compliance_summary["pause_reason_label"],
+        "local_exception_state": run_compliance_summary["local_exception_state"],
+        "pending_delegated_approvals": run_compliance_summary["pending_delegated_approvals"],
+        "pending_local_exception_approvals": run_compliance_summary["pending_local_exception_approvals"],
+        "worker_manifest": run_compliance_summary["worker_manifest"],
+    }
+
+
+def build_run_compliance_summary(store: SessionStore, run_id: str) -> dict[str, Any]:
+    run = store.get_run(run_id)
+    if run is None:
+        raise ValueError(f"Run not found: {run_id}")
+    task = store.get_task(run["task_id"])
+    approvals_by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    local_exception_approvals_by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    approvals_by_run[run_id] = [approval for approval in store.list_approvals() if approval.get("run_id") == run_id]
+    local_exception_approvals_by_run[run_id] = [
+        approval for approval in store.list_local_exception_approvals(run_id)
+    ]
+    return _run_compliance_summary(
+        store=store,
+        run=run,
+        task=task,
+        approvals_by_run=approvals_by_run,
+        local_exception_approvals_by_run=local_exception_approvals_by_run,
+    )
+
+
+def build_approval_feed(
+    store: SessionStore,
+    *,
+    status: str | None = None,
+) -> list[dict[str, Any]]:
+    approvals: list[dict[str, Any]] = []
+    standard_approvals = store.list_approvals(status)
+    local_exception_approvals = store.list_local_exception_approvals(status=status)
+    task_lookup = {task["id"]: task for task in store.list_tasks()}
+    for approval in standard_approvals:
+        task = task_lookup.get(approval.get("task_id")) if approval.get("task_id") else None
+        lane_key, lane_label = _approval_lane(approval)
+        approvals.append(
+            {
+                **approval,
+                "approval_lane": lane_key,
+                "approval_lane_label": lane_label,
+                "approval_status_label": _status_label(approval["status"]),
+                "project_name": task["project_name"] if task else None,
+                "project_label": _project_label(task["project_name"]) if task else None,
+                "task_title": task["title"] if task else None,
+                "task_status": task["status"] if task else None,
+                "approval_summary": approval.get("reason") or approval.get("decision_note") or "Approval pending.",
+            }
+        )
+    for approval in local_exception_approvals:
+        task = task_lookup.get(approval.get("task_id")) if approval.get("task_id") else None
+        approvals.append(_pending_approval_card(approval, task=task))
+    approvals.sort(key=lambda item: item.get("created_at") or "")
+    return approvals
 
 
 def _run_summary(run: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -55,15 +233,35 @@ def _run_summary(run: dict[str, Any] | None) -> dict[str, Any] | None:
 def _artifact_summary(artifact: dict[str, Any] | None) -> dict[str, Any] | None:
     if artifact is None:
         return None
+    produced_by = artifact.get("produced_by")
+    if produced_by is None:
+        produced_by = artifact.get("provider")
+    artifact_kind = artifact.get("artifact_kind") or artifact.get("kind")
     return {
         "id": artifact["id"],
-        "artifact_kind": artifact["kind"],
+        "artifact_kind": artifact_kind,
         "artifact_path": artifact.get("artifact_path"),
-        "produced_by": artifact.get("produced_by"),
+        "produced_by": produced_by,
         "created_at": artifact["created_at"],
         "artifact_sha256": artifact.get("artifact_sha256"),
         "run_id": artifact["run_id"],
+        "provider": artifact.get("provider"),
+        "prompt_summary": artifact.get("prompt_summary"),
+        "review_state": artifact.get("review_state"),
+        "selected_direction": artifact.get("selected_direction"),
+        "parent_visual_artifact_id": artifact.get("parent_visual_artifact_id"),
+        "lineage_root_visual_artifact_id": artifact.get("lineage_root_visual_artifact_id"),
+        "locked_base_visual_artifact_id": artifact.get("locked_base_visual_artifact_id"),
+        "edit_session_id": artifact.get("edit_session_id"),
     }
+
+
+def _artifact_sort_key(artifact: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(artifact.get("updated_at") or artifact.get("created_at") or ""),
+        str(artifact.get("created_at") or ""),
+        str(artifact.get("id") or ""),
+    )
 
 
 def _validation_summary(validation: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -86,12 +284,15 @@ def _task_card(
     milestone_lookup: dict[str, dict[str, Any]],
     board_column_lookup: dict[str, str],
     latest_run_lookup: dict[str, dict[str, Any]],
+    run_compliance_lookup: dict[str, dict[str, Any] | None],
     latest_artifact_lookup: dict[str, dict[str, Any]],
     latest_validation_lookup: dict[str, dict[str, Any]],
     store: SessionStore,
 ) -> dict[str, Any]:
     milestone = milestone_lookup.get(task.get("milestone_id"))
     board_column_key = store.task_board_column_key(task)
+    latest_run = latest_run_lookup.get(task["id"])
+    compliance_summary = run_compliance_lookup.get(latest_run["id"]) if latest_run else None
     return {
         "id": task["id"],
         "copy_text": task["id"],
@@ -119,9 +320,10 @@ def _task_card(
         "board_column_label": board_column_lookup[board_column_key],
         "secondary_state": _secondary_state(task),
         "gate_issues": store.task_gate_issues(task, target_status=task["status"]) if task["status"] in {"ready", "completed"} else [],
-        "latest_run": _run_summary(latest_run_lookup.get(task["id"])),
+        "latest_run": _run_summary(latest_run),
         "latest_artifact": _artifact_summary(latest_artifact_lookup.get(task["id"])),
         "latest_validation": _validation_summary(latest_validation_lookup.get(task["id"])),
+        "compliance_state": _decorate_task_compliance(task, run_compliance_summary=compliance_summary),
     }
 
 
@@ -179,6 +381,7 @@ def _milestone_cards(
                         "review_state": item.get("review_state"),
                         "latest_run": item.get("latest_run"),
                         "latest_artifact": item.get("latest_artifact"),
+                        "compliance_state": item.get("compliance_state"),
                     }
                     for item in items
                 ],
@@ -377,11 +580,19 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
     ]
 
     all_approvals = store.list_approvals()
+    all_local_exception_approvals = store.list_local_exception_approvals()
     if scoped_project is None:
         scoped_approvals = all_approvals
+        scoped_local_exception_approvals = all_local_exception_approvals
     else:
         scoped_approvals = _filter_for_project(
             all_approvals,
+            task_lookup=task_lookup,
+            run_lookup=run_lookup,
+            project_name=scoped_project,
+        )
+        scoped_local_exception_approvals = _filter_for_project(
+            all_local_exception_approvals,
             task_lookup=task_lookup,
             run_lookup=run_lookup,
             project_name=scoped_project,
@@ -391,9 +602,26 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
     all_artifacts: list[dict[str, Any]] = []
     all_validations: list[dict[str, Any]] = []
     latest_run_lookup: dict[str, dict[str, Any]] = {}
+    approvals_by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    local_exception_approvals_by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    run_compliance_lookup: dict[str, dict[str, Any]] = {}
+    compliance_records_by_run: dict[str, list[dict[str, Any]]] = {}
+
+    for approval in scoped_approvals:
+        approvals_by_run[approval["run_id"]].append(approval)
+    for approval in scoped_local_exception_approvals:
+        local_exception_approvals_by_run[approval["run_id"]].append(approval)
 
     for run in all_runs:
         latest_run_lookup.setdefault(run["task_id"], run)
+        compliance_records_by_run[run["id"]] = store.list_compliance_records(run["id"])
+        run_compliance_lookup[run["id"]] = _run_compliance_summary(
+            store=store,
+            run=run,
+            task=task_lookup.get(run["task_id"]),
+            approvals_by_run=approvals_by_run,
+            local_exception_approvals_by_run=local_exception_approvals_by_run,
+        )
 
         for agent_run in store.list_agent_runs(run["id"]):
             all_agent_runs.append(agent_run)
@@ -407,11 +635,21 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
             all_validations.append(validation)
             latest_run_lookup.setdefault(validation["task_id"], run)
 
-    all_artifacts.sort(key=lambda item: item["created_at"], reverse=True)
+    all_artifacts.sort(key=_artifact_sort_key, reverse=True)
     all_validations.sort(key=lambda item: item["created_at"], reverse=True)
     all_agent_runs.sort(key=lambda item: item["started_at"], reverse=True)
 
-    latest_artifact_lookup: dict[str, dict[str, Any]] = {}
+    all_visual_artifacts: list[dict[str, Any]] = []
+    latest_visual_artifact_lookup: dict[str, dict[str, Any]] = {}
+    for task in tasks:
+        task_visual_artifacts = store.list_visual_artifacts(task["project_name"], task_id=task["id"])
+        all_visual_artifacts.extend(task_visual_artifacts)
+        if task_visual_artifacts:
+            latest_visual_artifact_lookup[task["id"]] = task_visual_artifacts[-1]
+
+    all_visual_artifacts.sort(key=_artifact_sort_key, reverse=True)
+
+    latest_artifact_lookup: dict[str, dict[str, Any]] = dict(latest_visual_artifact_lookup)
     for artifact in all_artifacts:
         latest_artifact_lookup.setdefault(artifact["task_id"], artifact)
 
@@ -425,6 +663,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
             milestone_lookup=milestone_lookup,
             board_column_lookup=board_column_lookup,
             latest_run_lookup=latest_run_lookup,
+            run_compliance_lookup=run_compliance_lookup,
             latest_artifact_lookup=latest_artifact_lookup,
             latest_validation_lookup=latest_validation_lookup,
             store=store,
@@ -443,6 +682,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
         task = task_lookup.get(approval["task_id"]) if approval.get("task_id") else None
         if task:
             bridge_event = None
+            task_events: list[dict[str, Any]] = []
             if approval.get("run_id"):
                 task_events = store.list_messages(approval["run_id"], task_id=approval["task_id"])
                 bridge_event = next(
@@ -473,6 +713,10 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
             approvals.append(
                 {
                     **approval,
+                    "approval_id": approval["id"],
+                    "approval_lane": "delegated_work",
+                    "approval_lane_label": "Delegated Work",
+                    "approval_status_label": _status_label(approval["status"]),
                     "task_title": task["title"],
                     "task_status": task["status"],
                     "project_name": task["project_name"],
@@ -506,6 +750,22 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
                     else None,
                 }
             )
+        else:
+            approvals.append(_pending_approval_card(approval, task=None))
+
+    for approval in scoped_local_exception_approvals:
+        if approval["status"] != "pending":
+            continue
+        task = task_lookup.get(approval["task_id"]) if approval.get("task_id") else None
+        approvals.append(_pending_approval_card(approval, task=task))
+
+    approvals.sort(key=lambda item: item.get("created_at") or "")
+
+    all_compliance_records = [record for records in compliance_records_by_run.values() for record in records]
+    breach_records = [record for record in all_compliance_records if record["record_kind"] == "breach"]
+    local_exception_records = [record for record in all_compliance_records if record["record_kind"] == "local_exception_approved"]
+    compliant_records = [record for record in all_compliance_records if record["record_kind"] == "compliant_delegated_run"]
+    paused_breach_run_count = sum(1 for run in all_runs if run["status"] == "paused_breach")
 
     recent_agent_runs = all_agent_runs[:limit]
     for item in recent_agent_runs:
@@ -522,7 +782,23 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
         item["project_label"] = _project_label(task["project_name"]) if task else None
 
     artifacts: list[dict[str, Any]] = []
+    visual_artifact_task_ids = {artifact["task_id"] for artifact in all_visual_artifacts}
+    for artifact in all_visual_artifacts:
+        task = task_lookup.get(artifact["task_id"])
+        if task:
+            artifacts.append(
+                {
+                    **artifact,
+                    "kind": artifact.get("artifact_kind"),
+                    "produced_by": artifact.get("provider"),
+                    "task_title": task["title"],
+                    "project_name": task["project_name"],
+                    "project_label": _project_label(task["project_name"]),
+                }
+            )
     for artifact in all_artifacts:
+        if artifact["task_id"] in visual_artifact_task_ids:
+            continue
         task = task_lookup.get(artifact["task_id"])
         if task:
             artifacts.append(
@@ -533,6 +809,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
                     "project_label": _project_label(task["project_name"]),
                 }
             )
+    artifacts.sort(key=_artifact_sort_key, reverse=True)
     recent_artifacts = artifacts[:limit]
 
     decorated_runs = []
@@ -553,6 +830,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
         focus_run = {
             **evidence,
             "task_title": task_lookup.get(runs[0]["task_id"], {}).get("title", runs[0]["task_id"]),
+            "compliance": run_compliance_lookup.get(runs[0]["id"]),
         }
 
     planning_warnings: list[dict[str, Any]] = []
@@ -594,6 +872,12 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
         "validation_count": len(recent_validations),
         "artifact_count": len(recent_artifacts),
         "backup_count": len(backup_items),
+        "breach_count": len(breach_records),
+        "compliant_run_count": len(compliant_records),
+        "local_exception_count": len(local_exception_records),
+        "paused_breach_run_count": paused_breach_run_count,
+        "pending_delegated_approval_count": sum(1 for approval in approvals if approval["approval_lane"] == "delegated_work"),
+        "pending_local_exception_approval_count": sum(1 for approval in approvals if approval["approval_lane"] == "local_exception"),
         "status_counts": primary_status_counts,
         "secondary_state_counts": secondary_status_counts,
         "planning_warning_count": len(planning_warnings),
@@ -608,6 +892,14 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
         "canonical_store": str(store.paths.db_path),
         "available_views": ["board", "milestones", "orchestrator"],
         "summary": summary,
+        "compliance": {
+            "breach_count": len(breach_records),
+            "compliant_run_count": len(compliant_records),
+            "local_exception_approved_count": len(local_exception_records),
+            "paused_breach_run_count": paused_breach_run_count,
+            "pending_delegated_approvals": summary["pending_delegated_approval_count"],
+            "pending_local_exception_approvals": summary["pending_local_exception_approval_count"],
+        },
         "available_projects": available_projects,
         "project_rollup": project_rollup,
         "system_health": {
