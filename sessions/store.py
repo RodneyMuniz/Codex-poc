@@ -1200,7 +1200,7 @@ class SessionStore:
         sequence = _task_sequence_from_id(task_id, _task_id_aliases(project_name))
         if sequence is None:
             return task_id
-        return _format_task_id(_task_id_prefix(project_name), sequence)
+        return task_id
 
     def create_task(
         self,

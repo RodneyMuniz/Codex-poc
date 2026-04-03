@@ -17,6 +17,7 @@ dependencies = [
     "openai-agents>=0.12.4,<1",
     "pydantic>=2",
     "python-dotenv",
+    "PyYAML",
     "SQLAlchemy",
 ]
 
@@ -29,4 +30,4 @@ dev = [
 testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
-include = ["agents", "skills", "sessions"]
+include = ["agents", "skills", "sessions", "governance", "kanban", "memory", "wrappers"]

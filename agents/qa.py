@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from hooks import post_task, pre_task
 from agents.role_base import StudioRoleAgent
 from agents.schemas import QAReviewResult
 
@@ -11,6 +12,8 @@ class QAAgent(StudioRoleAgent):
         super().__init__(role_name="QA", model_role="qa", repo_root=repo_root, store=store, telemetry=telemetry)
         self.project_brief = project_brief
 
+    @pre_task("Review")
+    @post_task("Review")
     async def review_artifact(self, *, run_id: str, task: dict) -> QAReviewResult:
         issues: list[str] = []
         artifact_path = self.repo_root / task["expected_artifact_path"]

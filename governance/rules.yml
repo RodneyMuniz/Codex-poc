@@ -1,0 +1,46 @@
+roles:
+  orchestrator:
+    allowed_states: [Idea, Spec, Todo, Review]
+    tools: [api_responses_create, model_client.create, board.fetch_next_task, board.move_card]
+  prompt_specialist:
+    allowed_states: [Spec]
+    tools: [api_responses_create, model_client.create]
+  pm:
+    allowed_states: [Todo, In Progress, Review]
+    tools: [api_responses_create, model_client.create, read_project_brief, write_project_artifact]
+  architect:
+    allowed_states: [In Progress, Review]
+    tools: [api_responses_create, model_client.create, read_project_brief, write_project_artifact]
+  developer:
+    allowed_states: [In Progress, Review]
+    tools: [api_responses_create, model_client.create, read_project_brief, write_project_artifact]
+  design:
+    allowed_states: [In Progress, Review]
+    tools: [api_responses_create, model_client.create, read_project_brief, write_project_artifact]
+  qa:
+    allowed_states: [Review]
+    tools: [model_client.create]
+  apiexecutiontest:
+    allowed_states: [Idea, Spec, Todo, In Progress, Review, Done]
+    tools: [api_responses_create]
+  system:
+    allowed_states: [Idea, Spec, Todo, In Progress, Review, Done]
+    tools: [api_responses_create, model_client.create]
+
+transitions:
+  Idea: [Spec]
+  Spec: [Todo]
+  Todo: [In Progress]
+  In Progress: [Review]
+  Review: [Done]
+  Done: []
+
+forbidden_patterns:
+  - ignore previous instructions
+  - bypass policy
+  - disable governance
+  - rm -rf
+  - drop table
+
+consensus:
+  review_votes_required: 2
