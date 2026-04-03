@@ -44,6 +44,7 @@ REQUIRED_WORKER_MANIFEST_FIELDS = {
     "issued_at",
     "seal_sha256",
 }
+COMMAND_DENYLIST = ("pip install", "uv pip install", "npm install", "rm ", "del ", "remove-item", "curl ", "wget ", "invoke-webrequest", "http://", "https://")
 
 
 def _repo_root() -> Path:
@@ -96,6 +97,8 @@ def validate_worker_write_manifest(
         raise ValueError("Worker write manifest v1 supports only allowed_write_modes ['overwrite'].")
     if not isinstance(manifest["input_artifact_paths"], list):
         raise ValueError("Worker write manifest input_artifact_paths must be a list.")
+    if "allowed_tools" in manifest and not isinstance(manifest["allowed_tools"], list):
+        raise ValueError("Worker write manifest allowed_tools must be a list when present.")
     actual_seal = compute_worker_manifest_seal(manifest)
     if manifest["seal_sha256"] != actual_seal:
         raise ValueError("Worker write manifest seal_sha256 is invalid.")
@@ -114,6 +117,8 @@ def validate_worker_write_manifest(
     validated = dict(manifest)
     validated["allowed_write_paths"] = normalized_allowed_paths
     validated["expected_output_path"] = expected_path
+    if "allowed_tools" in manifest:
+        validated["allowed_tools"] = list(manifest.get("allowed_tools", []))
     return validated
 
 
@@ -187,6 +192,24 @@ def validate_project_artifact_path(relative_path: str, *, mode: str | None = Non
         "target_path": str(target_path),
         "artifacts_root": str(artifacts_root),
     }
+
+
+def validate_tool_access_from_manifest(tool_name: str, manifest: dict[str, Any] | None = None) -> None:
+    active_manifest = manifest or load_active_worker_write_manifest()
+    if active_manifest is None:
+        return
+    allowed_tools = {str(item).strip() for item in active_manifest.get("allowed_tools", [])}
+    if allowed_tools and tool_name not in allowed_tools:
+        raise ValueError(f"Tool {tool_name} is not allowed by the active worker manifest.")
+
+
+def enforce_command_policy(command: str, manifest: dict[str, Any] | None = None) -> None:
+    lowered = command.lower()
+    for token in COMMAND_DENYLIST:
+        if token in lowered:
+            active_manifest = manifest or load_active_worker_write_manifest()
+            if active_manifest is None or token.startswith(("pip", "uv", "npm", "rm", "del", "remove-item", "curl", "wget", "invoke-webrequest", "http", "https")):
+                raise ValueError(f"Command is not allowed by the active worker manifest: {token.strip()}")
 
 
 def _trim_lines(content: str, max_lines: int) -> tuple[str, bool]:

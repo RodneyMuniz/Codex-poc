@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from hooks import post_task, pre_task
 from agents.role_base import StudioRoleAgent
 from agents.schemas import DelegationPacket
 
@@ -10,6 +11,8 @@ class PromptSpecialistAgent(StudioRoleAgent):
     def __init__(self, *, repo_root: str | Path, store, telemetry) -> None:
         super().__init__(role_name="PromptSpecialist", model_role="prompt_specialist", repo_root=repo_root, store=store, telemetry=telemetry)
 
+    @pre_task("Spec")
+    @post_task("Spec")
     async def process_input(self, user_text: str, *, run_id: str | None = None, task_id: str | None = None) -> DelegationPacket:
         system_prompt = """
 You convert free-text studio lead requests into delegation packets.

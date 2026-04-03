@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 
 from agents.config import require_api_key, resolve_tier_channel, resolve_tier_model, resolve_tier_reasoning_effort
 from agents.cost_tracker import CostTracker
+from runtime import create_runtime
 from skills.tools import write_project_artifact
+from state_machine import default_state_for_role, determine_task_state
+from wrappers.llm_wrapper import llm_call
 
 
 class APIRouterError(RuntimeError):
@@ -64,6 +67,7 @@ class APIRouter:
     ) -> None:
         self.repo_root = Path(repo_root).resolve()
         self.client = client or OpenAI(api_key=require_api_key())
+        self.runtime = create_runtime("openai", client=self.client)
         self.cost_tracker = cost_tracker or CostTracker(repo_root=self.repo_root, store=store)
         self.max_retries = max_retries
 
@@ -165,16 +169,29 @@ class APIRouter:
         max_attempts = 1 if early_stop_mode == "single_pass_only" else retry_cap + 1
         for attempt in range(max_attempts):
             try:
-                response = self.client.responses.create(
-                    model=route["model"],
-                    input=[
+                response = llm_call(
+                    source,
+                    self._resolve_task_state(task_id=task_id, role=source),
+                    [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
-                    reasoning={"effort": route["reasoning_effort"]},
-                    metadata=request_metadata,
-                    background=use_background,
-                    store=True,
+                    tool_name="api_responses_create",
+                    repo_root=self.repo_root,
+                    metadata={
+                        "run_id": run_id,
+                        "task_id": task_id,
+                        "tier": tier,
+                        "lane": lane,
+                        "route_family": route_family,
+                    },
+                    invoke=lambda prepared_messages: self.runtime.invoke(
+                        model=route["model"],
+                        messages=prepared_messages,
+                        reasoning_effort=route["reasoning_effort"],
+                        metadata=request_metadata,
+                        background=use_background,
+                    ),
                 )
                 output_text = self._extract_output_text(response)
                 written_path = None
@@ -571,3 +588,11 @@ class APIRouter:
                 "reasoning_tokens": getattr(output_details, "reasoning_tokens", 0) if output_details is not None else 0,
             },
         }
+
+    def _resolve_task_state(self, *, task_id: str | None, role: str) -> str:
+        store = getattr(self.cost_tracker, "store", None)
+        if store is not None and task_id:
+            task = store.get_task(task_id)
+            if task is not None:
+                return determine_task_state(task)
+        return default_state_for_role(role)

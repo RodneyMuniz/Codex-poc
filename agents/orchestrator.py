@@ -23,7 +23,9 @@ from agents.schemas import (
     TierAssignment,
 )
 from agents.telemetry import TelemetryRecorder
+from kanban.board import KanbanBoard
 from sessions import SessionStore
+from state_machine import BOARD_STATE_IDEA, BOARD_STATE_IN_PROGRESS, BOARD_STATE_TODO
 
 
 SDK_PLANNING_LAYER = "deterministic_internal_helper"
@@ -41,6 +43,7 @@ class Orchestrator:
         load_environment(self.repo_root)
         self.runtime_mode = resolve_runtime_mode()
         self.store = SessionStore(self.repo_root)
+        self.board = KanbanBoard(self.repo_root, store=self.store)
         self.telemetry = TelemetryRecorder(self.repo_root)
         self.git = GitService(self.repo_root)
         self.prompt_specialist = PromptSpecialistAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry)
@@ -1268,6 +1271,7 @@ class Orchestrator:
                 task_kind="request",
                 priority="medium",
                 raw_request=user_text,
+                acceptance={"task_state": BOARD_STATE_IDEA},
             )
             preview_run = self.store.create_run(
                 project_name,
@@ -1523,6 +1527,7 @@ class Orchestrator:
             task_kind="request",
             priority=packet.priority,
             raw_request=user_text,
+            acceptance={"task_state": BOARD_STATE_IDEA},
         )
         self.telemetry.info(
             "task_intake",
@@ -1535,6 +1540,15 @@ class Orchestrator:
 
     def list_tasks(self, project_name: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
         return self.store.list_tasks(project_name, status=status)
+
+    def fetch_next_board_task(self, column_name: str = BOARD_STATE_TODO, *, project_name: str | None = None) -> dict[str, Any] | None:
+        return self.board.fetch_next_task(column_name, project_name=project_name)
+
+    def move_task_to_board_state(self, task_id: str, column_name: str) -> dict[str, Any]:
+        return self.board.move_task(task_id, column_name)
+
+    def record_review_vote(self, task_id: str, reviewer_role: str, approved: bool) -> dict[str, Any]:
+        return self.board.record_review_vote(task_id, reviewer_role, approved)
 
     def list_approvals(self, status: str | None = None) -> list[dict[str, Any]]:
         return self.store.list_approvals(status)
@@ -1613,9 +1627,17 @@ class Orchestrator:
         health = self.health_check()
         if not health["ok"]:
             return {"status": "health_check_failed", "issues": health["issues"]}
-        task = self.store.get_next_runnable_task(project_name)
+        task = self.board.fetch_next_task(BOARD_STATE_TODO, project_name=project_name)
+        if task is None:
+            candidate = self.store.get_next_runnable_task(project_name)
+            if candidate is not None and not ((candidate.get("acceptance") or {}).get("task_state")):
+                task = candidate
         if task is None:
             return {"status": "idle", "message": f"No backlog or ready tasks for {project_name}."}
+        acceptance = dict(task.get("acceptance") or {})
+        acceptance.setdefault("task_state", BOARD_STATE_IN_PROGRESS)
+        self.store.update_task(task["id"], acceptance=acceptance, status="in_progress")
+        task = self.store.get_task(task["id"]) or task
         run = self.store.create_run(
             project_name,
             task["id"],

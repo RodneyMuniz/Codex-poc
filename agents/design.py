@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from hooks import post_task, pre_task
 from agents.role_base import StudioRoleAgent
 from agents.schemas import ArtifactResult
 from skills.tools import write_project_artifact
@@ -12,6 +13,8 @@ class DesignAgent(StudioRoleAgent):
         super().__init__(role_name="Design", model_role="design", repo_root=repo_root, store=store, telemetry=telemetry)
         self.project_brief = project_brief
 
+    @pre_task("In Progress")
+    @post_task("In Progress")
     async def produce_artifact(
         self,
         *,

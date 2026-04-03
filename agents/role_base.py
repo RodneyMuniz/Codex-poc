@@ -14,6 +14,8 @@ from agents.config import create_model_client
 from agents.config import resolve_model
 from agents.config import role_floor_tier
 from agents.cost_tracker import CostTracker
+from state_machine import default_state_for_role, determine_task_state
+from wrappers.llm_wrapper import llm_call_async
 
 
 class DelegatedExecutionBypassError(BaseException):
@@ -73,11 +75,17 @@ class StudioRoleAgent:
                 usage_already_recorded=True,
             )
             return content
-        result = await self.model_client.create(
+        result = await llm_call_async(
+            self.role_name,
+            self._resolve_task_state(task_id),
             [
-                SystemMessage(content=system_prompt),
-                UserMessage(content=user_prompt, source="user"),
-            ]
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tool_name="model_client.create",
+            repo_root=self.repo_root,
+            metadata={"event_type": event_type, "task_id": task_id, "run_id": run_id},
+            invoke_async=lambda prepared_messages: self._model_client_create(prepared_messages),
         )
         content = self._normalize_content(result.content)
         self._record(
@@ -127,12 +135,17 @@ class StudioRoleAgent:
                 usage_already_recorded=True,
             )
             return parsed
-        result = await self.model_client.create(
+        result = await llm_call_async(
+            self.role_name,
+            self._resolve_task_state(task_id),
             [
-                SystemMessage(content=system_prompt),
-                UserMessage(content=user_prompt, source="user"),
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
             ],
-            json_output=schema,
+            tool_name="model_client.create",
+            repo_root=self.repo_root,
+            metadata={"event_type": event_type, "task_id": task_id, "run_id": run_id, "json_output": True},
+            invoke_async=lambda prepared_messages: self._model_client_create(prepared_messages, json_output=schema),
         )
         raw_content = self._normalize_content(result.content)
         try:
@@ -152,6 +165,19 @@ class StudioRoleAgent:
         if isinstance(content, str):
             return content.strip()
         return json.dumps(content, ensure_ascii=True, default=str)
+
+    async def _model_client_create(self, prepared_messages: list[dict[str, str]], json_output=None):
+        model_messages = []
+        for message in prepared_messages:
+            role = str(message.get("role") or "user").lower()
+            content = str(message.get("content") or "")
+            if role == "system":
+                model_messages.append(SystemMessage(content=content))
+            else:
+                model_messages.append(UserMessage(content=content, source=role))
+        if json_output is not None:
+            return await self.model_client.create(model_messages, json_output=json_output)
+        return await self.model_client.create(model_messages)
 
     def _get_api_router(self) -> APIRouter:
         if self._api_router is None:
@@ -206,6 +232,12 @@ class StudioRoleAgent:
         if isinstance(route_family, str) and route_family:
             return route_family
         return None
+
+    def _resolve_task_state(self, task_id: str | None) -> str:
+        task = self.store.get_task(task_id) if task_id else None
+        if task is not None:
+            return determine_task_state(task)
+        return default_state_for_role(self.role_name)
 
     def _resolve_authority_context(self, *, run_id: str | None, task_id: str | None) -> dict[str, Any]:
         task = self.store.get_task(task_id) if task_id else None
