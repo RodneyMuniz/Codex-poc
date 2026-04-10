@@ -4,17 +4,26 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from agents.config import routing_catalog
 from agents.orchestrator import Orchestrator, run_async
+from intake.ingress import dispatch_operator_request, preview_operator_request
 
 
 def _orchestrator() -> Orchestrator:
     return Orchestrator(ROOT)
+
+
+def _routing_catalog() -> dict[str, Any]:
+    try:
+        from agents.config import routing_catalog
+    except ImportError:
+        return {}
+    return routing_catalog()
 
 
 def main() -> None:
@@ -56,14 +65,14 @@ def main() -> None:
 
     try:
         if args.command == "preview":
-            payload = run_async(orchestrator.preview_request(args.project, args.text, args.clarification))
+            payload = run_async(preview_operator_request(orchestrator, args.project, args.text, args.clarification))
         elif args.command == "dispatch":
-            payload = run_async(orchestrator.dispatch_request(args.project, args.text, args.clarification))
+            payload = run_async(dispatch_operator_request(orchestrator, args.project, args.text, args.clarification))
             run_result = payload.get("run_result", {})
             run_id = run_result.get("run_id")
             if run_id:
                 payload["run_evidence"] = orchestrator.store.get_run_evidence(run_id)
-            payload["routing_catalog"] = routing_catalog()
+            payload["routing_catalog"] = _routing_catalog()
         elif args.command == "approve":
             payload = orchestrator.approve(args.approval_id, args.note)
         elif args.command == "approve-resume":
@@ -71,19 +80,19 @@ def main() -> None:
             run_id = payload.get("run_id")
             if run_id:
                 payload["run_evidence"] = orchestrator.store.get_run_evidence(run_id)
-            payload["routing_catalog"] = routing_catalog()
+            payload["routing_catalog"] = _routing_catalog()
         elif args.command == "reject":
             payload = orchestrator.reject(args.approval_id, args.note)
         elif args.command == "resume":
             payload = run_async(orchestrator.resume_run(args.run_id))
             run_id = payload.get("run_id") or args.run_id
             payload["run_evidence"] = orchestrator.store.get_run_evidence(run_id)
-            payload["routing_catalog"] = routing_catalog()
+            payload["routing_catalog"] = _routing_catalog()
         elif args.command == "run-details":
             payload = orchestrator.store.get_run_evidence(args.run_id)
-            payload["routing_catalog"] = routing_catalog()
+            payload["routing_catalog"] = _routing_catalog()
         else:
-            payload = {"routes": routing_catalog()}
+            payload = {"routes": _routing_catalog()}
     except Exception as exc:
         print(
             json.dumps(

@@ -11,10 +11,29 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agents.orchestrator import Orchestrator, run_async
+from intake.ingress import intake_operator_request
+from intake.models import TaskPacket
 
 
 def _orchestrator() -> Orchestrator:
     return Orchestrator()
+
+
+def _load_task_packet_file(task_packet_file: Path) -> TaskPacket:
+    try:
+        payload = json.loads(task_packet_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(
+            "TaskPacket file must contain valid JSON.",
+            param_hint="--task-packet-file",
+        ) from exc
+    try:
+        return TaskPacket.model_validate(payload)
+    except Exception as exc:
+        raise click.BadParameter(
+            f"TaskPacket file must contain a valid TaskPacket: {exc}",
+            param_hint="--task-packet-file",
+        ) from exc
 
 
 @click.group()
@@ -28,7 +47,7 @@ def cli() -> None:
 def request(text: tuple[str, ...], project_name: str) -> None:
     """Create a task from natural language input using the Prompt Specialist."""
     request_text = " ".join(text).strip()
-    click.echo(json.dumps(run_async(_orchestrator().intake_request(project_name, request_text)), indent=2))
+    click.echo(json.dumps(run_async(intake_operator_request(_orchestrator(), project_name, request_text)), indent=2))
 
 
 @cli.group()
@@ -42,7 +61,20 @@ def task() -> None:
 @click.option("--details", required=True)
 @click.option("--priority", default="medium", show_default=True)
 @click.option("--requires-approval/--no-requires-approval", default=False, show_default=True)
-def create_task(project_name: str, title: str, details: str, priority: str, requires_approval: bool) -> None:
+@click.option(
+    "--task-packet-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    required=True,
+)
+def create_task(
+    project_name: str,
+    title: str,
+    details: str,
+    priority: str,
+    requires_approval: bool,
+    task_packet_file: Path,
+) -> None:
+    task_packet = _load_task_packet_file(task_packet_file)
     task_record = _orchestrator().store.create_task(
         project_name,
         title,
@@ -51,6 +83,7 @@ def create_task(project_name: str, title: str, details: str, priority: str, requ
         priority=priority,
         requires_approval=requires_approval,
         owner_role="Orchestrator",
+        acceptance={"task_packet": task_packet.model_dump()},
     )
     click.echo(json.dumps(task_record, indent=2))
 

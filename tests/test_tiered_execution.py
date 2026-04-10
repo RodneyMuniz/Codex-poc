@@ -48,7 +48,13 @@ def test_small_task_routes_to_tier_3(tmp_path, monkeypatch):
         )
 
     orchestrator.prompt_specialist.process_input = _fake_process_input
-    preview = asyncio.run(orchestrator.preview_request("program-kanban", "Summarize the current backlog health."))
+    preview = asyncio.run(
+        orchestrator._preview_request_from_text(
+            "program-kanban",
+            "Summarize the current backlog health.",
+            explicitly_internal=True,
+        )
+    )
 
     assert preview["tier_assignment"]["tier"] == "tier_3_junior"
     assert preview["tier_assignment"]["execution_lane"] == "sync_api"
@@ -74,7 +80,13 @@ def test_medium_task_routes_to_tier_2(tmp_path, monkeypatch):
         )
 
     orchestrator.prompt_specialist.process_input = _fake_process_input
-    preview = asyncio.run(orchestrator.preview_request("program-kanban", "Implement a controlled approval packet surface."))
+    preview = asyncio.run(
+        orchestrator._preview_request_from_text(
+            "program-kanban",
+            "Implement a controlled approval packet surface.",
+            explicitly_internal=True,
+        )
+    )
 
     assert preview["tier_assignment"]["tier"] == "tier_2_mid"
     assert preview["tier_assignment"]["execution_lane"] == "background_api"
@@ -100,7 +112,13 @@ def test_ambiguous_task_routes_to_tier_1_and_requires_approval(tmp_path, monkeyp
         )
 
     orchestrator.prompt_specialist.process_input = _fake_process_input
-    preview = asyncio.run(orchestrator.preview_request("program-kanban", "Design the API-first hybrid execution model."))
+    preview = asyncio.run(
+        orchestrator._preview_request_from_text(
+            "program-kanban",
+            "Design the API-first hybrid execution model.",
+            explicitly_internal=True,
+        )
+    )
 
     assert preview["tier_assignment"]["tier"] == "tier_1_senior"
     assert preview["tier_assignment"]["execution_lane"] == "background_api"

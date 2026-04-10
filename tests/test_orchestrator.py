@@ -8,6 +8,8 @@ import pytest
 from agents.orchestrator import Orchestrator
 from agents.role_base import DelegatedExecutionBypassError
 from agents.schemas import DelegationPacket
+from intake.compiler import compile_task_packet
+from intake.gateway import classify_operator_request
 
 
 def _prepare_repo(tmp_path):
@@ -24,6 +26,10 @@ def _prepare_repo(tmp_path):
     (tmp_path / "memory" / "session_summaries.json").write_text("[]\n", encoding="utf-8")
     for name in ["prompt_specialist.py", "orchestrator.py", "pm.py", "architect.py", "developer.py", "design.py", "qa.py"]:
         (tmp_path / "agents" / name).write_text("# placeholder\n", encoding="utf-8")
+
+
+def _task_packet_for_request(text: str):
+    return compile_task_packet(classify_operator_request(text))
 
 
 def test_health_check_reports_required_assets(tmp_path, monkeypatch):
@@ -78,7 +84,13 @@ def test_preview_request_returns_route_preview_and_operator_brief(tmp_path, monk
 
     orchestrator.prompt_specialist.process_input = _fake_process_input
 
-    preview = asyncio.run(orchestrator.preview_request("program-kanban", "Restore the operator intake flow"))
+    preview = asyncio.run(
+        orchestrator._preview_request_from_text(
+            "program-kanban",
+            "Restore the operator intake flow",
+            explicitly_internal=True,
+        )
+    )
 
     assert preview["packet"]["objective"] == "Restore the operator intake flow"
     assert preview["route_preview"][0]["runtime_role"] == "PromptSpecialist"
@@ -106,7 +118,13 @@ def test_preview_request_adds_design_request_preview_for_visual_requests(tmp_pat
 
     orchestrator.prompt_specialist.process_input = _fake_process_input
 
-    preview = asyncio.run(orchestrator.preview_request("program-kanban", "Design the first battle board concept"))
+    preview = asyncio.run(
+        orchestrator._preview_request_from_text(
+            "program-kanban",
+            "Design the first battle board concept",
+            explicitly_internal=True,
+        )
+    )
 
     assert preview["design_request_preview"] is not None
     assert preview["clarification_gate"]["questions"] == preview["design_request_preview"]["open_questions"]
@@ -141,13 +159,19 @@ def test_dispatch_request_creates_pre_dispatch_backup(tmp_path, monkeypatch):
             risks=["A pre-dispatch backup should exist before the run starts."],
         )
 
-    async def _fake_start_task(task_id: str, *, preview_payload=None, backup_info=None):
+    async def _fake_start_task(task_id: str, *, preview_payload=None, backup_info=None, task_packet=None):
         return {"status": "paused_approval", "run_id": "run_test", "task_id": task_id, "dispatch_backup": backup_info}
 
     orchestrator.prompt_specialist.process_input = _fake_process_input
     monkeypatch.setattr(orchestrator, "start_task", _fake_start_task)
 
-    result = asyncio.run(orchestrator.dispatch_request("tactics-game", "Build a safe operator dispatch"))
+    result = asyncio.run(
+        orchestrator._dispatch_request_from_text(
+            "tactics-game",
+            "Build a safe operator dispatch",
+            explicitly_internal=True,
+        )
+    )
 
     backup = result["dispatch_backup"]
     assert isinstance(backup, dict)
@@ -179,7 +203,13 @@ def test_dispatch_request_persists_design_request_preview_in_acceptance(tmp_path
     orchestrator.prompt_specialist.process_input = _fake_process_input
     monkeypatch.setattr(orchestrator, "start_task", _unexpected_start)
 
-    result = asyncio.run(orchestrator.dispatch_request("program-kanban", "Design the first control-room gallery screen"))
+    result = asyncio.run(
+        orchestrator._dispatch_request_from_text(
+            "program-kanban",
+            "Design the first control-room gallery screen",
+            explicitly_internal=True,
+        )
+    )
     task = orchestrator.store.get_task(result["task"]["id"])
 
     assert task is not None
@@ -260,6 +290,7 @@ def test_resume_run_preserves_context_receipt_after_standard_approval(tmp_path, 
                     "assumptions": ["Keep the original continuity frame."],
                 }
             },
+            task_packet=_task_packet_for_request("Implement the receipt resume flow"),
         )
     )
 
@@ -276,7 +307,7 @@ def test_resume_run_preserves_context_receipt_after_standard_approval(tmp_path, 
     assert receipt["resume_conditions"] == ["Review the recorded run evidence before opening the next lane."]
 
 
-def test_dispatch_request_executes_direct_task_move_for_referenced_board_item(tmp_path, monkeypatch):
+def test_dispatch_request_blocks_direct_task_move_for_referenced_board_item_via_gateway(tmp_path, monkeypatch):
     _prepare_repo(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -295,27 +326,31 @@ def test_dispatch_request_executes_direct_task_move_for_referenced_board_item(tm
         review_state="In Review",
     )
 
+    async def _unexpected(*args, **kwargs):
+        raise AssertionError("Prompt specialist should not run when the gateway rejects the request.")
+
+    orchestrator.prompt_specialist.process_input = _unexpected
+
     result = asyncio.run(
-        orchestrator.dispatch_request(
+        orchestrator._dispatch_request_from_text(
             "program-kanban",
             "hi, please move back TG-098 to in progress, as i cant really see the outcome of the task from the build.",
+            explicitly_internal=True,
         )
     )
 
     moved_task = orchestrator.store.get_task("TG-098")
 
-    assert result["preview"]["project_name"] == "tactics-game"
-    assert result["preview"]["operator_action"]["action_type"] == "move_task_status"
-    assert len(result["preview"]["route_preview"]) == 1
-    assert result["task"]["project_name"] == "tactics-game"
-    assert result["run_result"]["run_status"] == "completed"
-    assert result["run_result"]["target_task_id"] == "TG-098"
+    assert result["gateway_decision"]["decision"] == "REJECT"
+    assert result["run_result"]["run_status"] == "not_routed"
+    assert result["task"] is None
+    assert result["dispatch_backup"] is None
     assert moved_task is not None
-    assert moved_task["status"] == "in_progress"
-    assert moved_task["review_state"] == "Revision Needed"
+    assert moved_task["status"] == "in_review"
+    assert moved_task["review_state"] == "In Review"
 
 
-def test_direct_board_action_run_evidence_stays_deterministic_without_approval_pause(tmp_path, monkeypatch):
+def test_dispatch_request_does_not_create_run_for_gateway_rejected_board_action(tmp_path, monkeypatch):
     _prepare_repo(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -335,23 +370,20 @@ def test_direct_board_action_run_evidence_stays_deterministic_without_approval_p
     )
 
     result = asyncio.run(
-        orchestrator.dispatch_request(
+        orchestrator._dispatch_request_from_text(
             "program-kanban",
             "please move TG-099 back to in progress because the deterministic board action should stay local",
+            explicitly_internal=True,
         )
     )
 
-    evidence = orchestrator.get_run_evidence(result["run_result"]["run_id"])
-
-    assert result["run_result"]["run_status"] == "completed"
-    assert evidence["run"]["stop_reason"] == "direct_board_action"
-    assert evidence["approvals"] == []
-    assert evidence["worker_dispatch"] is None
-    assert evidence["context_receipt"]["resume_conditions"] == ["Direct board action completed locally."]
-    assert evidence["context_receipt"]["next_reviewer"] == "Operator"
+    assert result["gateway_decision"]["decision"] == "REJECT"
+    assert result["run_result"]["run_status"] == "not_routed"
+    assert result["run_result"].get("run_id") is None
+    assert orchestrator.store.list_runs() == []
 
 
-def test_preview_request_bypasses_prompt_specialist_for_direct_board_actions(tmp_path, monkeypatch):
+def test_preview_request_rejects_direct_board_actions_before_prompt_specialist(tmp_path, monkeypatch):
     _prepare_repo(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -375,11 +407,17 @@ def test_preview_request_bypasses_prompt_specialist_for_direct_board_actions(tmp
 
     orchestrator.prompt_specialist.process_input = _unexpected
 
-    preview = asyncio.run(orchestrator.preview_request("program-kanban", "please move PK-999 back to in progress"))
+    preview = asyncio.run(
+        orchestrator._preview_request_from_text(
+            "program-kanban",
+            "please move PK-999 back to in progress",
+            explicitly_internal=True,
+        )
+    )
 
-    assert preview["operator_action"]["target_task_id"] == "PK-999"
-    assert preview["execution_runtime"]["mode"] == "deterministic"
-    assert preview["route_preview"][0]["runtime_role"] == "Orchestrator"
+    assert preview["gateway_decision"]["decision"] == "REJECT"
+    assert preview["execution_runtime"]["mode"] == "blocked"
+    assert preview["route_preview"] == []
 
 
 def test_execute_run_selects_sdk_specialist_runtime_without_second_orchestrator(tmp_path, monkeypatch):
@@ -396,6 +434,7 @@ def test_execute_run_selects_sdk_specialist_runtime_without_second_orchestrator(
         "Verify the SDK specialist runtime is selected without a second orchestrator.",
         objective="Use SDK specialists while keeping orchestration deterministic.",
         requires_approval=False,
+        acceptance={"task_packet": _task_packet_for_request("Implement the SDK specialist runtime path").model_dump()},
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
     captured: dict[str, str] = {}
@@ -456,6 +495,7 @@ def test_start_task_seeds_context_receipt_from_preview_packet(tmp_path, monkeypa
                     "assumptions": ["Keep continuity in the canonical run state."],
                 }
             },
+            task_packet=_task_packet_for_request("Implement the continuity receipt kickoff"),
         )
     )
 
@@ -510,6 +550,7 @@ def test_start_task_fails_closed_when_prompt_specialist_tracked_request_lacks_ap
                         "open_questions": ["What visual direction or references should guide the first pass?"],
                     },
                 },
+                task_packet=_task_packet_for_request("Design the control-room preview flow"),
             )
         )
 
@@ -556,6 +597,7 @@ def test_start_task_resolves_program_milestone_before_execution(tmp_path, monkey
                 "entry_goal": "Capture visual requests through a reviewable preview packet.",
                 "exit_goal": "Preview-driven design requests can start with clear evidence and review gates.",
             },
+            task_packet=_task_packet_for_request("Implement the preview milestone binding"),
         )
     )
 
@@ -578,6 +620,11 @@ def test_execute_run_records_compliant_delegated_completion_once(tmp_path, monke
         "Delegated completion",
         "Verify a successful delegated run writes one compliance ledger row.",
         objective="Verify a successful delegated run writes one compliance ledger row.",
+        acceptance={
+            "task_packet": _task_packet_for_request(
+                "Verify a successful delegated run writes one compliance ledger row."
+            ).model_dump()
+        },
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
 
@@ -606,6 +653,7 @@ def test_execute_run_pauses_immediately_on_budget_breach(tmp_path, monkeypatch):
         "Budget breach",
         "Verify the orchestrator pauses on a budget violation.",
         objective="Verify the orchestrator pauses on a budget violation.",
+        acceptance={"task_packet": _task_packet_for_request("Verify the orchestrator pauses on a budget violation.").model_dump()},
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
 
@@ -653,6 +701,11 @@ def test_approve_and_resume_records_local_exception_separately(tmp_path, monkeyp
         "Local exception",
         "Verify local exception approvals resume distinctly from delegated runs.",
         objective="Verify local exception approvals resume distinctly from delegated runs.",
+        acceptance={
+            "task_packet": _task_packet_for_request(
+                "Verify local exception approvals resume distinctly from delegated runs."
+            ).model_dump()
+        },
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
     approval = orchestrator.store.create_approval(
@@ -734,6 +787,11 @@ def test_repeated_breach_after_resume_records_a_second_breach_immutably(tmp_path
         "Repeated breach",
         "Verify a resumed breached run can record another independent breach.",
         objective="Verify a resumed breached run can record another independent breach.",
+        acceptance={
+            "task_packet": _task_packet_for_request(
+                "Verify a resumed breached run can record another independent breach."
+            ).model_dump()
+        },
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
     breach_results = iter(
@@ -798,6 +856,11 @@ def test_rejecting_breach_pause_cancels_run_without_local_exception_record(tmp_p
         "Rejected breach",
         "Verify rejecting the breach pause cancels the run cleanly.",
         objective="Verify rejecting the breach pause cancels the run cleanly.",
+        acceptance={
+            "task_packet": _task_packet_for_request(
+                "Verify rejecting the breach pause cancels the run cleanly."
+            ).model_dump()
+        },
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
 
@@ -841,6 +904,11 @@ def test_execute_run_escalates_worker_boundary_failures_to_blocked_parent_state(
         "Boundary violation",
         "Verify worker boundary failures block the parent run with preserved evidence.",
         objective="Verify worker boundary failures block the parent run with preserved evidence.",
+        acceptance={
+            "task_packet": _task_packet_for_request(
+                "Implement worker boundary failure propagation"
+            ).model_dump()
+        },
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
 
@@ -907,6 +975,7 @@ def test_restore_then_resume_preserves_context_receipt_continuity(tmp_path, monk
                     "assumptions": ["Keep the original restore-safe continuity frame."],
                 }
             },
+            task_packet=_task_packet_for_request("Implement the restore-safe approval resume flow"),
         )
     )
     original_receipt = orchestrator.store.load_context_receipt(paused["run_id"])
@@ -954,3 +1023,126 @@ def test_restore_then_resume_preserves_context_receipt_continuity(tmp_path, monk
     assert evidence["context_receipt"]["accepted_assumptions"] == [
         "Keep the original restore-safe continuity frame."
     ]
+
+
+def test_start_task_rejects_preview_payload_without_task_packet(tmp_path, monkeypatch):
+    _prepare_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _DummyClient())
+
+    orchestrator = Orchestrator(tmp_path)
+    task = orchestrator.store.create_task(
+        "tactics-game",
+        "Preview-only start",
+        "Execution should fail closed when only preview metadata is available.",
+        objective="Execution should fail closed when only preview metadata is available.",
+    )
+
+    with pytest.raises(RuntimeError, match="Execution requires validated TaskPacket"):
+        asyncio.run(
+            orchestrator.start_task(
+                task["id"],
+                preview_payload={
+                    "packet": {
+                        "objective": task["objective"],
+                        "details": task["details"],
+                        "assumptions": [],
+                    }
+                },
+            )
+        )
+
+
+def test_run_next_task_rejects_missing_task_packet(tmp_path, monkeypatch):
+    _prepare_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _DummyClient())
+
+    orchestrator = Orchestrator(tmp_path)
+    orchestrator.store.create_task(
+        "tactics-game",
+        "Legacy queued task",
+        "Queued execution must fail closed without a TaskPacket.",
+        objective="Queued execution must fail closed without a TaskPacket.",
+    )
+
+    with pytest.raises(RuntimeError, match="Execution requires validated TaskPacket"):
+        asyncio.run(orchestrator.run_next_task("tactics-game"))
+
+
+def test_run_next_task_executes_with_stored_task_packet(tmp_path, monkeypatch):
+    _prepare_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _DummyClient())
+
+    orchestrator = Orchestrator(tmp_path)
+    task_packet = _task_packet_for_request("Implement the queued task packet gate")
+    task = orchestrator.store.create_task(
+        "tactics-game",
+        "Queued packeted task",
+        "Queued execution should proceed with a stored TaskPacket.",
+        objective="Queued execution should proceed with a stored TaskPacket.",
+        acceptance={"task_packet": task_packet.model_dump()},
+    )
+    captured: dict[str, str] = {}
+
+    async def _fake_execute_run(run_id: str, task: dict, *, local_exception_approval=None):
+        captured["run_id"] = run_id
+        captured["task_id"] = task["id"]
+        return {"status": "completed", "run_status": "completed", "run_id": run_id, "task_id": task["id"]}
+
+    monkeypatch.setattr(orchestrator, "_execute_run", _fake_execute_run)
+
+    result = asyncio.run(orchestrator.run_next_task("tactics-game"))
+
+    assert result["run_status"] == "completed"
+    assert captured["task_id"] == task["id"]
+
+
+def test_resume_run_rejects_missing_task_packet(tmp_path, monkeypatch):
+    _prepare_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _DummyClient())
+
+    orchestrator = Orchestrator(tmp_path)
+    task = orchestrator.store.create_task(
+        "tactics-game",
+        "Legacy paused run",
+        "Resume must fail closed without a TaskPacket.",
+        objective="Resume must fail closed without a TaskPacket.",
+        requires_approval=True,
+    )
+    run = orchestrator.store.create_run("tactics-game", task["id"])
+    approval = orchestrator.store.create_approval(run["id"], task["id"], requested_by="Orchestrator", reason=task["objective"])
+    orchestrator.store.update_run(run["id"], status="paused_approval", stop_reason="awaiting_operator_approval")
+    orchestrator.approve(approval["id"], "Proceed.")
+
+    with pytest.raises(RuntimeError, match="Execution requires validated TaskPacket"):
+        asyncio.run(orchestrator.resume_run(run["id"]))
+
+    refreshed_run = orchestrator.store.get_run(run["id"])
+    assert refreshed_run is not None
+    assert refreshed_run["status"] == "paused_approval"
+
+
+def test_execute_run_rejects_missing_task_packet(tmp_path, monkeypatch):
+    _prepare_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _DummyClient())
+
+    orchestrator = Orchestrator(tmp_path)
+    task = orchestrator.store.create_task(
+        "tactics-game",
+        "Legacy execute run",
+        "Internal execution must fail closed without a TaskPacket.",
+        objective="Internal execution must fail closed without a TaskPacket.",
+    )
+    run = orchestrator.store.create_run("tactics-game", task["id"])
+
+    with pytest.raises(RuntimeError, match="Execution requires validated TaskPacket"):
+        asyncio.run(orchestrator._execute_run(run["id"], task))

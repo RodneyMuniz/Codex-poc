@@ -17,6 +17,7 @@ from agents.design import DesignAgent
 from agents.qa import QAAgent
 from agents.role_base import StudioRoleAgent
 from agents.schemas import AcceptanceCriteria, ArtifactResult, DeliverableContract, PlanSummary, QAReviewResult, SubtaskPlan
+from intake.models import TaskPacket
 from skills.tools import WORKER_WRITE_MANIFEST_ENV, compute_worker_manifest_seal
 
 WORKER_MANIFEST_ENV = WORKER_WRITE_MANIFEST_ENV
@@ -41,6 +42,68 @@ class ProjectManagerAgent(StudioRoleAgent):
         self.developer = developer
         self.design = design
         self.qa = qa
+
+    def _load_task_packet(self, raw_packet: Any) -> TaskPacket | None:
+        if raw_packet is None:
+            return None
+        try:
+            return TaskPacket.model_validate(raw_packet)
+        except Exception as exc:
+            raise RuntimeError(f"Invalid TaskPacket contract: {exc}") from exc
+
+    def _task_packet_for_task(self, task: dict[str, Any]) -> TaskPacket | None:
+        acceptance = task.get("acceptance") or {}
+        return self._load_task_packet(acceptance.get("task_packet"))
+
+    def _task_packet_for_subtask(self, subtask: dict[str, Any]) -> TaskPacket | None:
+        acceptance = subtask.get("acceptance") or {}
+        direct_packet = self._load_task_packet(acceptance.get("task_packet"))
+        if direct_packet is not None:
+            return direct_packet
+        parent_id = subtask.get("parent_task_id")
+        parent_task = self.store.get_task(parent_id) if parent_id else None
+        if parent_task is None:
+            return None
+        return self._task_packet_for_task(parent_task)
+
+    def _task_packet_budget_total(self, task_packet: TaskPacket) -> int:
+        return int(task_packet.token_budget.max_prompt_tokens + task_packet.token_budget.max_completion_tokens)
+
+    def _task_packet_early_stop_rule(self, task_packet: TaskPacket) -> str:
+        return "single_pass_only" if task_packet.token_budget.max_retries == 0 else "stop_on_first_success"
+
+    def _inherit_task_packet_acceptance(self, acceptance: dict[str, Any], task_packet: TaskPacket | None) -> dict[str, Any]:
+        merged = dict(acceptance)
+        if task_packet is None:
+            return merged
+        merged["task_packet"] = task_packet.model_dump()
+        merged["budget_max_tokens"] = self._task_packet_budget_total(task_packet)
+        merged["retry_limit"] = int(task_packet.token_budget.max_retries)
+        merged["early_stop_rule"] = self._task_packet_early_stop_rule(task_packet)
+        return merged
+
+    def _require_task_packet_role(self, subtask: dict[str, Any], task_packet: TaskPacket | None) -> None:
+        if task_packet is None:
+            return
+        role = str(subtask["owner_role"])
+        if role not in task_packet.allowed_roles:
+            raise RuntimeError(f"TaskPacket disallows role: {role}")
+
+    def _resolve_manifest_allowed_tools(self, subtask: dict[str, Any], task_packet: TaskPacket | None) -> list[str]:
+        tools = [str(item).strip() for item in (subtask.get("acceptance") or {}).get("allowed_tools", []) if str(item).strip()]
+        if task_packet is None:
+            return tools
+        allowed = set(task_packet.allowed_tools)
+        disallowed = [tool for tool in tools if tool not in allowed]
+        if disallowed:
+            raise RuntimeError(f"TaskPacket disallows tool: {disallowed[0]}")
+        return [tool for tool in tools if tool in allowed]
+
+    def _subtask_attempt_limit(self, subtask: dict[str, Any]) -> int:
+        task_packet = self._task_packet_for_subtask(subtask)
+        if task_packet is None:
+            return 2
+        return int(task_packet.token_budget.max_retries) + 1
 
     async def execute_request(self, *, run_id: str, task: dict) -> dict:
         self.store.update_task(task["id"], status="ready", owner_role="PM")
@@ -172,7 +235,8 @@ class ProjectManagerAgent(StudioRoleAgent):
         )
 
     def _create_subtask(self, parent_task: dict, plan: SubtaskPlan) -> dict:
-        acceptance = plan.acceptance.model_dump()
+        parent_task_packet = self._task_packet_for_task(parent_task)
+        acceptance = self._inherit_task_packet_acceptance(plan.acceptance.model_dump(), parent_task_packet)
         acceptance["deliverable_type"] = plan.deliverable_type
         acceptance["allowed_tools"] = list(plan.allowed_tools)
         acceptance["assigned_tier"] = plan.assigned_tier
@@ -194,11 +258,14 @@ class ProjectManagerAgent(StudioRoleAgent):
 
     async def _run_subtask(self, *, run_id: str, subtask: dict) -> dict:
         assignee = subtask["owner_role"]
+        task_packet = self._task_packet_for_subtask(subtask)
+        self._require_task_packet_role(subtask, task_packet)
+        self._resolve_manifest_allowed_tools(subtask, task_packet)
         if self._requires_dispatch_approval(subtask) and not self._dispatch_approval_ready(subtask):
             return self._pause_for_dispatch_approval(run_id=run_id, subtask=subtask)
         correction_notes: str | None = None
 
-        for attempt in range(2):
+        for attempt in range(self._subtask_attempt_limit(subtask)):
             self.store.update_task(subtask["id"], status="ready", owner_role="PM")
             self.store.record_delegation(run_id, subtask["id"], from_role="PM", to_role=assignee, note=subtask["objective"])
             self.store.update_task(subtask["id"], status="in_progress", owner_role=assignee)
@@ -294,6 +361,9 @@ class ProjectManagerAgent(StudioRoleAgent):
 
     def _build_write_manifest(self, *, run_id: str, subtask: dict[str, Any], correction_notes: str | None) -> dict[str, Any]:
         expected_output_path = subtask["expected_artifact_path"]
+        task_packet = self._task_packet_for_subtask(subtask)
+        self._require_task_packet_role(subtask, task_packet)
+        allowed_tools = self._resolve_manifest_allowed_tools(subtask, task_packet)
         manifest = {
             "manifest_version": 1,
             "execution_mode": "worker_only",
@@ -307,7 +377,7 @@ class ProjectManagerAgent(StudioRoleAgent):
             "allowed_write_paths": [expected_output_path],
             "allowed_write_modes": ["overwrite"],
             "input_artifact_paths": self._manifest_input_artifact_paths(subtask, correction_notes),
-            "allowed_tools": list((subtask.get("acceptance") or {}).get("allowed_tools", [])),
+            "allowed_tools": allowed_tools,
             "issued_by": "PM",
             "issued_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
@@ -488,6 +558,7 @@ class ProjectManagerAgent(StudioRoleAgent):
 
     def _pause_for_dispatch_approval(self, *, run_id: str, subtask: dict[str, Any]) -> dict[str, Any]:
         assignee = subtask["owner_role"]
+        allowed_tools = self._resolve_manifest_allowed_tools(subtask, self._task_packet_for_subtask(subtask))
         reason = subtask["objective"]
         approval = self.store.create_approval(
             run_id,
@@ -511,7 +582,7 @@ class ProjectManagerAgent(StudioRoleAgent):
             run_id,
             {
                 "active_lane": subtask["id"],
-                "allowed_tools": list((subtask.get("acceptance") or {}).get("allowed_tools", [])),
+                "allowed_tools": allowed_tools,
                 "allowed_paths": [subtask["expected_artifact_path"]] if subtask.get("expected_artifact_path") else [],
                 "expected_output": subtask.get("expected_artifact_path"),
                 "next_reviewer": "Operator",

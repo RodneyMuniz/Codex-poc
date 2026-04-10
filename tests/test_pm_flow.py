@@ -4,9 +4,13 @@ import asyncio
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from agents.pm import ProjectManagerAgent
 from agents.schemas import QAReviewResult
 from agents.telemetry import TelemetryRecorder
+from intake.compiler import compile_task_packet
+from intake.gateway import classify_operator_request
 from sessions import SessionStore
 from skills.tools import WORKER_WRITE_MANIFEST_ENV, require_worker_write_manifest
 
@@ -513,3 +517,53 @@ def test_pm_worker_manifest_matches_tools_consumer_contract(tmp_path, monkeypatc
     assert result["artifact_path"] == subtask["expected_artifact_path"]
     assert validated["expected_output_path"] == subtask["expected_artifact_path"]
     assert validated["allowed_tools"] == ["read_project_brief", "write_project_artifact"]
+
+
+def test_pm_rejects_subtask_role_not_allowed_by_task_packet(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    pm = _pm(repo_root, monkeypatch)
+    store = pm.store
+
+    packet = compile_task_packet(classify_operator_request("Implement the gateway"))
+    narrowed_packet = {
+        **packet.model_dump(),
+        "allowed_roles": ["Orchestrator", "PromptSpecialist", "PM", "Developer", "Design", "QA"],
+    }
+    parent = store.create_task(
+        "program-kanban",
+        "Architecture request",
+        "Define the architecture contract",
+        objective="Define the architecture contract",
+        acceptance={"task_packet": narrowed_packet},
+    )
+    run = store.create_run("program-kanban", parent["id"])
+    architect_plan = pm._build_plan(parent).subtasks[0]
+    subtask = pm._create_subtask(parent, architect_plan)
+
+    with pytest.raises(RuntimeError, match="TaskPacket disallows role: Architect"):
+        asyncio.run(pm._run_subtask(run_id=run["id"], subtask=subtask))
+
+
+def test_pm_rejects_subtask_tool_not_allowed_by_task_packet(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    pm = _pm(repo_root, monkeypatch)
+    store = pm.store
+
+    packet = compile_task_packet(classify_operator_request("Implement the gateway"))
+    narrowed_packet = {
+        **packet.model_dump(),
+        "allowed_tools": ["model_client.create", "api_responses_create"],
+    }
+    parent = store.create_task(
+        "program-kanban",
+        "Architecture request",
+        "Define the architecture contract",
+        objective="Define the architecture contract",
+        acceptance={"task_packet": narrowed_packet},
+    )
+    run = store.create_run("program-kanban", parent["id"])
+    architect_plan = pm._build_plan(parent).subtasks[0]
+    subtask = pm._create_subtask(parent, architect_plan)
+
+    with pytest.raises(RuntimeError, match="TaskPacket disallows tool: read_project_brief"):
+        asyncio.run(pm._run_subtask(run_id=run["id"], subtask=subtask))

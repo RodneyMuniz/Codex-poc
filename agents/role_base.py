@@ -14,6 +14,7 @@ from agents.config import create_model_client
 from agents.config import resolve_model
 from agents.config import role_floor_tier
 from agents.cost_tracker import CostTracker
+from intake.models import TaskPacket
 from state_machine import default_state_for_role, determine_task_state
 from wrappers.llm_wrapper import llm_call_async
 
@@ -46,6 +47,8 @@ class StudioRoleAgent:
         task_id: str | None = None,
         event_type: str = "agent_text",
     ) -> str:
+        direct_tool_name = "api_responses_create" if self._delegated_work_requested(run_id=run_id, task_id=task_id) else "model_client.create"
+        task_packet = self._enforce_task_packet_contract(task_id=task_id, tool_name=direct_tool_name)
         if self._delegated_work_requested(run_id=run_id, task_id=task_id):
             self._assert_api_router_authority(run_id=run_id, task_id=task_id)
             authority = self._resolve_authority_context(run_id=run_id, task_id=task_id)
@@ -84,7 +87,12 @@ class StudioRoleAgent:
             ],
             tool_name="model_client.create",
             repo_root=self.repo_root,
-            metadata={"event_type": event_type, "task_id": task_id, "run_id": run_id},
+            metadata={
+                "event_type": event_type,
+                "task_id": task_id,
+                "run_id": run_id,
+                **self._task_packet_metadata(task_packet),
+            },
             invoke_async=lambda prepared_messages: self._model_client_create(prepared_messages),
         )
         content = self._normalize_content(result.content)
@@ -107,6 +115,8 @@ class StudioRoleAgent:
         task_id: str | None = None,
         event_type: str = "agent_json",
     ):
+        direct_tool_name = "api_responses_create" if self._delegated_work_requested(run_id=run_id, task_id=task_id) else "model_client.create"
+        task_packet = self._enforce_task_packet_contract(task_id=task_id, tool_name=direct_tool_name)
         if self._delegated_work_requested(run_id=run_id, task_id=task_id):
             self._assert_api_router_authority(run_id=run_id, task_id=task_id)
             authority = self._resolve_authority_context(run_id=run_id, task_id=task_id)
@@ -144,7 +154,13 @@ class StudioRoleAgent:
             ],
             tool_name="model_client.create",
             repo_root=self.repo_root,
-            metadata={"event_type": event_type, "task_id": task_id, "run_id": run_id, "json_output": True},
+            metadata={
+                "event_type": event_type,
+                "task_id": task_id,
+                "run_id": run_id,
+                "json_output": True,
+                **self._task_packet_metadata(task_packet),
+            },
             invoke_async=lambda prepared_messages: self._model_client_create(prepared_messages, json_output=schema),
         )
         raw_content = self._normalize_content(result.content)
@@ -165,6 +181,35 @@ class StudioRoleAgent:
         if isinstance(content, str):
             return content.strip()
         return json.dumps(content, ensure_ascii=True, default=str)
+
+    def _load_task_packet(self, task_id: str | None) -> TaskPacket | None:
+        task = self.store.get_task(task_id) if task_id else None
+        acceptance = (task or {}).get("acceptance") or {}
+        raw_packet = acceptance.get("task_packet")
+        if raw_packet is None:
+            return None
+        try:
+            return TaskPacket.model_validate(raw_packet)
+        except Exception as exc:
+            raise RuntimeError(f"Invalid TaskPacket contract for {task_id}: {exc}") from exc
+
+    def _enforce_task_packet_contract(self, *, task_id: str | None, tool_name: str) -> TaskPacket | None:
+        task_packet = self._load_task_packet(task_id)
+        if task_packet is None:
+            return None
+        if self.role_name not in task_packet.allowed_roles:
+            raise RuntimeError(f"TaskPacket disallows role: {self.role_name}")
+        if tool_name not in task_packet.allowed_tools:
+            raise RuntimeError(f"TaskPacket disallows tool: {tool_name}")
+        return task_packet
+
+    def _task_packet_metadata(self, task_packet: TaskPacket | None) -> dict[str, Any]:
+        if task_packet is None:
+            return {}
+        return {
+            "task_packet_request_id": task_packet.request_id,
+            "task_packet_token_budget": task_packet.token_budget.model_dump(),
+        }
 
     async def _model_client_create(self, prepared_messages: list[dict[str, str]], json_output=None):
         model_messages = []

@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from workspace_root import ensure_authoritative_workspace_root
+
 from .schemas import (
     ArtifactWriteInput,
     ArtifactWriteOutput,
@@ -48,7 +50,7 @@ COMMAND_DENYLIST = ("pip install", "uv pip install", "npm install", "rm ", "del 
 
 
 def _repo_root() -> Path:
-    return Path.cwd()
+    return ensure_authoritative_workspace_root(Path.cwd(), label="tool repo_root")
 
 
 def _normalize_manifest_path(path: str) -> str:

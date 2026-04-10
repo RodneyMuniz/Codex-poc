@@ -23,9 +23,13 @@ from agents.schemas import (
     TierAssignment,
 )
 from agents.telemetry import TelemetryRecorder
+from intake.compiler import compile_task_packet
+from intake.gateway import classify_operator_request
+from intake.models import IntentDecision, TaskPacket
 from kanban.board import KanbanBoard
 from sessions import SessionStore
 from state_machine import BOARD_STATE_IDEA, BOARD_STATE_IN_PROGRESS, BOARD_STATE_TODO
+from workspace_root import ensure_authoritative_workspace_path, ensure_authoritative_workspace_root
 
 
 SDK_PLANNING_LAYER = "deterministic_internal_helper"
@@ -39,7 +43,10 @@ DELEGATED_COMPLIANCE_MODE = "delegated"
 
 class Orchestrator:
     def __init__(self, repo_root: str | Path | None = None) -> None:
-        self.repo_root = Path(repo_root or Path.cwd()).resolve()
+        self.repo_root = ensure_authoritative_workspace_root(
+            repo_root or Path.cwd(),
+            label="orchestrator repo_root",
+        )
         load_environment(self.repo_root)
         self.runtime_mode = resolve_runtime_mode()
         self.store = SessionStore(self.repo_root)
@@ -49,7 +56,192 @@ class Orchestrator:
         self.prompt_specialist = PromptSpecialistAgent(repo_root=self.repo_root, store=self.store, telemetry=self.telemetry)
 
     def _read_text(self, relative_path: str) -> str:
-        return (self.repo_root / relative_path).read_text(encoding="utf-8")
+        target_path = ensure_authoritative_workspace_path(
+            self.repo_root / relative_path,
+            label="orchestrator read path",
+        )
+        return target_path.read_text(encoding="utf-8")
+
+    def _require_valid_task_packet(self, task_packet: TaskPacket) -> TaskPacket:
+        if not isinstance(task_packet, TaskPacket):
+            raise RuntimeError("No execution without validated TaskPacket.")
+        try:
+            validated = TaskPacket.model_validate(task_packet.model_dump())
+        except Exception as exc:
+            raise RuntimeError(f"Invalid TaskPacket: {exc}") from exc
+        if validated.schema_version != "task_packet_v1":
+            raise RuntimeError("Unsupported TaskPacket schema_version.")
+        return validated
+
+    def _require_routable_task_packet(self, task_packet: TaskPacket) -> TaskPacket:
+        validated = self._require_valid_task_packet(task_packet)
+        if validated.intent != "TASK" or not validated.safe_to_route:
+            raise RuntimeError("Unsafe TaskPacket cannot start orchestrator routing.")
+        return validated
+
+    def _load_task_packet_payload(self, payload: Any, *, context: str = "TaskPacket contract") -> TaskPacket:
+        try:
+            validated = TaskPacket.model_validate(payload)
+        except Exception as exc:
+            raise RuntimeError(f"Invalid {context}: {exc}") from exc
+        if validated.schema_version != "task_packet_v1":
+            raise RuntimeError("Unsupported TaskPacket schema_version.")
+        return validated
+
+    def _load_task_packet_from_task(self, task: dict[str, Any] | None) -> TaskPacket | None:
+        raw_packet = ((task or {}).get("acceptance") or {}).get("task_packet")
+        if raw_packet is None:
+            return None
+        return self._load_task_packet_payload(raw_packet)
+
+    def _require_task_packet_from_task(self, task: dict[str, Any] | None, *, context: str) -> TaskPacket:
+        raw_packet = ((task or {}).get("acceptance") or {}).get("task_packet")
+        if raw_packet is None:
+            raise RuntimeError(f"Execution requires validated TaskPacket: missing task_packet for {context}.")
+        validated = self._load_task_packet_payload(raw_packet, context=f"{context} TaskPacket")
+        return self._require_routable_task_packet(validated)
+
+    def _task_packet_budget_total(self, task_packet: TaskPacket) -> int:
+        return int(task_packet.token_budget.max_prompt_tokens + task_packet.token_budget.max_completion_tokens)
+
+    def _task_packet_early_stop_rule(self, task_packet: TaskPacket) -> str:
+        return "single_pass_only" if task_packet.token_budget.max_retries == 0 else "stop_on_first_success"
+
+    def _merge_task_packet_acceptance(self, acceptance: dict[str, Any], task_packet: TaskPacket | None) -> dict[str, Any]:
+        merged = dict(acceptance)
+        if task_packet is None:
+            return merged
+        merged["task_packet"] = task_packet.model_dump()
+        merged["budget_max_tokens"] = self._task_packet_budget_total(task_packet)
+        merged["retry_limit"] = int(task_packet.token_budget.max_retries)
+        merged["early_stop_rule"] = self._task_packet_early_stop_rule(task_packet)
+        return merged
+
+    def _ensure_task_packet_allows_role(self, task_packet: TaskPacket, role: str) -> None:
+        if role not in task_packet.allowed_roles:
+            raise RuntimeError(f"TaskPacket disallows role: {role}")
+
+    def _ensure_task_packet_allows_tool(self, task_packet: TaskPacket, tool_name: str) -> None:
+        if tool_name not in task_packet.allowed_tools:
+            raise RuntimeError(f"TaskPacket disallows tool: {tool_name}")
+
+    def _planned_preview_roles(self, preview_payload: dict[str, Any]) -> list[str]:
+        roles = {"Orchestrator", "PromptSpecialist", "PM", "QA"}
+        decomposition = (preview_payload.get("decomposition") or {}).get("subtasks") or []
+        for item in decomposition:
+            assigned_role = str((item or {}).get("assigned_role") or "").strip()
+            if assigned_role:
+                roles.add(assigned_role)
+        return sorted(roles)
+
+    def _enforce_preview_execution_roles(self, task_packet: TaskPacket, preview_payload: dict[str, Any]) -> None:
+        for role in self._planned_preview_roles(preview_payload):
+            self._ensure_task_packet_allows_role(task_packet, role)
+
+    def _looks_like_policy_write_request(self, text: str) -> bool:
+        return self._contains_any_token(
+            text,
+            (
+                "policy",
+                "governance",
+                "rules",
+                "rules yml",
+                "permission",
+                "permissions",
+                "wrapper bypass",
+            ),
+        ) and self._contains_any_token(
+            text,
+            ("change", "update", "edit", "write", "modify", "allow", "bypass"),
+        )
+
+    def _looks_like_unbounded_context_lookup(self, text: str) -> bool:
+        return self._contains_any_token(
+            text,
+            (
+                "entire repo",
+                "whole repo",
+                "entire codebase",
+                "whole codebase",
+                "all files",
+                "everything in the repo",
+                "full history",
+            ),
+        )
+
+    def _enforce_task_packet_forbidden_actions(
+        self,
+        task_packet: TaskPacket,
+        *,
+        user_text: str,
+        direct_action: dict[str, Any] | None = None,
+    ) -> None:
+        forbidden = set(task_packet.forbidden_actions)
+        lowered = user_text.lower()
+        if direct_action is not None and "kanban_state_change" in forbidden:
+            raise RuntimeError("TaskPacket forbids kanban_state_change.")
+        if "policy_write" in forbidden and self._looks_like_policy_write_request(lowered):
+            raise RuntimeError("TaskPacket forbids policy_write.")
+        if "unbounded_context_lookup" in forbidden and self._looks_like_unbounded_context_lookup(lowered):
+            raise RuntimeError("TaskPacket forbids unbounded_context_lookup.")
+
+    def _bind_task_packet_to_team_state(self, team_state: dict[str, Any], task_packet: TaskPacket | None) -> dict[str, Any]:
+        if task_packet is None:
+            return team_state
+        team_state["task_packet"] = task_packet.model_dump()
+        team_state["task_packet_budget"] = task_packet.token_budget.model_dump()
+        team_state["allowed_roles"] = list(task_packet.allowed_roles)
+        team_state["allowed_tools"] = list(task_packet.allowed_tools)
+        team_state["forbidden_actions"] = list(task_packet.forbidden_actions)
+        return team_state
+
+    def _explicit_internal_raw_text_entry(self, *, explicitly_internal: bool) -> None:
+        if not explicitly_internal:
+            raise RuntimeError("Raw-text entry is not allowed.")
+
+    def _gateway_allows_task_routing(self, decision: IntentDecision) -> bool:
+        return decision.decision == "ROUTE_TASK" and decision.intent == "TASK" and decision.safe_to_route
+
+    def _gateway_operator_brief(self, decision: IntentDecision) -> dict[str, Any]:
+        details_map = {
+            "ROUTE_STATUS": "The request is a status query, so execution routing is blocked.",
+            "ROUTE_ADMIN": "The request targets policy or governance, so execution routing is blocked.",
+            "NEEDS_SPLIT": "The request mixes unsafe intent types and must be split before routing.",
+            "REJECT": "The request is ambiguous or unsafe to route directly.",
+        }
+        return {
+            "objective": decision.normalized_request,
+            "details": details_map.get(decision.decision, "The request is blocked by the intent gateway."),
+            "response_chips": [
+                {"label": "Gateway", "value": decision.decision.replace("_", " ").title()},
+                {"label": "Intent", "value": decision.intent.replace("_", " ").title()},
+                {"label": "Reasons", "value": "; ".join(decision.reason_codes[:2])},
+            ],
+        }
+
+    def _gateway_preview_payload(self, project_name: str, decision: IntentDecision) -> dict[str, Any]:
+        return {
+            "project_name": project_name,
+            "gateway_decision": decision.model_dump(),
+            "operator_brief": self._gateway_operator_brief(decision),
+            "route_preview": [],
+            "execution_runtime": {"mode": "blocked"},
+        }
+
+    def _gateway_dispatch_payload(self, project_name: str, decision: IntentDecision) -> dict[str, Any]:
+        preview = self._gateway_preview_payload(project_name, decision)
+        return {
+            "preview": preview,
+            "task": None,
+            "gateway_decision": decision.model_dump(),
+            "run_result": {
+                "status": "not_routed",
+                "run_status": "not_routed",
+                "decision": decision.decision,
+                "intent": decision.intent,
+            },
+            "dispatch_backup": None,
+        }
 
     def _contains_any_token(self, text: str, tokens: tuple[str, ...] | list[str]) -> bool:
         lowered = text.lower()
@@ -1248,14 +1440,59 @@ class Orchestrator:
         self.store.update_run(run["id"], status="running", stop_reason=None, team_state=team_state)
         return await self._execute_run(run["id"], task)
 
-    async def preview_request(self, project_name: str, user_text: str, clarification: str | None = None) -> dict[str, Any]:
+    async def preview_request(
+        self,
+        project_name: str,
+        *,
+        task_packet: TaskPacket,
+    ) -> dict[str, Any]:
+        validated_packet = self._require_routable_task_packet(task_packet)
+        self._ensure_task_packet_allows_role(validated_packet, "Orchestrator")
+        self._ensure_task_packet_allows_role(validated_packet, "PromptSpecialist")
+        self._ensure_task_packet_allows_tool(validated_packet, "model_client.create")
+        user_text = validated_packet.normalized_request
         direct_action = self._direct_board_action(project_name, user_text)
+        self._enforce_task_packet_forbidden_actions(validated_packet, user_text=user_text, direct_action=direct_action)
         if direct_action is not None:
-            return self._preview_direct_board_action(direct_action, user_text)
-        return await self._preview_prompt_specialist(project_name, user_text, clarification)
+            preview = self._preview_direct_board_action(direct_action, user_text)
+            preview["task_packet"] = validated_packet.model_dump()
+            return preview
+        preview = await self._preview_prompt_specialist(project_name, user_text, None)
+        self._enforce_preview_execution_roles(validated_packet, preview)
+        preview["task_packet"] = validated_packet.model_dump()
+        return preview
 
-    async def dispatch_request(self, project_name: str, user_text: str, clarification: str | None = None) -> dict[str, Any]:
+    async def _preview_request_from_text(
+        self,
+        project_name: str,
+        user_text: str,
+        clarification: str | None = None,
+        *,
+        explicitly_internal: bool = False,
+    ) -> dict[str, Any]:
+        self._explicit_internal_raw_text_entry(explicitly_internal=explicitly_internal)
+        decision = classify_operator_request(user_text if clarification is None else f"{user_text}\n\n{clarification}")
+        if not self._gateway_allows_task_routing(decision):
+            return self._gateway_preview_payload(project_name, decision)
+        task_packet = compile_task_packet(decision, repo_root=self.repo_root, project_name=project_name)
+        return await self.preview_request(
+            project_name,
+            task_packet=task_packet,
+        )
+
+    async def dispatch_request(
+        self,
+        project_name: str,
+        *,
+        task_packet: TaskPacket,
+    ) -> dict[str, Any]:
+        validated_packet = self._require_routable_task_packet(task_packet)
+        self._ensure_task_packet_allows_role(validated_packet, "Orchestrator")
+        self._ensure_task_packet_allows_role(validated_packet, "PromptSpecialist")
+        self._ensure_task_packet_allows_tool(validated_packet, "model_client.create")
+        user_text = validated_packet.normalized_request
         direct_action = self._direct_board_action(project_name, user_text)
+        self._enforce_task_packet_forbidden_actions(validated_packet, user_text=user_text, direct_action=direct_action)
         if direct_action is not None:
             preview = self._preview_direct_board_action(direct_action, user_text)
         else:
@@ -1271,20 +1508,24 @@ class Orchestrator:
                 task_kind="request",
                 priority="medium",
                 raw_request=user_text,
-                acceptance={"task_state": BOARD_STATE_IDEA},
+                acceptance=self._merge_task_packet_acceptance({"task_state": BOARD_STATE_IDEA}, validated_packet),
             )
             preview_run = self.store.create_run(
                 project_name,
                 task["id"],
-                team_state={"phase": "request_preview", "runtime_mode": self.runtime_mode, "execution_mode": "preview_only"},
+                team_state=self._bind_task_packet_to_team_state(
+                    {"phase": "request_preview", "runtime_mode": self.runtime_mode, "execution_mode": "preview_only"},
+                    validated_packet,
+                ),
             )
             preview = await self._preview_prompt_specialist(
                 project_name,
                 user_text,
-                clarification,
+                None,
                 run_id=preview_run["id"],
                 task_id=task["id"],
             )
+            self._enforce_preview_execution_roles(validated_packet, preview)
             packet = preview["packet"]
             clarification_gate = preview.get("clarification_gate") or {}
             review_notes = None
@@ -1298,14 +1539,14 @@ class Orchestrator:
                 priority=str(packet.get("priority") or "medium"),
                 requires_approval=bool(packet.get("requires_approval")),
                 raw_request=user_text,
-                acceptance={
+                acceptance=self._merge_task_packet_acceptance({
                     "classification": preview.get("classification"),
                     "tier_assignment": preview.get("tier_assignment"),
                     "decomposition": preview.get("decomposition"),
                     "design_request_preview": preview.get("design_request_preview"),
                     "clarification_gate": preview.get("clarification_gate"),
                     "media_service_contracts": preview.get("media_service_contracts"),
-                },
+                }, validated_packet),
                 review_notes=review_notes,
             )
             preview["task"] = task
@@ -1351,6 +1592,7 @@ class Orchestrator:
                 return {
                     "preview": preview,
                     "task": task,
+                    "task_packet": validated_packet.model_dump(),
                     "run_result": {
                         "status": "needs_clarification",
                         "run_status": "needs_clarification",
@@ -1374,12 +1616,12 @@ class Orchestrator:
                 task_kind="request",
                 priority=str(packet.get("priority") or "medium"),
                 raw_request=user_text,
-                acceptance={
+                acceptance=self._merge_task_packet_acceptance({
                     "classification": preview.get("classification"),
                     "tier_assignment": preview.get("tier_assignment"),
                     "decomposition": preview.get("decomposition"),
                     "design_request_preview": preview.get("design_request_preview"),
-                },
+                }, validated_packet),
             )
             preview["task"] = task
         backup_info = self.store.create_dispatch_backup(
@@ -1388,14 +1630,39 @@ class Orchestrator:
             task_id=task["id"],
             note=user_text,
         )
-        run_result = await self.start_task(task["id"], preview_payload=preview, backup_info=backup_info)
+        self._ensure_task_packet_allows_role(validated_packet, "PM")
+        run_result = await self.start_task(
+            task["id"],
+            preview_payload=preview,
+            backup_info=backup_info,
+            task_packet=validated_packet,
+        )
         refreshed_task = self.store.get_task(task["id"]) or task
         return {
             "preview": preview,
             "task": refreshed_task,
+            "task_packet": validated_packet.model_dump(),
             "run_result": run_result,
             "dispatch_backup": backup_info,
         }
+
+    async def _dispatch_request_from_text(
+        self,
+        project_name: str,
+        user_text: str,
+        clarification: str | None = None,
+        *,
+        explicitly_internal: bool = False,
+    ) -> dict[str, Any]:
+        self._explicit_internal_raw_text_entry(explicitly_internal=explicitly_internal)
+        decision = classify_operator_request(user_text if clarification is None else f"{user_text}\n\n{clarification}")
+        if not self._gateway_allows_task_routing(decision):
+            return self._gateway_dispatch_payload(project_name, decision)
+        task_packet = compile_task_packet(decision, repo_root=self.repo_root, project_name=project_name)
+        return await self.dispatch_request(
+            project_name,
+            task_packet=task_packet,
+        )
 
     async def approve_and_resume(self, approval_id: str, note: str | None = None) -> dict[str, Any]:
         approval = self.store.get_approval(approval_id)
@@ -1409,10 +1676,19 @@ class Orchestrator:
         *,
         preview_payload: dict[str, Any] | None = None,
         backup_info: dict[str, Any] | None = None,
+        task_packet: TaskPacket | None = None,
     ) -> dict[str, Any]:
         task = self.store.get_task(task_id)
         if task is None:
             raise ValueError(f"Task not found: {task_id}")
+        if task_packet is not None:
+            resolved_task_packet = self._require_routable_task_packet(task_packet)
+        else:
+            resolved_task_packet = self._require_task_packet_from_task(task, context="start_task")
+        self._ensure_task_packet_allows_role(resolved_task_packet, "Orchestrator")
+        merged_acceptance = self._merge_task_packet_acceptance(dict(task.get("acceptance") or {}), resolved_task_packet)
+        if merged_acceptance != (task.get("acceptance") or {}):
+            task = self.store.update_task(task_id, acceptance=merged_acceptance or None)
         if not (preview_payload and preview_payload.get("operator_action")):
             preview_payload = self._ensure_execution_profile(task["project_name"], task, preview_payload)
         if task["project_name"] == "program-kanban":
@@ -1434,6 +1710,7 @@ class Orchestrator:
                     value = preview_payload.get(key)
                     if value is not None and key not in acceptance:
                         acceptance[key] = value
+            acceptance = self._merge_task_packet_acceptance(acceptance, resolved_task_packet)
             if acceptance != (task.get("acceptance") or {}) or not task.get("milestone_id"):
                 task = self.store.update_task(task_id, acceptance=acceptance or None)
         clarification_gate = None
@@ -1458,13 +1735,22 @@ class Orchestrator:
                 "preview": preview_payload,
             }
         if preview_payload and preview_payload.get("operator_action", {}).get("action_type") == "move_task_status":
+            if resolved_task_packet is not None:
+                self._enforce_task_packet_forbidden_actions(
+                    resolved_task_packet,
+                    user_text=str(resolved_task_packet.normalized_request),
+                    direct_action=preview_payload.get("operator_action"),
+                )
             target_status = preview_payload["operator_action"]["target_status"]
             review_state = "Accepted" if target_status == "completed" else "Revision Needed"
             updated_task = self.store.update_task(task_id, status=target_status, review_state=review_state)
             run = self.store.create_run(
                 task["project_name"],
                 task_id,
-                team_state={"runtime_mode": self.runtime_mode, "dispatch_mode": "deterministic"},
+                team_state=self._bind_task_packet_to_team_state(
+                    {"runtime_mode": self.runtime_mode, "dispatch_mode": "deterministic"},
+                    resolved_task_packet,
+                ),
             )
             self._seed_context_receipt(
                 run_id=run["id"],
@@ -1494,9 +1780,28 @@ class Orchestrator:
                 "dispatch_backup": backup_info,
                 "preview": preview_payload,
             }
-        run = self.store.create_run(task["project_name"], task_id, team_state={"phase": "intake", "runtime_mode": self.runtime_mode})
+        run = self.store.create_run(
+            task["project_name"],
+            task_id,
+            team_state=self._bind_task_packet_to_team_state(
+                {"phase": "intake", "runtime_mode": self.runtime_mode},
+                resolved_task_packet,
+            ),
+        )
         await self._record_tracked_prompt_usage(run_id=run["id"], task=task, preview_payload=preview_payload)
         self._seed_context_receipt(run_id=run["id"], task=task, preview_payload=preview_payload)
+        if resolved_task_packet is not None:
+            self._ensure_task_packet_allows_role(resolved_task_packet, "PM")
+            self.store.save_context_receipt(
+                run["id"],
+                {
+                    "task_packet_request_id": resolved_task_packet.request_id,
+                    "allowed_roles": list(resolved_task_packet.allowed_roles),
+                    "allowed_tools": list(resolved_task_packet.allowed_tools),
+                    "forbidden_actions": list(resolved_task_packet.forbidden_actions),
+                    "token_budget": resolved_task_packet.token_budget.model_dump(),
+                },
+            )
         current_team_state = self.store.load_team_state(run["id"]) or {}
         current_team_state["execution_mode"] = "worker_only"
         tier_assignment = ((preview_payload or {}).get("tier_assignment") if isinstance(preview_payload, dict) else {}) or {}
@@ -1505,6 +1810,8 @@ class Orchestrator:
             current_team_state["route_family"] = tier_assignment.get("route_family")
             current_team_state["cache_policy"] = tier_assignment.get("cache_policy") or {}
             current_team_state["budget_policy"] = tier_assignment.get("budget_policy") or {}
+        if resolved_task_packet is not None:
+            current_team_state = self._bind_task_packet_to_team_state(current_team_state, resolved_task_packet)
         self.store.update_run(run["id"], team_state=current_team_state)
         if task["requires_approval"] and self.store.approval_required_and_missing(task_id):
             approval = self.store.create_approval(run["id"], task_id, requested_by="Orchestrator", reason=task["objective"])
@@ -1513,7 +1820,18 @@ class Orchestrator:
             return paused
         return await self._execute_run(run["id"], task)
 
-    async def intake_request(self, project_name: str, user_text: str) -> dict[str, Any]:
+    async def intake_request(
+        self,
+        project_name: str,
+        *,
+        task_packet: TaskPacket,
+    ) -> dict[str, Any]:
+        validated_packet = self._require_routable_task_packet(task_packet)
+        self._ensure_task_packet_allows_role(validated_packet, "Orchestrator")
+        self._ensure_task_packet_allows_role(validated_packet, "PromptSpecialist")
+        self._ensure_task_packet_allows_tool(validated_packet, "model_client.create")
+        user_text = validated_packet.normalized_request
+        self._enforce_task_packet_forbidden_actions(validated_packet, user_text=user_text)
         packet = await self.prompt_specialist.process_input(user_text)
         title = packet.objective[:80]
         task = self.store.create_task(
@@ -1527,7 +1845,7 @@ class Orchestrator:
             task_kind="request",
             priority=packet.priority,
             raw_request=user_text,
-            acceptance={"task_state": BOARD_STATE_IDEA},
+            acceptance=self._merge_task_packet_acceptance({"task_state": BOARD_STATE_IDEA}, validated_packet),
         )
         self.telemetry.info(
             "task_intake",
@@ -1536,7 +1854,27 @@ class Orchestrator:
             priority=packet.priority,
             requires_approval=packet.requires_approval,
         )
-        return {"packet": packet.model_dump(), "task": task}
+        return {"packet": packet.model_dump(), "task": task, "task_packet": validated_packet.model_dump()}
+
+    async def _intake_request_from_text(
+        self,
+        project_name: str,
+        user_text: str,
+        *,
+        explicitly_internal: bool = False,
+    ) -> dict[str, Any]:
+        self._explicit_internal_raw_text_entry(explicitly_internal=explicitly_internal)
+        decision = classify_operator_request(user_text)
+        if not self._gateway_allows_task_routing(decision):
+            return {
+                "project_name": project_name,
+                "gateway_decision": decision.model_dump(),
+                "task": None,
+                "packet": None,
+                "status": "not_routed",
+            }
+        task_packet = compile_task_packet(decision, repo_root=self.repo_root, project_name=project_name)
+        return await self.intake_request(project_name, task_packet=task_packet)
 
     def list_tasks(self, project_name: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
         return self.store.list_tasks(project_name, status=status)
@@ -1634,6 +1972,7 @@ class Orchestrator:
                 task = candidate
         if task is None:
             return {"status": "idle", "message": f"No backlog or ready tasks for {project_name}."}
+        self._require_task_packet_from_task(task, context="run_next_task")
         acceptance = dict(task.get("acceptance") or {})
         acceptance.setdefault("task_state", BOARD_STATE_IN_PROGRESS)
         self.store.update_task(task["id"], acceptance=acceptance, status="in_progress")
@@ -1662,6 +2001,7 @@ class Orchestrator:
         task = self.store.get_task(run["task_id"])
         if task is None:
             raise ValueError(f"Task not found for run {run_id}")
+        self._require_task_packet_from_task(task, context="resume_run")
         approval = self.store.latest_approval_for_task(task["id"])
         if approval is None or approval["status"] != "approved":
             raise ValueError(f"Run {run_id} cannot resume until its approval is approved.")
@@ -1680,10 +2020,13 @@ class Orchestrator:
         task["authority_delegated_work"] = True
         runtime_mode = self.runtime_mode
         task["runtime_mode"] = runtime_mode
+        task_packet = self._require_task_packet_from_task(task, context="_execute_run")
         team_state = self.store.load_team_state(run_id) or {}
         team_state["runtime_mode"] = runtime_mode
         team_state.setdefault("execution_mode", "worker_only")
         team_state["authority_delegated_work"] = True
+        self._ensure_task_packet_allows_role(task_packet, "PM")
+        team_state = self._bind_task_packet_to_team_state(team_state, task_packet)
         if local_exception_approval is not None:
             team_state["compliance_state"] = {
                 **(team_state.get("compliance_state") or {}),
@@ -1724,6 +2067,26 @@ class Orchestrator:
                 },
             )
         self.store.update_run(run_id, team_state=team_state)
+        self.store.record_trace_event(
+            run_id,
+            task["id"],
+            "task_packet_contract_bound",
+            source="Orchestrator",
+            summary="Execution bound the validated TaskPacket contract before PM routing.",
+            packet={
+                "request_id": task_packet.request_id,
+                "allowed_roles": list(task_packet.allowed_roles),
+                "allowed_tools": list(task_packet.allowed_tools),
+                "forbidden_actions": list(task_packet.forbidden_actions),
+                "token_budget": task_packet.token_budget.model_dump(),
+            },
+            route={
+                "runtime_mode": runtime_mode,
+                "runtime_role": "Orchestrator",
+                "model_role": "orchestrator",
+            },
+            raw_json=task_packet.model_dump(),
+        )
         self.store.save_context_receipt(
             run_id,
             {
