@@ -35,7 +35,7 @@ def _task_packet_defaults(task_kind: str) -> tuple[list[str], list[str], TokenBu
                 "read_project_brief",
                 "write_project_artifact",
             ],
-            TokenBudget(max_prompt_tokens=1024, max_completion_tokens=512, max_retries=1),
+            TokenBudget(max_prompt_tokens=1024, max_completion_tokens=512, max_total_tokens=1536, max_retries=1),
         )
     if task_kind == "ANALYSIS":
         return (
@@ -45,7 +45,7 @@ def _task_packet_defaults(task_kind: str) -> tuple[list[str], list[str], TokenBu
                 "api_responses_create",
                 "read_project_brief",
             ],
-            TokenBudget(max_prompt_tokens=896, max_completion_tokens=384, max_retries=0),
+            TokenBudget(max_prompt_tokens=896, max_completion_tokens=384, max_total_tokens=1280, max_retries=0),
         )
     if task_kind == "REVIEW":
         return (
@@ -55,7 +55,7 @@ def _task_packet_defaults(task_kind: str) -> tuple[list[str], list[str], TokenBu
                 "api_responses_create",
                 "read_project_brief",
             ],
-            TokenBudget(max_prompt_tokens=896, max_completion_tokens=384, max_retries=0),
+            TokenBudget(max_prompt_tokens=896, max_completion_tokens=384, max_total_tokens=1280, max_retries=0),
         )
     return (
         common_roles + ["Architect", "QA"],
@@ -64,7 +64,7 @@ def _task_packet_defaults(task_kind: str) -> tuple[list[str], list[str], TokenBu
             "api_responses_create",
             "read_project_brief",
         ],
-        TokenBudget(max_prompt_tokens=768, max_completion_tokens=256, max_retries=0),
+        TokenBudget(max_prompt_tokens=768, max_completion_tokens=256, max_total_tokens=1024, max_retries=0),
     )
 
 

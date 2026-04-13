@@ -107,6 +107,11 @@ async def _run(args: argparse.Namespace) -> WorkerResult:
             await agent.close()
 
     _load_write_manifest(args=args, task=task, runtime_mode=runtime_mode)
+    if ((task.get("acceptance") or {}).get("task_packet") is not None) and runtime_mode == "sdk":
+        raise RuntimeError(
+            "Governed specialist execution requires the API-backed custom runtime; "
+            "SDK specialist execution is excluded until reservation and evidence parity exists."
+        )
     input_sha = store.file_metadata(args.input_artifact_path)["artifact_sha256"] if args.input_artifact_path else None
     agent_run = store.create_agent_run(
         args.run_id,

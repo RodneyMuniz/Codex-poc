@@ -12,6 +12,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator
 
+from sessions.governed_external_observability import (
+    GovernedExternalCallRecord,
+    GovernedExternalExecutionEvent,
+    GovernedPreExecutionBlockRecord,
+    GovernedExternalReconciliationRecord,
+    determine_trust_status,
+)
 
 PROJECT_NAME = "tactics-game"
 TASK_ID_PREFIXES = {
@@ -121,6 +128,10 @@ REQUIRED_TABLES = (
     "usage_events",
     "execution_packets",
     "execution_job_reservations",
+    "governed_pre_execution_blocks",
+    "governed_external_call_records",
+    "governed_external_reconciliation_records",
+    "governed_external_call_events",
     "artifacts",
     "visual_artifacts",
 )
@@ -132,6 +143,14 @@ CONTEXT_RECEIPT_LIST_FIELDS = (
     "prior_artifact_paths",
     "resume_conditions",
 )
+PROJECTS_TABLE_DDL = """
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    root_path TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+"""
 
 
 def _utc_now() -> str:
@@ -177,6 +196,71 @@ def _json_loads(value: str | None, default: Any) -> Any:
     return json.loads(value)
 
 
+def _governed_external_trust_status(
+    *,
+    claim_status: Any,
+    proof_status: Any,
+    reconciliation_state: Any,
+) -> str:
+    normalized_claim_status = "claimed" if str(claim_status or "").strip() == "claimed" else "missing"
+    normalized_proof_status = "proved" if str(proof_status or "").strip() == "proved" else "missing"
+    normalized_reconciliation_state = str(reconciliation_state or "").strip() or "not_reconciled"
+    if normalized_reconciliation_state not in {
+        "not_reconciled",
+        "reconciliation_pending",
+        "reconciled",
+        "reconciliation_failed",
+    }:
+        normalized_reconciliation_state = "not_reconciled"
+    return determine_trust_status(
+        claim_status=normalized_claim_status,
+        proof_status=normalized_proof_status,
+        reconciliation_state=normalized_reconciliation_state,
+    )
+
+
+def _governed_external_trust_worklist_category(
+    *,
+    reconciliation_state: Any,
+    trust_status: Any,
+) -> str | None:
+    normalized_reconciliation_state = str(reconciliation_state or "").strip() or "not_reconciled"
+    normalized_trust_status = str(trust_status or "").strip()
+    if normalized_reconciliation_state == "reconciliation_failed":
+        return "reconciliation_failed"
+    if normalized_reconciliation_state == "reconciliation_pending":
+        return "reconciliation_pending"
+    if normalized_trust_status == "proof_captured_not_reconciled":
+        return "proof_captured_not_reconciled"
+    if normalized_trust_status == "trusted_reconciled":
+        return "trusted_reconciled"
+    return None
+
+
+def _governed_external_trust_worklist_rank(category: str | None) -> int:
+    if category == "reconciliation_failed":
+        return 0
+    if category == "reconciliation_pending":
+        return 1
+    if category == "proof_captured_not_reconciled":
+        return 2
+    if category == "trusted_reconciled":
+        return 3
+    return 99
+
+
+def _governed_external_trust_followup_category(
+    *,
+    reconciliation_state: Any,
+    trust_status: Any,
+) -> str | None:
+    category = _governed_external_trust_worklist_category(
+        reconciliation_state=reconciliation_state,
+        trust_status=trust_status,
+    )
+    return None if category == "trusted_reconciled" else category
+
+
 def _normalize_string_list(value: Any) -> list[str]:
     if value is None:
         return []
@@ -215,6 +299,49 @@ class StorePaths:
 
 
 class SessionStore:
+    @classmethod
+    def ensure_project_registered(
+        cls,
+        repo_root: str | Path,
+        project_name: str,
+        *,
+        root_path: str | Path | None = None,
+        db_path: str | Path | None = None,
+    ) -> dict[str, Any]:
+        normalized_repo_root = Path(repo_root).resolve()
+        database_path = (Path(db_path) if db_path else normalized_repo_root / "sessions" / "studio.db").resolve()
+        resolved_root = (Path(root_path) if root_path else normalized_repo_root / "projects" / project_name).resolve()
+
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+        resolved_root.mkdir(parents=True, exist_ok=True)
+
+        connection = sqlite3.connect(database_path)
+        connection.row_factory = sqlite3.Row
+        try:
+            connection.execute(PROJECTS_TABLE_DDL)
+            existing = connection.execute(
+                "SELECT id, created_at FROM projects WHERE name = ?",
+                (project_name,),
+            ).fetchone()
+            if existing:
+                connection.execute(
+                    "UPDATE projects SET root_path = ? WHERE name = ?",
+                    (str(resolved_root), project_name),
+                )
+            else:
+                connection.execute(
+                    "INSERT INTO projects (id, name, root_path, created_at) VALUES (?, ?, ?, ?)",
+                    (_new_id("project"), project_name, str(resolved_root), _utc_now()),
+                )
+            connection.commit()
+            row = connection.execute("SELECT * FROM projects WHERE name = ?", (project_name,)).fetchone()
+        finally:
+            connection.close()
+
+        if row is None:
+            raise ValueError(f"Failed to register project: {project_name}")
+        return dict(row)
+
     def __init__(self, repo_root: str | Path | None = None, db_path: str | Path | None = None) -> None:
         root = Path(repo_root or Path.cwd()).resolve()
         database_path = Path(db_path) if db_path else root / "sessions" / "studio.db"
@@ -257,14 +384,9 @@ class SessionStore:
 
     def initialize(self) -> None:
         with self._connect() as connection:
+            connection.execute(PROJECTS_TABLE_DDL)
             connection.executescript(
                 """
-                CREATE TABLE IF NOT EXISTS projects (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE,
-                    root_path TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
 
                 CREATE TABLE IF NOT EXISTS milestones (
                     id TEXT PRIMARY KEY,
@@ -527,6 +649,95 @@ class SessionStore:
                     FOREIGN KEY(task_id) REFERENCES tasks(id)
                 );
 
+                CREATE TABLE IF NOT EXISTS governed_pre_execution_blocks (
+                    block_id TEXT PRIMARY KEY,
+                    occurred_at TEXT NOT NULL,
+                    run_id TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    task_packet_id TEXT,
+                    authority_packet_id TEXT,
+                    block_stage TEXT NOT NULL,
+                    block_reason_code TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS governed_external_call_records (
+                    external_call_id TEXT PRIMARY KEY,
+                    execution_group_id TEXT NOT NULL,
+                    attempt_number INTEGER NOT NULL DEFAULT 1,
+                    run_id TEXT NOT NULL,
+                    task_packet_id TEXT NOT NULL,
+                    reservation_id TEXT NOT NULL,
+                    reservation_linkage_validated INTEGER NOT NULL DEFAULT 0,
+                    reservation_status TEXT,
+                    provider TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    execution_path TEXT NOT NULL,
+                    execution_path_classification TEXT,
+                    claim_status TEXT NOT NULL,
+                    proof_status TEXT NOT NULL,
+                    reconciliation_state TEXT NOT NULL DEFAULT 'not_reconciled',
+                    reconciliation_checked_at TEXT,
+                    reconciliation_reason_code TEXT,
+                    reconciliation_evidence_source TEXT,
+                    trust_status TEXT NOT NULL DEFAULT 'claim_missing',
+                    budget_authority_validated INTEGER NOT NULL DEFAULT 0,
+                    max_prompt_tokens INTEGER,
+                    max_completion_tokens INTEGER,
+                    max_total_tokens INTEGER,
+                    retry_limit INTEGER,
+                    observed_prompt_tokens INTEGER,
+                    observed_completion_tokens INTEGER,
+                    observed_total_tokens INTEGER,
+                    observed_reasoning_tokens INTEGER,
+                    retry_count INTEGER NOT NULL DEFAULT 0,
+                    budget_stop_enforced INTEGER NOT NULL DEFAULT 0,
+                    budget_stop_reason_code TEXT,
+                    provider_request_id TEXT,
+                    started_at TEXT NOT NULL,
+                    finished_at TEXT,
+                    outcome_status TEXT NOT NULL,
+                    reason_code TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS governed_external_reconciliation_records (
+                    reconciliation_id TEXT PRIMARY KEY,
+                    external_call_id TEXT NOT NULL,
+                    execution_group_id TEXT NOT NULL,
+                    run_id TEXT NOT NULL,
+                    provider_request_id TEXT,
+                    reconciliation_state TEXT NOT NULL,
+                    reconciliation_checked_at TEXT NOT NULL,
+                    reconciliation_reason_code TEXT,
+                    reconciliation_evidence_source TEXT,
+                    details_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(external_call_id) REFERENCES governed_external_call_records(external_call_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS governed_external_call_events (
+                    event_id TEXT PRIMARY KEY,
+                    event_type TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL,
+                    run_id TEXT NOT NULL,
+                    task_packet_id TEXT NOT NULL,
+                    reservation_id TEXT NOT NULL,
+                    external_call_id TEXT NOT NULL,
+                    source_component TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    reason_code TEXT,
+                    data_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(id),
+                    FOREIGN KEY(external_call_id) REFERENCES governed_external_call_records(external_call_id)
+                );
+
                 CREATE TABLE IF NOT EXISTS artifacts (
                     id TEXT PRIMARY KEY,
                     run_id TEXT NOT NULL,
@@ -588,6 +799,8 @@ class SessionStore:
         self._ensure_artifact_columns()
         self._ensure_visual_artifact_columns()
         self._ensure_usage_event_columns()
+        self._ensure_governed_external_call_record_columns()
+        self._ensure_governed_external_reconciliation_record_columns()
         self.migrate_legacy_approvals_file()
         self.normalize_legacy_statuses()
         self.render_kanban(PROJECT_NAME)
@@ -740,6 +953,92 @@ class SessionStore:
             for column_name, definition in usage_event_columns.items():
                 if column_name not in existing:
                     connection.execute(f"ALTER TABLE usage_events ADD COLUMN {column_name} {definition}")
+
+    def _ensure_governed_external_call_record_columns(self) -> None:
+        call_record_columns = {
+            "execution_group_id": "TEXT",
+            "attempt_number": "INTEGER NOT NULL DEFAULT 1",
+            "reservation_linkage_validated": "INTEGER NOT NULL DEFAULT 0",
+            "reservation_status": "TEXT",
+            "execution_path_classification": "TEXT",
+            "reconciliation_state": "TEXT NOT NULL DEFAULT 'not_reconciled'",
+            "reconciliation_checked_at": "TEXT",
+            "reconciliation_reason_code": "TEXT",
+            "reconciliation_evidence_source": "TEXT",
+            "trust_status": "TEXT NOT NULL DEFAULT 'claim_missing'",
+            "budget_authority_validated": "INTEGER NOT NULL DEFAULT 0",
+            "max_prompt_tokens": "INTEGER",
+            "max_completion_tokens": "INTEGER",
+            "max_total_tokens": "INTEGER",
+            "retry_limit": "INTEGER",
+            "observed_prompt_tokens": "INTEGER",
+            "observed_completion_tokens": "INTEGER",
+            "observed_total_tokens": "INTEGER",
+            "observed_reasoning_tokens": "INTEGER",
+            "retry_count": "INTEGER NOT NULL DEFAULT 0",
+            "budget_stop_enforced": "INTEGER NOT NULL DEFAULT 0",
+            "budget_stop_reason_code": "TEXT",
+        }
+        with self._connect() as connection:
+            existing = {row["name"] for row in connection.execute("PRAGMA table_info(governed_external_call_records)").fetchall()}
+            if not existing:
+                return
+            for column_name, definition in call_record_columns.items():
+                if column_name not in existing:
+                    connection.execute(f"ALTER TABLE governed_external_call_records ADD COLUMN {column_name} {definition}")
+            connection.execute(
+                """
+                UPDATE governed_external_call_records
+                SET execution_group_id = external_call_id
+                WHERE execution_group_id IS NULL OR trim(execution_group_id) = ''
+                """
+            )
+            connection.execute(
+                """
+                UPDATE governed_external_call_records
+                SET attempt_number = 1
+                WHERE attempt_number IS NULL OR attempt_number <= 0
+                """
+            )
+            connection.execute(
+                """
+                UPDATE governed_external_call_records
+                SET reconciliation_state = 'not_reconciled'
+                WHERE reconciliation_state IS NULL OR trim(reconciliation_state) = ''
+                """
+            )
+            connection.execute(
+                """
+                UPDATE governed_external_call_records
+                SET trust_status =
+                    CASE
+                        WHEN trim(COALESCE(reconciliation_state, '')) = 'reconciliation_failed' THEN 'reconciliation_failed'
+                        WHEN trim(COALESCE(claim_status, '')) != 'claimed' THEN 'claim_missing'
+                        WHEN trim(COALESCE(proof_status, '')) = 'proved'
+                             AND trim(COALESCE(reconciliation_state, '')) = 'reconciled' THEN 'trusted_reconciled'
+                        WHEN trim(COALESCE(proof_status, '')) = 'proved' THEN 'proof_captured_not_reconciled'
+                        ELSE 'claimed_only'
+                    END
+                WHERE trust_status IS NULL OR trim(trust_status) = ''
+                """
+            )
+
+    def _ensure_governed_external_reconciliation_record_columns(self) -> None:
+        reconciliation_columns = {
+            "provider_request_id": "TEXT",
+        }
+        with self._connect() as connection:
+            existing = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(governed_external_reconciliation_records)").fetchall()
+            }
+            if not existing:
+                return
+            for column_name, definition in reconciliation_columns.items():
+                if column_name not in existing:
+                    connection.execute(
+                        f"ALTER TABLE governed_external_reconciliation_records ADD COLUMN {column_name} {definition}"
+                    )
 
     def normalize_legacy_statuses(self) -> None:
         mappings = {
@@ -1619,6 +1918,372 @@ class SessionStore:
                 (task_id,),
             ).fetchone()
         return dict(row) if row else None
+
+    def list_runs_for_task(self, task_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM runs WHERE task_id = ? ORDER BY created_at DESC",
+                (task_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def _project_context(self, project_name: str | None) -> dict[str, Any] | None:
+        if not project_name:
+            return None
+        project = self.get_project(str(project_name))
+        if project is None:
+            return None
+        return {
+            "id": project.get("id"),
+            "name": project.get("name"),
+            "root_path": project.get("root_path"),
+            "created_at": project.get("created_at"),
+        }
+
+    def _milestone_context(self, milestone_id: str | None) -> dict[str, Any] | None:
+        if not milestone_id:
+            return None
+        milestone = self.get_milestone(str(milestone_id))
+        if milestone is None:
+            return None
+        return {
+            "id": milestone.get("id"),
+            "project_name": milestone.get("project_name"),
+            "title": milestone.get("title"),
+            "slug": milestone.get("slug"),
+            "status": milestone.get("status"),
+            "milestone_order": milestone.get("milestone_order"),
+        }
+
+    def _run_work_graph_context(
+        self,
+        run: dict[str, Any],
+        task: dict[str, Any] | None,
+        *,
+        project: dict[str, Any] | None = None,
+        milestone: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        resolved_project = project or self._project_context(
+            task.get("project_name") if isinstance(task, dict) else run.get("project_name")
+        )
+        resolved_milestone = milestone or self._milestone_context(
+            task.get("milestone_id") if isinstance(task, dict) else None
+        )
+        return {
+            "project_id": resolved_project.get("id") if resolved_project else None,
+            "project_name": (task.get("project_name") if isinstance(task, dict) else None) or run.get("project_name"),
+            "milestone_id": (
+                resolved_milestone.get("id")
+                if resolved_milestone
+                else task.get("milestone_id")
+                if isinstance(task, dict)
+                else None
+            ),
+            "milestone_title": resolved_milestone.get("title") if resolved_milestone else None,
+            "task_id": run.get("task_id"),
+            "task_title": task.get("title") if isinstance(task, dict) else None,
+            "run_id": run.get("id"),
+            "control_room_path": f"/control-room?run_id={run.get('id')}",
+        }
+
+    def _run_attention_summary(self, evidence: dict[str, Any]) -> dict[str, Any]:
+        attention_items = evidence.get("governed_external_attention_items")
+        pre_execution_blocks = evidence.get("governed_pre_execution_blocks")
+        attention_items = attention_items if isinstance(attention_items, list) else []
+        pre_execution_blocks = pre_execution_blocks if isinstance(pre_execution_blocks, list) else []
+        top_attention_reason = None
+        if pre_execution_blocks:
+            top_attention_reason = pre_execution_blocks[0].get("block_reason_code")
+        elif attention_items:
+            top_attention_reason = attention_items[0].get("attention_reason")
+        return {
+            "attention_item_count": len(attention_items),
+            "pre_observation_block_count": len(pre_execution_blocks),
+            "attention_count": len(attention_items) + len(pre_execution_blocks),
+            "top_attention_reason": top_attention_reason,
+        }
+
+    def _run_health_summary(self, evidence: dict[str, Any]) -> dict[str, Any]:
+        governed_summary = evidence.get("governed_external_run_summary")
+        governed_summary = governed_summary if isinstance(governed_summary, dict) else {}
+        attention_summary = self._run_attention_summary(evidence)
+        return {
+            "has_attention": bool(attention_summary["attention_count"]),
+            "final_success_count": int(governed_summary.get("final_success_count") or 0),
+            "final_failed_count": int(governed_summary.get("final_failed_count") or 0),
+            "final_budget_stopped_count": int(governed_summary.get("final_budget_stopped_count") or 0),
+            "final_proof_missing_count": int(governed_summary.get("final_proof_missing_count") or 0),
+            "governed_api_execution_count": int(governed_summary.get("governed_api_execution_count") or 0),
+            "blocked_execution_count": int(governed_summary.get("blocked_execution_count") or 0),
+            "pre_observation_block_count": int(governed_summary.get("pre_observation_block_count") or 0),
+        }
+
+    def _run_execution_summary(self, evidence: dict[str, Any]) -> dict[str, Any]:
+        governed_summary = evidence.get("governed_external_run_summary")
+        governed_summary = governed_summary if isinstance(governed_summary, dict) else {}
+        call_records = evidence.get("governed_external_calls")
+        call_records = call_records if isinstance(call_records, list) else []
+        ordered_call_records = sorted(
+            call_records,
+            key=lambda item: (
+                str(item.get("started_at") or ""),
+                int(item.get("attempt_number") or 1),
+                str(item.get("external_call_id") or ""),
+            ),
+            reverse=True,
+        )
+        latest_call = ordered_call_records[0] if ordered_call_records else None
+        pre_execution_blocks = evidence.get("governed_pre_execution_blocks")
+        pre_execution_blocks = pre_execution_blocks if isinstance(pre_execution_blocks, list) else []
+        ordered_blocks = sorted(
+            pre_execution_blocks,
+            key=lambda item: (
+                str(item.get("occurred_at") or ""),
+                str(item.get("block_id") or ""),
+            ),
+            reverse=True,
+        )
+        latest_block = ordered_blocks[0] if ordered_blocks else None
+        latest_execution_path = None
+        latest_proof_status = None
+        latest_reconciliation_state = None
+        latest_reconciliation_reason_code = None
+        latest_trust_status = None
+        latest_outcome_status = None
+        latest_reference_id = None
+        if latest_call is not None:
+            latest_execution_path = latest_call.get("execution_path_classification")
+            latest_proof_status = latest_call.get("proof_status")
+            latest_reconciliation_state = latest_call.get("reconciliation_state")
+            latest_reconciliation_reason_code = latest_call.get("reconciliation_reason_code")
+            latest_trust_status = latest_call.get("trust_status")
+            latest_outcome_status = latest_call.get("outcome_status")
+            latest_reference_id = latest_call.get("external_call_id")
+        elif latest_block is not None:
+            latest_execution_path = "blocked_pre_execution"
+            latest_proof_status = "missing"
+            latest_reconciliation_state = None
+            latest_reconciliation_reason_code = None
+            latest_trust_status = None
+            latest_outcome_status = "blocked_pre_execution"
+            latest_reference_id = latest_block.get("block_id")
+        latest_trust_followup_category = _governed_external_trust_followup_category(
+            reconciliation_state=latest_reconciliation_state,
+            trust_status=latest_trust_status,
+        )
+        return {
+            "execution_group_count": int(governed_summary.get("total_execution_groups") or 0),
+            "governed_api_execution_count": int(governed_summary.get("governed_api_execution_count") or 0),
+            "blocked_execution_count": int(governed_summary.get("blocked_execution_count") or 0),
+            "pre_observation_block_count": int(governed_summary.get("pre_observation_block_count") or 0),
+            "latest_execution_path_classification": latest_execution_path,
+            "latest_proof_status": latest_proof_status,
+            "latest_reconciliation_state": latest_reconciliation_state,
+            "latest_reconciliation_reason_code": latest_reconciliation_reason_code,
+            "latest_trust_status": latest_trust_status,
+            "latest_trust_followup_category": latest_trust_followup_category,
+            "latest_outcome_status": latest_outcome_status,
+            "latest_reference_id": latest_reference_id,
+        }
+
+    def _task_trust_summary_from_linked_runs(self, runs: list[dict[str, Any]]) -> dict[str, Any]:
+        latest_run_summary = runs[0] if runs else None
+        latest_execution_summary = (
+            latest_run_summary.get("execution_summary")
+            if isinstance(latest_run_summary, dict)
+            else None
+        )
+        latest_execution_summary = latest_execution_summary if isinstance(latest_execution_summary, dict) else {}
+
+        highest_priority_issue = None
+        reconciliation_failed_count = 0
+        reconciliation_pending_count = 0
+        proof_captured_not_reconciled_count = 0
+        for run_summary in runs:
+            execution_summary = run_summary.get("execution_summary") if isinstance(run_summary, dict) else None
+            execution_summary = execution_summary if isinstance(execution_summary, dict) else {}
+            category = _governed_external_trust_followup_category(
+                reconciliation_state=execution_summary.get("latest_reconciliation_state"),
+                trust_status=execution_summary.get("latest_trust_status"),
+            )
+            if category is None:
+                continue
+            if category == "reconciliation_failed":
+                reconciliation_failed_count += 1
+            elif category == "reconciliation_pending":
+                reconciliation_pending_count += 1
+            elif category == "proof_captured_not_reconciled":
+                proof_captured_not_reconciled_count += 1
+            rank = _governed_external_trust_worklist_rank(category)
+            if highest_priority_issue is None or rank < highest_priority_issue["rank"]:
+                highest_priority_issue = {
+                    "category": category,
+                    "run_id": run_summary.get("id"),
+                    "trust_status": execution_summary.get("latest_trust_status"),
+                    "reconciliation_state": execution_summary.get("latest_reconciliation_state"),
+                    "reconciliation_reason_code": execution_summary.get("latest_reconciliation_reason_code"),
+                    "rank": rank,
+                }
+
+        trust_followup_count = (
+            reconciliation_failed_count + reconciliation_pending_count + proof_captured_not_reconciled_count
+        )
+
+        return {
+            "trust_followup_needed": trust_followup_count > 0,
+            "trust_followup_count": trust_followup_count,
+            "unreconciled_run_count": trust_followup_count,
+            "reconciliation_failed_count": reconciliation_failed_count,
+            "reconciliation_pending_count": reconciliation_pending_count,
+            "proof_captured_not_reconciled_count": proof_captured_not_reconciled_count,
+            "latest_trust_status": latest_execution_summary.get("latest_trust_status"),
+            "latest_reconciliation_state": latest_execution_summary.get("latest_reconciliation_state"),
+            "latest_reconciliation_reason_code": latest_execution_summary.get("latest_reconciliation_reason_code"),
+            "highest_priority_trust_issue": highest_priority_issue["category"] if highest_priority_issue else None,
+            "highest_priority_run_id": highest_priority_issue["run_id"] if highest_priority_issue else None,
+            "highest_priority_trust_status": highest_priority_issue["trust_status"] if highest_priority_issue else None,
+            "highest_priority_reconciliation_state": (
+                highest_priority_issue["reconciliation_state"] if highest_priority_issue else None
+            ),
+            "highest_priority_reconciliation_reason_code": (
+                highest_priority_issue["reconciliation_reason_code"] if highest_priority_issue else None
+            ),
+        }
+
+    def summarize_task_trust(self, task_id: str) -> dict[str, Any]:
+        runs = [self.summarize_task_linked_run(run["id"]) for run in self.list_runs_for_task(task_id)]
+        return self._task_trust_summary_from_linked_runs(runs)
+
+    def summarize_milestone_trust(self, milestone_id: str) -> dict[str, Any]:
+        milestone = self.get_milestone(milestone_id)
+        if milestone is None:
+            raise ValueError(f"Milestone not found: {milestone_id}")
+        tasks = [task for task in self.list_tasks(milestone["project_name"]) if task.get("milestone_id") == milestone_id]
+        task_trust_summaries = [self.summarize_task_trust(task["id"]) for task in tasks]
+
+        highest_priority_trust_issue = None
+        for task, trust_summary in zip(tasks, task_trust_summaries, strict=False):
+            issue = trust_summary.get("highest_priority_trust_issue")
+            if not issue:
+                continue
+            rank = _governed_external_trust_worklist_rank(issue)
+            if highest_priority_trust_issue is None or rank < highest_priority_trust_issue["rank"]:
+                highest_priority_trust_issue = {
+                    "issue": issue,
+                    "task_id": task["id"],
+                    "run_id": trust_summary.get("highest_priority_run_id"),
+                    "rank": rank,
+                }
+
+        return {
+            "task_count": len(tasks),
+            "tasks_with_trust_followup": sum(
+                1 for summary in task_trust_summaries if bool(summary.get("trust_followup_needed"))
+            ),
+            "unreconciled_run_count": sum(
+                int(summary.get("unreconciled_run_count") or 0) for summary in task_trust_summaries
+            ),
+            "reconciliation_failed_count": sum(
+                int(summary.get("reconciliation_failed_count") or 0) for summary in task_trust_summaries
+            ),
+            "reconciliation_pending_count": sum(
+                int(summary.get("reconciliation_pending_count") or 0) for summary in task_trust_summaries
+            ),
+            "proof_captured_not_reconciled_count": sum(
+                int(summary.get("proof_captured_not_reconciled_count") or 0) for summary in task_trust_summaries
+            ),
+            "trust_followup_needed": any(bool(summary.get("trust_followup_needed")) for summary in task_trust_summaries),
+            "highest_priority_trust_issue": highest_priority_trust_issue["issue"] if highest_priority_trust_issue else None,
+            "highest_priority_task_id": highest_priority_trust_issue["task_id"] if highest_priority_trust_issue else None,
+            "highest_priority_run_id": highest_priority_trust_issue["run_id"] if highest_priority_trust_issue else None,
+        }
+
+    def summarize_project_trust(self, project_name: str) -> dict[str, Any]:
+        tasks = self.list_tasks(project_name)
+        task_trust_summaries = [self.summarize_task_trust(task["id"]) for task in tasks]
+
+        highest_priority_trust_issue = None
+        for task, trust_summary in zip(tasks, task_trust_summaries, strict=False):
+            issue = trust_summary.get("highest_priority_trust_issue")
+            if not issue:
+                continue
+            rank = _governed_external_trust_worklist_rank(issue)
+            if highest_priority_trust_issue is None or rank < highest_priority_trust_issue["rank"]:
+                highest_priority_trust_issue = {
+                    "issue": issue,
+                    "task_id": task["id"],
+                    "run_id": trust_summary.get("highest_priority_run_id"),
+                    "rank": rank,
+                }
+
+        return {
+            "task_count": len(tasks),
+            "tasks_with_trust_followup": sum(
+                1 for summary in task_trust_summaries if bool(summary.get("trust_followup_needed"))
+            ),
+            "unreconciled_run_count": sum(
+                int(summary.get("unreconciled_run_count") or 0) for summary in task_trust_summaries
+            ),
+            "reconciliation_failed_count": sum(
+                int(summary.get("reconciliation_failed_count") or 0) for summary in task_trust_summaries
+            ),
+            "reconciliation_pending_count": sum(
+                int(summary.get("reconciliation_pending_count") or 0) for summary in task_trust_summaries
+            ),
+            "proof_captured_not_reconciled_count": sum(
+                int(summary.get("proof_captured_not_reconciled_count") or 0) for summary in task_trust_summaries
+            ),
+            "trust_followup_needed": any(bool(summary.get("trust_followup_needed")) for summary in task_trust_summaries),
+            "highest_priority_trust_issue": highest_priority_trust_issue["issue"] if highest_priority_trust_issue else None,
+            "highest_priority_task_id": highest_priority_trust_issue["task_id"] if highest_priority_trust_issue else None,
+            "highest_priority_run_id": highest_priority_trust_issue["run_id"] if highest_priority_trust_issue else None,
+        }
+
+    def summarize_task_linked_run(self, run_id: str) -> dict[str, Any]:
+        evidence = self.get_run_evidence(run_id)
+        run = evidence["run"]
+        task = evidence.get("task")
+        project = evidence.get("project")
+        milestone = evidence.get("milestone")
+        governed_summary = evidence.get("governed_external_run_summary")
+        governed_summary = governed_summary if isinstance(governed_summary, dict) else {}
+        return {
+            "id": run["id"],
+            "status": run.get("status"),
+            "stop_reason": run.get("stop_reason"),
+            "last_error": run.get("last_error"),
+            "created_at": run.get("created_at"),
+            "updated_at": run.get("updated_at"),
+            "started_at": run.get("started_at"),
+            "completed_at": run.get("completed_at"),
+            **self._run_work_graph_context(run, task, project=project, milestone=milestone),
+            "governed_external_run_summary": governed_summary,
+            "attention_summary": self._run_attention_summary(evidence),
+            "health_summary": self._run_health_summary(evidence),
+            "execution_summary": self._run_execution_summary(evidence),
+        }
+
+    def get_task_work_graph(self, task_id: str) -> dict[str, Any]:
+        task = self.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task not found: {task_id}")
+        project = self._project_context(task.get("project_name"))
+        milestone = self._milestone_context(task.get("milestone_id"))
+        runs = [self.summarize_task_linked_run(run["id"]) for run in self.list_runs_for_task(task_id)]
+        latest_run_summary = runs[0] if runs else None
+        trust_summary = self._task_trust_summary_from_linked_runs(runs)
+        return {
+            "project": project,
+            "milestone": milestone,
+            "task": task,
+            "linked_run_count": len(runs),
+            "linked_runs": runs,
+            "latest_run_summary": latest_run_summary,
+            "latest_attention_summary": latest_run_summary.get("attention_summary") if latest_run_summary else None,
+            "latest_health_summary": latest_run_summary.get("health_summary") if latest_run_summary else None,
+            "latest_execution_summary": latest_run_summary.get("execution_summary") if latest_run_summary else None,
+            "trust_summary": trust_summary,
+        }
 
     def update_run(
         self,
@@ -2750,6 +3415,1071 @@ class SessionStore:
             raise ValueError(f"Execution job reservation vanished after update: {job_id}")
         return updated
 
+    def create_governed_pre_execution_block(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+        task_packet_id: str | None,
+        authority_packet_id: str | None,
+        block_stage: str,
+        block_reason_code: str,
+        occurred_at: str,
+        block_id: str | None = None,
+    ) -> dict[str, Any]:
+        record = GovernedPreExecutionBlockRecord(
+            block_id=block_id or _new_id("preblock"),
+            occurred_at=occurred_at,
+            run_id=run_id,
+            task_id=task_id,
+            task_packet_id=task_packet_id,
+            authority_packet_id=authority_packet_id,
+            block_stage=block_stage,
+            block_reason_code=block_reason_code,
+        )
+        payload = record.model_dump()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO governed_pre_execution_blocks (
+                    block_id, occurred_at, run_id, task_id, task_packet_id, authority_packet_id,
+                    block_stage, block_reason_code, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    payload["block_id"],
+                    payload["occurred_at"],
+                    payload["run_id"],
+                    payload["task_id"],
+                    payload["task_packet_id"],
+                    payload["authority_packet_id"],
+                    payload["block_stage"],
+                    payload["block_reason_code"],
+                    _utc_now(),
+                ),
+            )
+        created = self.get_governed_pre_execution_block(payload["block_id"])
+        if created is None:
+            raise ValueError(f"Failed to create governed pre-execution block: {payload['block_id']}")
+        return created
+
+    def get_governed_pre_execution_block(self, block_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_pre_execution_blocks WHERE block_id = ?",
+                (block_id,),
+            ).fetchone()
+        return self._deserialize_governed_pre_execution_block(row) if row else None
+
+    def list_governed_pre_execution_blocks(
+        self,
+        *,
+        run_id: str | None = None,
+        task_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM governed_pre_execution_blocks WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        query += " ORDER BY occurred_at ASC, created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_governed_pre_execution_block(row) for row in rows]
+
+    def _validated_governed_external_call_payload(self, record: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(record)
+        payload["reconciliation_state"] = str(payload.get("reconciliation_state") or "").strip() or "not_reconciled"
+        payload["trust_status"] = _governed_external_trust_status(
+            claim_status=payload.get("claim_status"),
+            proof_status=payload.get("proof_status"),
+            reconciliation_state=payload.get("reconciliation_state"),
+        )
+        return GovernedExternalCallRecord.model_validate(payload).model_dump()
+
+    def create_governed_external_call_record(
+        self,
+        *,
+        external_call_id: str,
+        execution_group_id: str,
+        attempt_number: int = 1,
+        run_id: str,
+        task_packet_id: str,
+        reservation_id: str,
+        reservation_linkage_validated: bool = False,
+        reservation_status: str | None = None,
+        provider: str,
+        model: str,
+        execution_path: str,
+        execution_path_classification: str = "blocked_pre_execution",
+        claim_status: str,
+        proof_status: str,
+        reconciliation_state: str = "not_reconciled",
+        reconciliation_checked_at: str | None = None,
+        reconciliation_reason_code: str | None = None,
+        reconciliation_evidence_source: str | None = None,
+        budget_authority_validated: bool = False,
+        max_prompt_tokens: int | None = None,
+        max_completion_tokens: int | None = None,
+        max_total_tokens: int | None = None,
+        retry_limit: int | None = None,
+        observed_prompt_tokens: int | None = None,
+        observed_completion_tokens: int | None = None,
+        observed_total_tokens: int | None = None,
+        observed_reasoning_tokens: int | None = None,
+        retry_count: int = 0,
+        budget_stop_enforced: bool = False,
+        budget_stop_reason_code: str | None = None,
+        provider_request_id: str | None = None,
+        started_at: str,
+        finished_at: str | None = None,
+        outcome_status: str,
+        reason_code: str | None = None,
+    ) -> dict[str, Any]:
+        payload = self._validated_governed_external_call_payload(
+            {
+                "external_call_id": external_call_id,
+                "execution_group_id": execution_group_id,
+                "attempt_number": attempt_number,
+                "run_id": run_id,
+                "task_packet_id": task_packet_id,
+                "reservation_id": reservation_id,
+                "reservation_linkage_validated": reservation_linkage_validated,
+                "reservation_status": reservation_status,
+                "provider": provider,
+                "model": model,
+                "execution_path": execution_path,
+                "execution_path_classification": execution_path_classification,
+                "claim_status": claim_status,
+                "proof_status": proof_status,
+                "reconciliation_state": reconciliation_state,
+                "reconciliation_checked_at": reconciliation_checked_at,
+                "reconciliation_reason_code": reconciliation_reason_code,
+                "reconciliation_evidence_source": reconciliation_evidence_source,
+                "budget_authority_validated": budget_authority_validated,
+                "max_prompt_tokens": max_prompt_tokens,
+                "max_completion_tokens": max_completion_tokens,
+                "max_total_tokens": max_total_tokens,
+                "retry_limit": retry_limit,
+                "observed_prompt_tokens": observed_prompt_tokens,
+                "observed_completion_tokens": observed_completion_tokens,
+                "observed_total_tokens": observed_total_tokens,
+                "observed_reasoning_tokens": observed_reasoning_tokens,
+                "retry_count": retry_count,
+                "budget_stop_enforced": budget_stop_enforced,
+                "budget_stop_reason_code": budget_stop_reason_code,
+                "provider_request_id": provider_request_id,
+                "started_at": started_at,
+                "finished_at": finished_at,
+                "outcome_status": outcome_status,
+                "reason_code": reason_code,
+            }
+        )
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO governed_external_call_records (
+                    external_call_id, execution_group_id, attempt_number, run_id, task_packet_id, reservation_id, reservation_linkage_validated,
+                    reservation_status, provider, model, execution_path, execution_path_classification, claim_status, proof_status,
+                    reconciliation_state, reconciliation_checked_at, reconciliation_reason_code, reconciliation_evidence_source, trust_status,
+                    budget_authority_validated, max_prompt_tokens, max_completion_tokens, max_total_tokens,
+                    retry_limit, observed_prompt_tokens, observed_completion_tokens, observed_total_tokens,
+                    observed_reasoning_tokens, retry_count, budget_stop_enforced, budget_stop_reason_code,
+                    provider_request_id, started_at, finished_at, outcome_status, reason_code, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    payload["external_call_id"],
+                    payload["execution_group_id"],
+                    payload["attempt_number"],
+                    payload["run_id"],
+                    payload["task_packet_id"],
+                    payload["reservation_id"],
+                    payload["reservation_linkage_validated"],
+                    payload["reservation_status"],
+                    payload["provider"],
+                    payload["model"],
+                    payload["execution_path"],
+                    payload["execution_path_classification"],
+                    payload["claim_status"],
+                    payload["proof_status"],
+                    payload["reconciliation_state"],
+                    payload["reconciliation_checked_at"],
+                    payload["reconciliation_reason_code"],
+                    payload["reconciliation_evidence_source"],
+                    payload["trust_status"],
+                    payload["budget_authority_validated"],
+                    payload["max_prompt_tokens"],
+                    payload["max_completion_tokens"],
+                    payload["max_total_tokens"],
+                    payload["retry_limit"],
+                    payload["observed_prompt_tokens"],
+                    payload["observed_completion_tokens"],
+                    payload["observed_total_tokens"],
+                    payload["observed_reasoning_tokens"],
+                    payload["retry_count"],
+                    payload["budget_stop_enforced"],
+                    payload["budget_stop_reason_code"],
+                    payload["provider_request_id"],
+                    payload["started_at"],
+                    payload["finished_at"],
+                    payload["outcome_status"],
+                    payload["reason_code"],
+                    now,
+                    now,
+                ),
+            )
+        created = self.get_governed_external_call_record(external_call_id)
+        if created is None:
+            raise ValueError(f"Failed to create governed external call record: {external_call_id}")
+        return created
+
+    def get_governed_external_call_record(self, external_call_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_external_call_records WHERE external_call_id = ?",
+                (external_call_id,),
+            ).fetchone()
+        return self._deserialize_governed_external_call_record(row) if row else None
+
+    def list_governed_external_call_records(
+        self,
+        *,
+        run_id: str | None = None,
+        reservation_id: str | None = None,
+        task_packet_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM governed_external_call_records WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if reservation_id:
+            query += " AND reservation_id = ?"
+            params.append(reservation_id)
+        if task_packet_id:
+            query += " AND task_packet_id = ?"
+            params.append(task_packet_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_governed_external_call_record(row) for row in rows]
+
+    def sync_governed_external_call_record(
+        self,
+        *,
+        external_call_id: str,
+        execution_group_id: str,
+        attempt_number: int = 1,
+        run_id: str,
+        task_packet_id: str,
+        reservation_id: str,
+        reservation_linkage_validated: bool = False,
+        reservation_status: str | None = None,
+        provider: str,
+        model: str,
+        execution_path: str,
+        execution_path_classification: str = "blocked_pre_execution",
+        claim_status: str,
+        proof_status: str,
+        reconciliation_state: str = "not_reconciled",
+        reconciliation_checked_at: str | None = None,
+        reconciliation_reason_code: str | None = None,
+        reconciliation_evidence_source: str | None = None,
+        budget_authority_validated: bool = False,
+        max_prompt_tokens: int | None = None,
+        max_completion_tokens: int | None = None,
+        max_total_tokens: int | None = None,
+        retry_limit: int | None = None,
+        observed_prompt_tokens: int | None = None,
+        observed_completion_tokens: int | None = None,
+        observed_total_tokens: int | None = None,
+        observed_reasoning_tokens: int | None = None,
+        retry_count: int = 0,
+        budget_stop_enforced: bool = False,
+        budget_stop_reason_code: str | None = None,
+        provider_request_id: str | None = None,
+        started_at: str,
+        finished_at: str | None = None,
+        outcome_status: str,
+        reason_code: str | None = None,
+    ) -> dict[str, Any]:
+        existing = self.get_governed_external_call_record(external_call_id)
+        if existing is not None:
+            return self.update_governed_external_call_record(
+                external_call_id,
+                execution_group_id=execution_group_id,
+                attempt_number=attempt_number,
+                run_id=run_id,
+                task_packet_id=task_packet_id,
+                reservation_id=reservation_id,
+                reservation_linkage_validated=reservation_linkage_validated,
+                reservation_status=reservation_status,
+                provider=provider,
+                model=model,
+                execution_path=execution_path,
+                execution_path_classification=execution_path_classification,
+                claim_status=claim_status,
+                proof_status=proof_status,
+                reconciliation_state=reconciliation_state,
+                reconciliation_checked_at=reconciliation_checked_at,
+                reconciliation_reason_code=reconciliation_reason_code,
+                reconciliation_evidence_source=reconciliation_evidence_source,
+                budget_authority_validated=budget_authority_validated,
+                max_prompt_tokens=max_prompt_tokens,
+                max_completion_tokens=max_completion_tokens,
+                max_total_tokens=max_total_tokens,
+                retry_limit=retry_limit,
+                observed_prompt_tokens=observed_prompt_tokens,
+                observed_completion_tokens=observed_completion_tokens,
+                observed_total_tokens=observed_total_tokens,
+                observed_reasoning_tokens=observed_reasoning_tokens,
+                retry_count=retry_count,
+                budget_stop_enforced=budget_stop_enforced,
+                budget_stop_reason_code=budget_stop_reason_code,
+                provider_request_id=provider_request_id,
+                started_at=started_at,
+                finished_at=finished_at,
+                outcome_status=outcome_status,
+                reason_code=reason_code,
+            )
+        return self.create_governed_external_call_record(
+            external_call_id=external_call_id,
+            execution_group_id=execution_group_id,
+            attempt_number=attempt_number,
+            run_id=run_id,
+            task_packet_id=task_packet_id,
+            reservation_id=reservation_id,
+            reservation_linkage_validated=reservation_linkage_validated,
+            reservation_status=reservation_status,
+            provider=provider,
+            model=model,
+            execution_path=execution_path,
+            execution_path_classification=execution_path_classification,
+            claim_status=claim_status,
+            proof_status=proof_status,
+            reconciliation_state=reconciliation_state,
+            reconciliation_checked_at=reconciliation_checked_at,
+            reconciliation_reason_code=reconciliation_reason_code,
+            reconciliation_evidence_source=reconciliation_evidence_source,
+            budget_authority_validated=budget_authority_validated,
+            max_prompt_tokens=max_prompt_tokens,
+            max_completion_tokens=max_completion_tokens,
+            max_total_tokens=max_total_tokens,
+            retry_limit=retry_limit,
+            observed_prompt_tokens=observed_prompt_tokens,
+            observed_completion_tokens=observed_completion_tokens,
+            observed_total_tokens=observed_total_tokens,
+            observed_reasoning_tokens=observed_reasoning_tokens,
+            retry_count=retry_count,
+            budget_stop_enforced=budget_stop_enforced,
+            budget_stop_reason_code=budget_stop_reason_code,
+            provider_request_id=provider_request_id,
+            started_at=started_at,
+            finished_at=finished_at,
+            outcome_status=outcome_status,
+            reason_code=reason_code,
+        )
+
+    def update_governed_external_call_record(
+        self,
+        external_call_id: str,
+        *,
+        execution_group_id: str | None = None,
+        attempt_number: int | None = None,
+        run_id: str | None = None,
+        task_packet_id: str | None = None,
+        reservation_id: str | None = None,
+        reservation_linkage_validated: bool | None = None,
+        reservation_status: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+        execution_path: str | None = None,
+        execution_path_classification: str | None = None,
+        claim_status: str | None = None,
+        proof_status: str | None = None,
+        reconciliation_state: str | None = None,
+        reconciliation_checked_at: str | None = None,
+        reconciliation_reason_code: str | None = None,
+        reconciliation_evidence_source: str | None = None,
+        budget_authority_validated: bool | None = None,
+        max_prompt_tokens: int | None = None,
+        max_completion_tokens: int | None = None,
+        max_total_tokens: int | None = None,
+        retry_limit: int | None = None,
+        observed_prompt_tokens: int | None = None,
+        observed_completion_tokens: int | None = None,
+        observed_total_tokens: int | None = None,
+        observed_reasoning_tokens: int | None = None,
+        retry_count: int | None = None,
+        budget_stop_enforced: bool | None = None,
+        budget_stop_reason_code: str | None = None,
+        provider_request_id: str | None = None,
+        started_at: str | None = None,
+        finished_at: str | None = None,
+        outcome_status: str | None = None,
+        reason_code: str | None = None,
+    ) -> dict[str, Any]:
+        record = self.get_governed_external_call_record(external_call_id)
+        if record is None:
+            raise ValueError(f"Governed external call record not found: {external_call_id}")
+        if execution_group_id is not None:
+            record["execution_group_id"] = execution_group_id
+        if attempt_number is not None:
+            record["attempt_number"] = attempt_number
+        if run_id is not None:
+            record["run_id"] = run_id
+        if task_packet_id is not None:
+            record["task_packet_id"] = task_packet_id
+        if reservation_id is not None:
+            record["reservation_id"] = reservation_id
+        if reservation_linkage_validated is not None:
+            record["reservation_linkage_validated"] = reservation_linkage_validated
+        if reservation_status is not None:
+            record["reservation_status"] = reservation_status
+        if provider is not None:
+            record["provider"] = provider
+        if model is not None:
+            record["model"] = model
+        if execution_path is not None:
+            record["execution_path"] = execution_path
+        if execution_path_classification is not None:
+            record["execution_path_classification"] = execution_path_classification
+        if claim_status is not None:
+            record["claim_status"] = claim_status
+        if proof_status is not None:
+            record["proof_status"] = proof_status
+        if reconciliation_state is not None:
+            record["reconciliation_state"] = reconciliation_state
+        if reconciliation_checked_at is not None:
+            record["reconciliation_checked_at"] = reconciliation_checked_at
+        if reconciliation_reason_code is not None:
+            record["reconciliation_reason_code"] = reconciliation_reason_code
+        if reconciliation_evidence_source is not None:
+            record["reconciliation_evidence_source"] = reconciliation_evidence_source
+        if budget_authority_validated is not None:
+            record["budget_authority_validated"] = budget_authority_validated
+        if max_prompt_tokens is not None:
+            record["max_prompt_tokens"] = max_prompt_tokens
+        if max_completion_tokens is not None:
+            record["max_completion_tokens"] = max_completion_tokens
+        if max_total_tokens is not None:
+            record["max_total_tokens"] = max_total_tokens
+        if retry_limit is not None:
+            record["retry_limit"] = retry_limit
+        if observed_prompt_tokens is not None:
+            record["observed_prompt_tokens"] = observed_prompt_tokens
+        if observed_completion_tokens is not None:
+            record["observed_completion_tokens"] = observed_completion_tokens
+        if observed_total_tokens is not None:
+            record["observed_total_tokens"] = observed_total_tokens
+        if observed_reasoning_tokens is not None:
+            record["observed_reasoning_tokens"] = observed_reasoning_tokens
+        if retry_count is not None:
+            record["retry_count"] = retry_count
+        if budget_stop_enforced is not None:
+            record["budget_stop_enforced"] = budget_stop_enforced
+        if budget_stop_reason_code is not None:
+            record["budget_stop_reason_code"] = budget_stop_reason_code
+        if provider_request_id is not None:
+            record["provider_request_id"] = provider_request_id
+        if started_at is not None:
+            record["started_at"] = started_at
+        if finished_at is not None:
+            record["finished_at"] = finished_at
+        if outcome_status is not None:
+            record["outcome_status"] = outcome_status
+        if reason_code is not None:
+            record["reason_code"] = reason_code
+        payload = self._validated_governed_external_call_payload(record)
+        updated_at = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE governed_external_call_records
+                SET execution_group_id = ?, attempt_number = ?, run_id = ?, task_packet_id = ?,
+                    reservation_id = ?, reservation_linkage_validated = ?, reservation_status = ?, provider = ?,
+                    model = ?, execution_path = ?, execution_path_classification = ?, claim_status = ?, proof_status = ?,
+                    reconciliation_state = ?, reconciliation_checked_at = ?, reconciliation_reason_code = ?,
+                    reconciliation_evidence_source = ?, trust_status = ?,
+                    budget_authority_validated = ?, max_prompt_tokens = ?, max_completion_tokens = ?,
+                    max_total_tokens = ?, retry_limit = ?, observed_prompt_tokens = ?,
+                    observed_completion_tokens = ?, observed_total_tokens = ?, observed_reasoning_tokens = ?,
+                    retry_count = ?, budget_stop_enforced = ?, budget_stop_reason_code = ?, provider_request_id = ?,
+                    started_at = ?, finished_at = ?, outcome_status = ?, reason_code = ?, updated_at = ?
+                WHERE external_call_id = ?
+                """,
+                (
+                    payload["execution_group_id"],
+                    payload["attempt_number"],
+                    payload["run_id"],
+                    payload["task_packet_id"],
+                    payload["reservation_id"],
+                    payload["reservation_linkage_validated"],
+                    payload["reservation_status"],
+                    payload["provider"],
+                    payload["model"],
+                    payload["execution_path"],
+                    payload["execution_path_classification"],
+                    payload["claim_status"],
+                    payload["proof_status"],
+                    payload["reconciliation_state"],
+                    payload["reconciliation_checked_at"],
+                    payload["reconciliation_reason_code"],
+                    payload["reconciliation_evidence_source"],
+                    payload["trust_status"],
+                    payload["budget_authority_validated"],
+                    payload["max_prompt_tokens"],
+                    payload["max_completion_tokens"],
+                    payload["max_total_tokens"],
+                    payload["retry_limit"],
+                    payload["observed_prompt_tokens"],
+                    payload["observed_completion_tokens"],
+                    payload["observed_total_tokens"],
+                    payload["observed_reasoning_tokens"],
+                    payload["retry_count"],
+                    payload["budget_stop_enforced"],
+                    payload["budget_stop_reason_code"],
+                    payload["provider_request_id"],
+                    payload["started_at"],
+                    payload["finished_at"],
+                    payload["outcome_status"],
+                    payload["reason_code"],
+                    updated_at,
+                    external_call_id,
+                ),
+            )
+        updated = self.get_governed_external_call_record(external_call_id)
+        if updated is None:
+            raise ValueError(f"Governed external call record vanished after update: {external_call_id}")
+        return updated
+
+    def create_governed_external_reconciliation_record(
+        self,
+        *,
+        external_call_id: str,
+        provider_request_id: str | None = None,
+        reconciliation_state: str,
+        reconciliation_checked_at: str,
+        reconciliation_reason_code: str | None = None,
+        reconciliation_evidence_source: str | None = None,
+        details: dict[str, Any] | None = None,
+        reconciliation_id: str | None = None,
+    ) -> dict[str, Any]:
+        call_record = self.get_governed_external_call_record(external_call_id)
+        if call_record is None:
+            raise ValueError(f"Governed external call record not found: {external_call_id}")
+        record = GovernedExternalReconciliationRecord(
+            reconciliation_id=reconciliation_id or _new_id("recon"),
+            external_call_id=external_call_id,
+            execution_group_id=str(call_record.get("execution_group_id") or external_call_id),
+            run_id=call_record["run_id"],
+            provider_request_id=provider_request_id,
+            reconciliation_state=reconciliation_state,
+            reconciliation_checked_at=reconciliation_checked_at,
+            reconciliation_reason_code=reconciliation_reason_code,
+            reconciliation_evidence_source=reconciliation_evidence_source,
+            details=details or {},
+        )
+        payload = record.model_dump()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO governed_external_reconciliation_records (
+                    reconciliation_id, external_call_id, execution_group_id, run_id,
+                    provider_request_id, reconciliation_state, reconciliation_checked_at, reconciliation_reason_code,
+                    reconciliation_evidence_source, details_json, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    payload["reconciliation_id"],
+                    payload["external_call_id"],
+                    payload["execution_group_id"],
+                    payload["run_id"],
+                    payload["provider_request_id"],
+                    payload["reconciliation_state"],
+                    payload["reconciliation_checked_at"],
+                    payload["reconciliation_reason_code"],
+                    payload["reconciliation_evidence_source"],
+                    _json_dumps(payload["details"]),
+                    _utc_now(),
+                ),
+            )
+        self.update_governed_external_call_record(
+            external_call_id,
+            reconciliation_state=payload["reconciliation_state"],
+            reconciliation_checked_at=payload["reconciliation_checked_at"],
+            reconciliation_reason_code=payload["reconciliation_reason_code"],
+            reconciliation_evidence_source=payload["reconciliation_evidence_source"],
+        )
+        created = self.get_governed_external_reconciliation_record(payload["reconciliation_id"])
+        if created is None:
+            raise ValueError(
+                f"Failed to create governed external reconciliation record: {payload['reconciliation_id']}"
+            )
+        return created
+
+    def record_governed_external_reconciliation(
+        self,
+        *,
+        external_call_id: str,
+        provider_request_id: str,
+        reconciliation_state: str,
+        reconciliation_evidence_source: str,
+        reconciliation_checked_at: str | None = None,
+        reconciliation_reason_code: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        call_record = self.get_governed_external_call_record(external_call_id)
+        if call_record is None:
+            raise ValueError(f"Governed external call record not found: {external_call_id}")
+
+        normalized_provider_request_id = " ".join(str(provider_request_id).split())
+        if not normalized_provider_request_id:
+            raise ValueError("provider_request_id is required for reconciliation input.")
+
+        normalized_state = " ".join(str(reconciliation_state).split())
+        if normalized_state not in {"reconciliation_pending", "reconciled", "reconciliation_failed"}:
+            raise ValueError(
+                "reconciliation_state must be one of: reconciliation_pending, reconciled, reconciliation_failed."
+            )
+
+        normalized_source = " ".join(str(reconciliation_evidence_source).split())
+        if not normalized_source:
+            raise ValueError("reconciliation_evidence_source is required for reconciliation input.")
+
+        recorded_provider_request_id = str(call_record.get("provider_request_id") or "").strip()
+        if not recorded_provider_request_id or str(call_record.get("proof_status") or "") != "proved":
+            raise ValueError(
+                "Cannot record reconciliation without provider proof captured on the governed external call."
+            )
+        if normalized_provider_request_id != recorded_provider_request_id:
+            raise ValueError("provider_request_id does not match the governed external call proof record.")
+
+        normalized_reason_code = None
+        if reconciliation_reason_code is not None:
+            normalized_reason_code = " ".join(str(reconciliation_reason_code).split()) or None
+        if normalized_state == "reconciliation_failed" and normalized_reason_code is None:
+            raise ValueError("reconciliation_reason_code is required when reconciliation_state is reconciliation_failed.")
+
+        checked_at = " ".join(str(reconciliation_checked_at).split()) if reconciliation_checked_at else _utc_now()
+        details_payload = dict(details or {})
+        details_payload.setdefault("provider_request_id", normalized_provider_request_id)
+
+        reconciliation_record = self.create_governed_external_reconciliation_record(
+            external_call_id=external_call_id,
+            provider_request_id=normalized_provider_request_id,
+            reconciliation_state=normalized_state,
+            reconciliation_checked_at=checked_at,
+            reconciliation_reason_code=normalized_reason_code,
+            reconciliation_evidence_source=normalized_source,
+            details=details_payload,
+        )
+        updated_call_record = self.get_governed_external_call_record(external_call_id)
+        if updated_call_record is None:
+            raise ValueError(f"Governed external call record vanished after reconciliation: {external_call_id}")
+        return {
+            "reconciliation_record": reconciliation_record,
+            "governed_external_call": updated_call_record,
+        }
+
+    def get_governed_external_reconciliation_record(self, reconciliation_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_external_reconciliation_records WHERE reconciliation_id = ?",
+                (reconciliation_id,),
+            ).fetchone()
+        return self._deserialize_governed_external_reconciliation_record(row) if row else None
+
+    def list_governed_external_reconciliation_records(
+        self,
+        *,
+        run_id: str | None = None,
+        external_call_id: str | None = None,
+        execution_group_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM governed_external_reconciliation_records WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if external_call_id:
+            query += " AND external_call_id = ?"
+            params.append(external_call_id)
+        if execution_group_id:
+            query += " AND execution_group_id = ?"
+            params.append(execution_group_id)
+        query += " ORDER BY reconciliation_checked_at ASC, created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_governed_external_reconciliation_record(row) for row in rows]
+
+    def list_governed_external_trust_worklist(self, *, include_trusted: bool = False) -> list[dict[str, Any]]:
+        run_cache: dict[str, dict[str, Any] | None] = {}
+        task_cache: dict[str, dict[str, Any] | None] = {}
+        project_cache: dict[str, dict[str, Any] | None] = {}
+        milestone_cache: dict[str, dict[str, Any] | None] = {}
+        worklist: list[dict[str, Any]] = []
+
+        for call_record in self.list_governed_external_call_records():
+            category = _governed_external_trust_worklist_category(
+                reconciliation_state=call_record.get("reconciliation_state"),
+                trust_status=call_record.get("trust_status"),
+            )
+            if category is None:
+                continue
+            if category == "trusted_reconciled" and not include_trusted:
+                continue
+
+            run_id = str(call_record.get("run_id") or "").strip()
+            task_id = None
+            run = None
+            if run_id:
+                if run_id not in run_cache:
+                    run_cache[run_id] = self.get_run(run_id)
+                run = run_cache[run_id]
+                task_id = str(run.get("task_id") or "").strip() if isinstance(run, dict) else None
+
+            task = None
+            if task_id:
+                if task_id not in task_cache:
+                    task_cache[task_id] = self.get_task(task_id)
+                task = task_cache[task_id]
+
+            project_name = (
+                task.get("project_name")
+                if isinstance(task, dict)
+                else run.get("project_name")
+                if isinstance(run, dict)
+                else None
+            )
+            milestone_id = task.get("milestone_id") if isinstance(task, dict) else None
+
+            project = None
+            if project_name:
+                project_key = str(project_name)
+                if project_key not in project_cache:
+                    project_cache[project_key] = self._project_context(project_key)
+                project = project_cache[project_key]
+
+            milestone = None
+            if milestone_id:
+                milestone_key = str(milestone_id)
+                if milestone_key not in milestone_cache:
+                    milestone_cache[milestone_key] = self._milestone_context(milestone_key)
+                milestone = milestone_cache[milestone_key]
+
+            run_context = (
+                self._run_work_graph_context(run, task, project=project, milestone=milestone)
+                if isinstance(run, dict)
+                else {
+                    "project_id": project.get("id") if isinstance(project, dict) else None,
+                    "project_name": project_name,
+                    "milestone_id": milestone.get("id") if isinstance(milestone, dict) else milestone_id,
+                    "milestone_title": milestone.get("title") if isinstance(milestone, dict) else None,
+                    "task_id": task_id,
+                    "task_title": task.get("title") if isinstance(task, dict) else None,
+                    "run_id": run_id or None,
+                    "control_room_path": f"/control-room?run_id={run_id}" if run_id else None,
+                }
+            )
+
+            worklist.append(
+                {
+                    "worklist_category": category,
+                    "external_call_id": call_record.get("external_call_id"),
+                    "execution_group_id": call_record.get("execution_group_id"),
+                    "attempt_number": call_record.get("attempt_number"),
+                    "run_id": run_context.get("run_id"),
+                    "run_status": run.get("status") if isinstance(run, dict) else None,
+                    "project_id": run_context.get("project_id"),
+                    "project_name": run_context.get("project_name"),
+                    "milestone_id": run_context.get("milestone_id"),
+                    "milestone_title": run_context.get("milestone_title"),
+                    "task_id": run_context.get("task_id"),
+                    "task_title": run_context.get("task_title"),
+                    "control_room_path": run_context.get("control_room_path"),
+                    "provider": call_record.get("provider"),
+                    "model": call_record.get("model"),
+                    "provider_request_id": call_record.get("provider_request_id"),
+                    "proof_status": call_record.get("proof_status"),
+                    "reconciliation_state": call_record.get("reconciliation_state"),
+                    "trust_status": call_record.get("trust_status"),
+                    "reconciliation_reason_code": call_record.get("reconciliation_reason_code"),
+                    "reconciliation_checked_at": call_record.get("reconciliation_checked_at"),
+                    "reconciliation_evidence_source": call_record.get("reconciliation_evidence_source"),
+                    "execution_path_classification": call_record.get("execution_path_classification"),
+                    "outcome_status": call_record.get("outcome_status"),
+                    "started_at": call_record.get("started_at"),
+                    "finished_at": call_record.get("finished_at"),
+                    "_worklist_rank": _governed_external_trust_worklist_rank(category),
+                    "_sort_at": str(
+                        call_record.get("reconciliation_checked_at")
+                        or call_record.get("finished_at")
+                        or call_record.get("started_at")
+                        or ""
+                    ),
+                }
+            )
+
+        worklist.sort(key=lambda item: str(item.get("external_call_id") or ""), reverse=True)
+        worklist.sort(key=lambda item: str(item.get("_sort_at") or ""), reverse=True)
+        worklist.sort(
+            key=lambda item: int(item["_worklist_rank"]) if item.get("_worklist_rank") is not None else 99
+        )
+
+        for item in worklist:
+            item.pop("_worklist_rank", None)
+            item.pop("_sort_at", None)
+        return worklist
+
+    def append_governed_external_call_event(
+        self,
+        *,
+        event_type: str,
+        occurred_at: str,
+        run_id: str,
+        task_packet_id: str,
+        reservation_id: str,
+        external_call_id: str,
+        source_component: str,
+        status: str,
+        reason_code: str | None = None,
+        data: dict[str, Any] | None = None,
+        event_id: str | None = None,
+    ) -> dict[str, Any]:
+        payload = GovernedExternalExecutionEvent(
+            event_id=event_id or _new_id("ext_evt"),
+            event_type=event_type,
+            occurred_at=occurred_at,
+            run_id=run_id,
+            task_packet_id=task_packet_id,
+            reservation_id=reservation_id,
+            external_call_id=external_call_id,
+            source_component=source_component,
+            status=status,
+            reason_code=reason_code,
+            data=data or {},
+        ).model_dump()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO governed_external_call_events (
+                    event_id, event_type, occurred_at, run_id, task_packet_id, reservation_id,
+                    external_call_id, source_component, status, reason_code, data_json, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    payload["event_id"],
+                    payload["event_type"],
+                    payload["occurred_at"],
+                    payload["run_id"],
+                    payload["task_packet_id"],
+                    payload["reservation_id"],
+                    payload["external_call_id"],
+                    payload["source_component"],
+                    payload["status"],
+                    payload["reason_code"],
+                    _json_dumps(payload["data"]),
+                    _utc_now(),
+                ),
+            )
+        event = self.get_governed_external_call_event(payload["event_id"])
+        if event is None:
+            raise ValueError(f"Failed to create governed external call event: {payload['event_id']}")
+        return event
+
+    def get_governed_external_call_event(self, event_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM governed_external_call_events WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+        return self._deserialize_governed_external_call_event(row) if row else None
+
+    def list_governed_external_call_events(
+        self,
+        *,
+        run_id: str | None = None,
+        external_call_id: str | None = None,
+        event_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM governed_external_call_events WHERE 1 = 1"
+        params: list[Any] = []
+        if run_id:
+            query += " AND run_id = ?"
+            params.append(run_id)
+        if external_call_id:
+            query += " AND external_call_id = ?"
+            params.append(external_call_id)
+        if event_type:
+            query += " AND event_type = ?"
+            params.append(event_type)
+        query += " ORDER BY occurred_at ASC, created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_governed_external_call_event(row) for row in rows]
+
+    def _summarize_governed_external_execution_groups(
+        self,
+        records: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for record in records:
+            group_id = str(record.get("execution_group_id") or record["external_call_id"])
+            grouped.setdefault(group_id, []).append(record)
+        summaries: list[dict[str, Any]] = []
+        for group_id, attempts in grouped.items():
+            ordered_attempts = sorted(
+                attempts,
+                key=lambda item: (
+                    int(item.get("attempt_number") or 1),
+                    str(item.get("started_at") or ""),
+                    str(item.get("external_call_id") or ""),
+                ),
+            )
+            final_attempt = ordered_attempts[-1]
+            classifications = {
+                str(item.get("execution_path_classification") or "").strip() for item in ordered_attempts
+            }
+            if "governed_api_executed" in classifications:
+                execution_path_classification = "governed_api_executed"
+            elif "non_governed_execution" in classifications:
+                execution_path_classification = "non_governed_execution"
+            elif classifications == {"blocked_pre_execution"}:
+                execution_path_classification = "blocked_pre_execution"
+            else:
+                execution_path_classification = None
+            summaries.append(
+                {
+                    "execution_group_id": group_id,
+                    "total_attempts": len(ordered_attempts),
+                    "execution_path_classification": execution_path_classification,
+                    "final_attempt_number": int(final_attempt.get("attempt_number") or 1),
+                    "final_outcome_status": final_attempt.get("outcome_status"),
+                    "final_budget_stop_enforced": bool(final_attempt.get("budget_stop_enforced")),
+                    "final_budget_stop_reason_code": final_attempt.get("budget_stop_reason_code"),
+                    "final_proof_status": final_attempt.get("proof_status"),
+                    "final_reconciliation_state": final_attempt.get("reconciliation_state"),
+                    "final_reconciliation_checked_at": final_attempt.get("reconciliation_checked_at"),
+                    "final_reconciliation_reason_code": final_attempt.get("reconciliation_reason_code"),
+                    "final_reconciliation_evidence_source": final_attempt.get("reconciliation_evidence_source"),
+                    "final_trust_status": final_attempt.get("trust_status"),
+                    "final_external_call_id": final_attempt.get("external_call_id"),
+                }
+            )
+        return summaries
+
+    def _summarize_governed_external_run(
+        self,
+        execution_groups: list[dict[str, Any]],
+        pre_execution_blocks: list[dict[str, Any]] | None = None,
+    ) -> dict[str, int]:
+        pre_execution_blocks = pre_execution_blocks or []
+        final_success_count = sum(1 for item in execution_groups if item.get("final_outcome_status") == "completed")
+        final_stopped_count = sum(1 for item in execution_groups if item.get("final_outcome_status") == "stopped")
+        final_budget_stopped_count = sum(1 for item in execution_groups if bool(item.get("final_budget_stop_enforced")))
+        final_failed_count = sum(
+            1
+            for item in execution_groups
+            if item.get("final_outcome_status") == "failed" and not bool(item.get("final_budget_stop_enforced"))
+        )
+        final_proof_missing_count = sum(1 for item in execution_groups if item.get("final_proof_status") == "missing")
+        final_proved_count = sum(1 for item in execution_groups if item.get("final_proof_status") == "proved")
+        final_trusted_reconciled_count = sum(
+            1 for item in execution_groups if item.get("final_trust_status") == "trusted_reconciled"
+        )
+        final_proof_captured_not_reconciled_count = sum(
+            1 for item in execution_groups if item.get("final_trust_status") == "proof_captured_not_reconciled"
+        )
+        final_reconciliation_failed_count = sum(
+            1 for item in execution_groups if item.get("final_trust_status") == "reconciliation_failed"
+        )
+        final_claim_missing_count = sum(1 for item in execution_groups if item.get("final_trust_status") == "claim_missing")
+        final_claimed_only_count = sum(1 for item in execution_groups if item.get("final_trust_status") == "claimed_only")
+        governed_api_execution_count = sum(
+            1 for item in execution_groups if item.get("execution_path_classification") == "governed_api_executed"
+        )
+        blocked_execution_count = sum(
+            1 for item in execution_groups if item.get("execution_path_classification") == "blocked_pre_execution"
+        )
+        return {
+            "total_execution_groups": len(execution_groups),
+            "total_attempts": sum(int(item.get("total_attempts") or 0) for item in execution_groups),
+            "governed_api_execution_count": governed_api_execution_count,
+            "blocked_execution_count": blocked_execution_count,
+            "pre_observation_block_count": len(pre_execution_blocks),
+            "final_success_count": final_success_count,
+            "final_failed_count": final_failed_count,
+            "final_stopped_count": final_stopped_count,
+            "final_budget_stopped_count": final_budget_stopped_count,
+            "final_proof_missing_count": final_proof_missing_count,
+            "final_proved_count": final_proved_count,
+            "final_trusted_reconciled_count": final_trusted_reconciled_count,
+            "final_proof_captured_not_reconciled_count": final_proof_captured_not_reconciled_count,
+            "final_reconciliation_failed_count": final_reconciliation_failed_count,
+            "final_claim_missing_count": final_claim_missing_count,
+            "final_claimed_only_count": final_claimed_only_count,
+        }
+
+    def _governed_external_attention_reason(
+        self,
+        execution_group: dict[str, Any],
+    ) -> str | None:
+        if bool(execution_group.get("final_budget_stop_enforced")):
+            return str(execution_group.get("final_budget_stop_reason_code") or "budget_stop_enforced")
+        final_outcome_status = str(execution_group.get("final_outcome_status") or "").strip()
+        if final_outcome_status and final_outcome_status != "completed":
+            return f"final_{final_outcome_status}"
+        if str(execution_group.get("final_proof_status") or "") == "missing":
+            return "final_proof_missing"
+        return None
+
+    def _governed_external_attention_items(
+        self,
+        execution_groups: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for execution_group in execution_groups:
+            attention_reason = self._governed_external_attention_reason(execution_group)
+            if attention_reason is None:
+                continue
+            items.append(
+                {
+                    "execution_group_id": execution_group["execution_group_id"],
+                    "final_external_call_id": execution_group.get("final_external_call_id"),
+                    "final_attempt_number": int(execution_group.get("final_attempt_number") or 1),
+                    "execution_path_classification": execution_group.get("execution_path_classification"),
+                    "final_outcome_status": execution_group.get("final_outcome_status"),
+                    "final_budget_stop_enforced": bool(execution_group.get("final_budget_stop_enforced")),
+                    "final_budget_stop_reason_code": execution_group.get("final_budget_stop_reason_code"),
+                    "final_proof_status": execution_group.get("final_proof_status"),
+                    "final_reconciliation_state": execution_group.get("final_reconciliation_state"),
+                    "final_trust_status": execution_group.get("final_trust_status"),
+                    "attention_reason": attention_reason,
+                }
+            )
+        items.sort(
+            key=lambda item: (
+                0
+                if bool(item["final_budget_stop_enforced"])
+                else 1
+                if item.get("final_outcome_status") != "completed"
+                else 2,
+                -int(item.get("final_attempt_number") or 1),
+                str(item.get("execution_group_id") or ""),
+            )
+        )
+        return items
+
     def file_metadata(self, relative_path: str) -> dict[str, Any]:
         path = (self.paths.repo_root / relative_path).resolve()
         if not path.exists():
@@ -3375,6 +5105,9 @@ class SessionStore:
         if run is None:
             raise ValueError(f"Run not found: {run_id}")
         task = self.get_task(run["task_id"])
+        project = self._project_context(run["project_name"])
+        milestone = self._milestone_context(task.get("milestone_id")) if task is not None else None
+        run_context = self._run_work_graph_context(run, task, project=project, milestone=milestone)
         team_state = self.load_team_state(run["id"]) or {}
         context_receipt = self.load_context_receipt(run_id)
         worker_dispatch = team_state.get("worker_dispatch")
@@ -3400,6 +5133,20 @@ class SessionStore:
         usage_events = self.list_usage_events(run_id)
         execution_packets = self.list_execution_packets(run_id=run_id, task_id=run["task_id"])
         execution_job_reservations = self.list_execution_job_reservations(run_id=run_id, task_id=run["task_id"])
+        governed_pre_execution_blocks = self.list_governed_pre_execution_blocks(run_id=run_id)
+        governed_external_call_records = self.list_governed_external_call_records(run_id=run_id)
+        governed_external_reconciliation_records = self.list_governed_external_reconciliation_records(run_id=run_id)
+        governed_external_execution_groups = self._summarize_governed_external_execution_groups(
+            governed_external_call_records
+        )
+        governed_external_run_summary = self._summarize_governed_external_run(
+            governed_external_execution_groups,
+            governed_pre_execution_blocks,
+        )
+        governed_external_attention_items = self._governed_external_attention_items(
+            governed_external_execution_groups
+        )
+        governed_external_call_events = self.list_governed_external_call_events(run_id=run_id)
         delegations = self.list_delegations(run_id)
         sdk_runtime = self._sdk_runtime_summary(run, trace_events, agent_runs)
         media_service_contracts = self.media_service_contracts(run["project_name"], task=task) if task else []
@@ -3412,7 +5159,10 @@ class SessionStore:
         return {
             "run": run,
             "task": task,
+            "project": project,
+            "milestone": milestone,
             "project_name": run["project_name"],
+            "run_context": run_context,
             "delegations": delegations,
             "approvals": approvals,
             "local_exception_approvals": local_exception_approvals,
@@ -3429,6 +5179,13 @@ class SessionStore:
             "usage_events": usage_events,
             "execution_packets": execution_packets,
             "execution_job_reservations": execution_job_reservations,
+            "governed_pre_execution_blocks": governed_pre_execution_blocks,
+            "governed_external_calls": governed_external_call_records,
+            "governed_external_reconciliation_records": governed_external_reconciliation_records,
+            "governed_external_execution_groups": governed_external_execution_groups,
+            "governed_external_run_summary": governed_external_run_summary,
+            "governed_external_attention_items": governed_external_attention_items,
+            "governed_external_call_events": governed_external_call_events,
             "sdk_runtime": sdk_runtime,
             "media_service_contracts": media_service_contracts,
             "visual_artifacts": visual_artifacts,
@@ -3630,6 +5387,43 @@ class SessionStore:
 
     def _deserialize_execution_job_reservation(self, row: sqlite3.Row) -> dict[str, Any]:
         return dict(row)
+
+    def _deserialize_governed_external_call_record(self, row: sqlite3.Row) -> dict[str, Any]:
+        record = dict(row)
+        if not str(record.get("execution_path_classification") or "").strip():
+            record["execution_path_classification"] = self._derived_execution_path_classification(record)
+        return self._validated_governed_external_call_payload(record)
+
+    def _deserialize_governed_pre_execution_block(self, row: sqlite3.Row) -> dict[str, Any]:
+        record = dict(row)
+        return GovernedPreExecutionBlockRecord.model_validate(record).model_dump()
+
+    def _deserialize_governed_external_reconciliation_record(self, row: sqlite3.Row) -> dict[str, Any]:
+        record = dict(row)
+        record["details"] = _json_loads(record.pop("details_json"), default={})
+        return GovernedExternalReconciliationRecord.model_validate(record).model_dump()
+
+    def _derived_execution_path_classification(self, record: dict[str, Any]) -> str | None:
+        normalized_execution_path = str(record.get("execution_path") or "").strip()
+        if normalized_execution_path and normalized_execution_path != "governed_api":
+            return "non_governed_execution"
+        provider_request_id = str(record.get("provider_request_id") or "").strip()
+        if provider_request_id:
+            return "governed_api_executed"
+        observed_fields = (
+            record.get("observed_prompt_tokens"),
+            record.get("observed_completion_tokens"),
+            record.get("observed_total_tokens"),
+            record.get("observed_reasoning_tokens"),
+        )
+        if any(value is not None for value in observed_fields):
+            return "governed_api_executed"
+        return None
+
+    def _deserialize_governed_external_call_event(self, row: sqlite3.Row) -> dict[str, Any]:
+        event = dict(row)
+        event["data"] = _json_loads(event.pop("data_json"), default={})
+        return GovernedExternalExecutionEvent.model_validate(event).model_dump()
 
     def _deserialize_validation_result(self, row: sqlite3.Row) -> dict[str, Any]:
         validation = dict(row)

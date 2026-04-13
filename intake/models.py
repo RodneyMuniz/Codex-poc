@@ -87,28 +87,44 @@ class IntentDecision(BaseModel):
 class TokenBudget(BaseModel):
     max_prompt_tokens: int
     max_completion_tokens: int
+    max_total_tokens: int
     max_retries: int
 
     @field_validator("max_prompt_tokens")
     @classmethod
     def _validate_prompt_tokens(cls, value: int) -> int:
-        if value < 1 or value > 4096:
-            raise ValueError("max_prompt_tokens must be between 1 and 4096.")
+        if value < 1:
+            raise ValueError("max_prompt_tokens must be greater than 0.")
         return value
 
     @field_validator("max_completion_tokens")
     @classmethod
     def _validate_completion_tokens(cls, value: int) -> int:
-        if value < 1 or value > 2048:
-            raise ValueError("max_completion_tokens must be between 1 and 2048.")
+        if value < 1:
+            raise ValueError("max_completion_tokens must be greater than 0.")
+        return value
+
+    @field_validator("max_total_tokens")
+    @classmethod
+    def _validate_total_tokens(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("max_total_tokens must be greater than 0.")
         return value
 
     @field_validator("max_retries")
     @classmethod
     def _validate_retries(cls, value: int) -> int:
-        if value < 0 or value > 3:
-            raise ValueError("max_retries must be between 0 and 3.")
+        if value < 0:
+            raise ValueError("max_retries must be 0 or greater.")
         return value
+
+    @model_validator(mode="after")
+    def _validate_budget_consistency(self) -> "TokenBudget":
+        if self.max_total_tokens < max(self.max_prompt_tokens, self.max_completion_tokens):
+            raise ValueError(
+                "max_total_tokens must be at least the larger of max_prompt_tokens and max_completion_tokens."
+            )
+        return self
 
 
 class InterpreterSummary(BaseModel):

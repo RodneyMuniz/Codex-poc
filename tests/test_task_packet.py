@@ -66,6 +66,7 @@ def test_malformed_task_packet_fails_validation():
                 "token_budget": {
                     "max_prompt_tokens": 0,
                     "max_completion_tokens": 99999,
+                    "max_total_tokens": 99999,
                     "max_retries": 9,
                 },
             }
@@ -101,15 +102,18 @@ def test_task_path_works_with_valid_task_packet(tmp_path, monkeypatch):
     assert preview["task_packet"]["schema_version"] == "task_packet_v1"
 
 
-def test_task_packet_token_budget_fields_are_present_and_bounded():
+def test_task_packet_token_budget_fields_are_present_and_consistent():
     packet = compile_task_packet(classify_operator_request("Implement the gateway"))
 
     assert packet.token_budget.max_prompt_tokens == 1024
     assert packet.token_budget.max_completion_tokens == 512
+    assert packet.token_budget.max_total_tokens == 1536
     assert packet.token_budget.max_retries == 1
-    assert 1 <= packet.token_budget.max_prompt_tokens <= 4096
-    assert 1 <= packet.token_budget.max_completion_tokens <= 2048
-    assert 0 <= packet.token_budget.max_retries <= 3
+    assert packet.token_budget.max_prompt_tokens > 0
+    assert packet.token_budget.max_completion_tokens > 0
+    assert packet.token_budget.max_total_tokens >= packet.token_budget.max_prompt_tokens
+    assert packet.token_budget.max_total_tokens >= packet.token_budget.max_completion_tokens
+    assert packet.token_budget.max_retries >= 0
 
 
 def test_compiled_task_packet_defaults_cover_bounded_execution_roles_and_tools():
@@ -208,6 +212,7 @@ def test_preview_request_rejects_task_packet_with_invalid_budget(tmp_path, monke
         token_budget=TokenBudget.model_construct(
             max_prompt_tokens=99999,
             max_completion_tokens=0,
+            max_total_tokens=99999,
             max_retries=9,
         ),
     )

@@ -38,6 +38,10 @@ Keep assumptions and risks short and operator-facing.
                 task_id=task_id,
             )
         except Exception:
+            if run_id and task_id:
+                raise
+            if task_id and self._load_task_packet(task_id) is not None:
+                raise
             lowered = user_text.lower()
             requires_approval = any(token in lowered for token in ["implement", "refactor", "delete", "migrate", "schema", "code"])
             priority = "high" if "urgent" in lowered or "critical" in lowered else "medium"

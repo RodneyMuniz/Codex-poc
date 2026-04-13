@@ -9,6 +9,8 @@ from agents.cost_tracker import CostTracker
 from agents.prompt_specialist import PromptSpecialistAgent
 from agents.role_base import DelegatedExecutionBypassError
 from agents.telemetry import TelemetryRecorder
+from intake.compiler import compile_task_packet
+from intake.gateway import classify_operator_request
 from sessions import SessionStore
 
 
@@ -25,9 +27,27 @@ def _prepare_repo(tmp_path):
     return tmp_path
 
 
+def _task_packet():
+    return compile_task_packet(classify_operator_request("Implement the governed API-first specialist flow"))
+
+
 class _FakeModelClient:
     async def create(self, messages, json_output=None):
         raise AssertionError("StudioRoleAgent should route tracked execution through APIRouter by default.")
+
+    async def close(self):
+        return None
+
+
+class _UngovernedLocalClient:
+    async def create(self, messages, json_output=None):
+        return SimpleNamespace(
+            content=(
+                '{"objective":"Local preview","details":"Use the non-governed local compatibility path.",'
+                '"priority":"medium","requires_approval":false,"assumptions":[],"risks":[]}'
+            ),
+            usage=SimpleNamespace(prompt_tokens=12, completion_tokens=4),
+        )
 
     async def close(self):
         return None
@@ -67,6 +87,7 @@ class _FakeAPIRouter:
         retry_limit=None,
         early_stop_rule=None,
     ):
+        reservation = self.store.get_execution_job_reservation(str(budget_reservation_id or ""))
         self.calls.append(
             {
                 "run_id": run_id,
@@ -90,6 +111,7 @@ class _FakeAPIRouter:
                 "budget_reservation_id": budget_reservation_id,
                 "retry_limit": retry_limit,
                 "early_stop_rule": early_stop_rule,
+                "reservation_status_at_call": reservation["reservation_status"] if reservation else None,
             }
         )
         output_text = (
@@ -136,23 +158,99 @@ def test_prompt_specialist_records_usage_events_and_execution_log(tmp_path, monk
     store = fake_router.store
     telemetry = TelemetryRecorder(repo_root)
     agent = PromptSpecialistAgent(repo_root=repo_root, store=store, telemetry=telemetry)
-    task = store.create_task("program-kanban", "Preview usage", "Track prompt-specialist API usage.")
+    task = store.create_task(
+        "program-kanban",
+        "Preview usage",
+        "Track prompt-specialist API usage.",
+        acceptance={"task_packet": _task_packet().model_dump()},
+    )
     run = store.create_run("program-kanban", task["id"])
 
     packet = asyncio.run(agent.process_input("Create a design intake preview.", run_id=run["id"], task_id=task["id"]))
     evidence = store.get_run_evidence(run["id"])
+    reservation = store.get_execution_job_reservation(f"{run['id']}:reservation")
 
     assert packet.objective == "Design intake packet"
     assert len(fake_router.calls) == 1
     assert fake_router.calls[0]["tier"] == "tier_2_mid"
     assert fake_router.calls[0]["source"] == "PromptSpecialist"
     assert fake_router.calls[0]["lane"] == "sync_api"
+    assert fake_router.calls[0]["reservation_status_at_call"] == "reserved"
+    assert reservation is not None
+    assert reservation["reservation_status"] == "reserved"
+    assert reservation["run_id"] == run["id"]
+    assert reservation["task_id"] == task["id"]
     assert len(evidence["usage_events"]) == 1
     assert evidence["usage_events"][0]["prompt_tokens"] == 111
     assert evidence["usage_events"][0]["completion_tokens"] == 37
     log_text = (repo_root / "governance" / "execution_logs.md").read_text(encoding="utf-8")
     assert task["id"] in log_text
     assert "PromptSpecialist" in log_text
+
+
+def test_prompt_specialist_tracked_api_failure_does_not_fall_back_to_heuristic_packet(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    monkeypatch.chdir(repo_root)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.OpenAIChatCompletionClient", _FakeModelClient)
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _FakeModelClient())
+
+    class _FailingAPIRouter:
+        def __init__(self, repo_root, *, store, **kwargs):
+            self.store = store
+
+        def invoke_json(self, **kwargs):
+            raise RuntimeError("api unavailable")
+
+    monkeypatch.setattr("agents.role_base.APIRouter", lambda *args, **kwargs: _FailingAPIRouter(*args, **kwargs))
+
+    store = SessionStore(repo_root)
+    telemetry = TelemetryRecorder(repo_root)
+    agent = PromptSpecialistAgent(repo_root=repo_root, store=store, telemetry=telemetry)
+    task = store.create_task(
+        "program-kanban",
+        "Preview usage",
+        "Track prompt-specialist API usage.",
+        acceptance={"task_packet": _task_packet().model_dump()},
+    )
+    run = store.create_run("program-kanban", task["id"])
+
+    with pytest.raises(RuntimeError, match="api unavailable"):
+        asyncio.run(agent.process_input("Create a design intake preview.", run_id=run["id"], task_id=task["id"]))
+
+
+def test_prompt_specialist_rejects_task_packet_backed_local_compatibility_path(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    monkeypatch.chdir(repo_root)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _UngovernedLocalClient())
+
+    store = SessionStore(repo_root)
+    telemetry = TelemetryRecorder(repo_root)
+    agent = PromptSpecialistAgent(repo_root=repo_root, store=store, telemetry=telemetry)
+    task = store.create_task(
+        "program-kanban",
+        "Preview usage",
+        "Track prompt-specialist API usage.",
+        acceptance={"task_packet": _task_packet().model_dump()},
+    )
+
+    with pytest.raises(RuntimeError, match="non-governed only"):
+        asyncio.run(agent.process_input("Create a design intake preview.", task_id=task["id"]))
+
+
+def test_prompt_specialist_allows_ungoverned_local_compatibility_path(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    monkeypatch.chdir(repo_root)
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _UngovernedLocalClient())
+
+    store = SessionStore(repo_root)
+    telemetry = TelemetryRecorder(repo_root)
+    agent = PromptSpecialistAgent(repo_root=repo_root, store=store, telemetry=telemetry)
+
+    packet = asyncio.run(agent.process_input("Create a design intake preview."))
+
+    assert packet.objective == "Local preview"
 
 
 def test_prompt_specialist_fails_closed_for_delegated_work_without_api_router(tmp_path, monkeypatch):
@@ -164,7 +262,12 @@ def test_prompt_specialist_fails_closed_for_delegated_work_without_api_router(tm
     store = SessionStore(repo_root)
     telemetry = TelemetryRecorder(repo_root)
     agent = PromptSpecialistAgent(repo_root=repo_root, store=store, telemetry=telemetry)
-    task = store.create_task("program-kanban", "Preview usage", "Track prompt-specialist API usage.")
+    task = store.create_task(
+        "program-kanban",
+        "Preview usage",
+        "Track prompt-specialist API usage.",
+        acceptance={"task_packet": _task_packet().model_dump()},
+    )
     run = store.create_run("program-kanban", task["id"])
 
     with pytest.raises(DelegatedExecutionBypassError, match="api_router"):

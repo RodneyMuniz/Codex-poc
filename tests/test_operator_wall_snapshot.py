@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sqlite3
+
 from scripts.operator_wall_snapshot import build_snapshot
 from sessions import SessionStore
 
@@ -158,6 +160,8 @@ def test_operator_wall_snapshot_reads_canonical_store(tmp_path):
     assert snapshot["summary"]["task_count"] == 2
     assert snapshot["summary"]["pending_approvals"] == 1
     assert snapshot["board"][1]["name"] == "Ready for Build"
+    assert snapshot["recent_runs"][0]["governed_external_run_summary"]["governed_api_execution_count"] == 0
+    assert snapshot["recent_runs"][0]["governed_external_run_summary"]["final_proof_missing_count"] == 0
     assert snapshot["recent_agent_runs"][0]["role"] == "Architect"
     assert snapshot["recent_validations"][0]["status"] == "passed"
     assert snapshot["recent_artifacts"][0]["produced_by"] == "Architect"
@@ -218,6 +222,67 @@ def test_operator_wall_snapshot_includes_milestones_and_copy_fields(tmp_path):
     assert snapshot["milestones"][0]["tasks"][0]["board_column_label"] == "Ready for Build"
 
 
+def test_operator_wall_snapshot_task_cards_surface_latest_run_work_graph_summary(tmp_path):
+    repo_root = _prepare_repo(tmp_path)
+    store = SessionStore(repo_root)
+    milestone = store.create_milestone(
+        "tactics-game",
+        "M1 - Unified Work Graph",
+        "Task-to-run linkage is missing.",
+        "Task, run, and milestone context are linked.",
+    )
+    task = store.create_task(
+        "tactics-game",
+        "Bridge task board to governed control room",
+        "Expose latest governed execution state from task context.",
+        objective="Expose latest governed execution state from task context.",
+        milestone_id=milestone["id"],
+    )
+    run = store.create_run("tactics-game", task["id"])
+    store.create_governed_external_call_record(
+        external_call_id="external_call_task_card",
+        execution_group_id="execution_group_task_card",
+        attempt_number=1,
+        run_id=run["id"],
+        task_packet_id="req_task_card",
+        reservation_id="reservation_task_card",
+        reservation_linkage_validated=True,
+        reservation_status="reserved",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        budget_authority_validated=True,
+        started_at="2026-04-12T10:00:00+00:00",
+        finished_at="2026-04-12T10:00:05+00:00",
+        outcome_status="completed",
+        provider_request_id="resp_task_card",
+    )
+
+    snapshot = build_snapshot(repo_root, project_name="tactics-game")
+    cards = [card for column in snapshot["board"] for card in column["cards"]]
+    task_card = next(card for card in cards if card["id"] == task["id"])
+
+    assert task_card["project_id"] is not None
+    assert task_card["milestone_id"] == milestone["id"]
+    assert task_card["linked_run_count"] == 1
+    assert task_card["latest_run"]["id"] == run["id"]
+    assert task_card["latest_run"]["control_room_path"] == f"/control-room?run_id={run['id']}"
+    assert task_card["latest_run"]["governed_external_run_summary"]["governed_api_execution_count"] == 1
+    assert task_card["latest_attention_summary"]["attention_count"] == 0
+    assert task_card["latest_health_summary"]["final_success_count"] == 1
+    assert task_card["latest_execution_summary"]["latest_execution_path_classification"] == "governed_api_executed"
+    assert task_card["latest_execution_summary"]["latest_proof_status"] == "proved"
+    assert task_card["trust_summary"]["trust_followup_needed"] is True
+    assert task_card["trust_summary"]["trust_followup_count"] == 1
+    assert task_card["trust_summary"]["latest_trust_status"] == "proof_captured_not_reconciled"
+    assert task_card["trust_summary"]["latest_reconciliation_state"] == "not_reconciled"
+    assert task_card["trust_summary"]["highest_priority_trust_issue"] == "proof_captured_not_reconciled"
+    assert task_card["trust_summary"]["highest_priority_run_id"] == run["id"]
+
+
 def test_operator_wall_snapshot_includes_project_rollup_for_all_projects(tmp_path):
     repo_root = _prepare_repo(tmp_path)
     (repo_root / "projects" / "program-kanban" / "execution").mkdir(parents=True)
@@ -258,6 +323,326 @@ def test_operator_wall_snapshot_includes_project_rollup_for_all_projects(tmp_pat
     assert "program-kanban" in rollup_lookup
     assert "tactics-game" in rollup_lookup
     assert rollup_lookup["program-kanban"]["status_counts"]["ready"] == 1
+
+
+def test_operator_wall_snapshot_surfaces_task_milestone_and_project_trust_followup_summaries(tmp_path):
+    repo_root = _prepare_repo(tmp_path)
+    store = SessionStore(repo_root)
+    milestone_active = store.create_milestone(
+        "tactics-game",
+        "M1 - Active Trust Follow-up",
+        "Trust follow-up is not aggregated.",
+        "Trust follow-up is visible at milestone scope.",
+    )
+    milestone_clean = store.create_milestone(
+        "tactics-game",
+        "M2 - Trusted",
+        "Trusted work is not distinguished cleanly.",
+        "Trusted work remains cleanly separated.",
+    )
+    task_followup = store.create_task(
+        "tactics-game",
+        "Reconcile governed developer run",
+        "Track failed reconciliation distinctly.",
+        objective="Track failed reconciliation distinctly.",
+        milestone_id=milestone_active["id"],
+    )
+    task_pending = store.create_task(
+        "tactics-game",
+        "Await provider reconciliation",
+        "Track pending reconciliation distinctly.",
+        objective="Track pending reconciliation distinctly.",
+        milestone_id=milestone_active["id"],
+    )
+    task_clean = store.create_task(
+        "tactics-game",
+        "Trusted architect run",
+        "Keep fully trusted runs out of follow-up counts.",
+        objective="Keep fully trusted runs out of follow-up counts.",
+        milestone_id=milestone_clean["id"],
+    )
+
+    run_failed = store.create_run("tactics-game", task_followup["id"])
+    run_unreconciled = store.create_run("tactics-game", task_followup["id"])
+    run_pending = store.create_run("tactics-game", task_pending["id"])
+    run_trusted = store.create_run("tactics-game", task_clean["id"])
+
+    connection = sqlite3.connect(store.paths.db_path)
+    try:
+        connection.execute(
+            "UPDATE runs SET created_at = ?, updated_at = ? WHERE id = ?",
+            ("2026-04-12T12:00:00+00:00", "2026-04-12T12:00:00+00:00", run_failed["id"]),
+        )
+        connection.execute(
+            "UPDATE runs SET created_at = ?, updated_at = ? WHERE id = ?",
+            ("2026-04-12T12:02:00+00:00", "2026-04-12T12:02:00+00:00", run_unreconciled["id"]),
+        )
+        connection.execute(
+            "UPDATE runs SET created_at = ?, updated_at = ? WHERE id = ?",
+            ("2026-04-12T12:03:00+00:00", "2026-04-12T12:03:00+00:00", run_pending["id"]),
+        )
+        connection.execute(
+            "UPDATE runs SET created_at = ?, updated_at = ? WHERE id = ?",
+            ("2026-04-12T12:05:00+00:00", "2026-04-12T12:05:00+00:00", run_trusted["id"]),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    store.create_governed_external_call_record(
+        external_call_id="external_call_snapshot_failed",
+        execution_group_id="execution_group_snapshot_failed",
+        attempt_number=1,
+        run_id=run_failed["id"],
+        task_packet_id="req_snapshot_failed",
+        reservation_id="reservation_snapshot_failed",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        provider_request_id="resp_snapshot_failed",
+        started_at="2026-04-12T12:00:00+00:00",
+        outcome_status="completed",
+    )
+    store.record_governed_external_reconciliation(
+        external_call_id="external_call_snapshot_failed",
+        provider_request_id="resp_snapshot_failed",
+        reconciliation_evidence_source="provider_ledger",
+        reconciliation_state="reconciliation_failed",
+        reconciliation_reason_code="provider_record_not_found",
+        reconciliation_checked_at="2026-04-12T12:01:00+00:00",
+    )
+
+    store.create_governed_external_call_record(
+        external_call_id="external_call_snapshot_unreconciled",
+        execution_group_id="execution_group_snapshot_unreconciled",
+        attempt_number=1,
+        run_id=run_unreconciled["id"],
+        task_packet_id="req_snapshot_unreconciled",
+        reservation_id="reservation_snapshot_unreconciled",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        provider_request_id="resp_snapshot_unreconciled",
+        started_at="2026-04-12T12:02:00+00:00",
+        outcome_status="completed",
+    )
+
+    store.create_governed_external_call_record(
+        external_call_id="external_call_snapshot_pending",
+        execution_group_id="execution_group_snapshot_pending",
+        attempt_number=1,
+        run_id=run_pending["id"],
+        task_packet_id="req_snapshot_pending",
+        reservation_id="reservation_snapshot_pending",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        provider_request_id="resp_snapshot_pending",
+        started_at="2026-04-12T12:03:00+00:00",
+        outcome_status="completed",
+    )
+    store.record_governed_external_reconciliation(
+        external_call_id="external_call_snapshot_pending",
+        provider_request_id="resp_snapshot_pending",
+        reconciliation_evidence_source="provider_ledger",
+        reconciliation_state="reconciliation_pending",
+        reconciliation_checked_at="2026-04-12T12:04:00+00:00",
+    )
+
+    store.create_governed_external_call_record(
+        external_call_id="external_call_snapshot_trusted",
+        execution_group_id="execution_group_snapshot_trusted",
+        attempt_number=1,
+        run_id=run_trusted["id"],
+        task_packet_id="req_snapshot_trusted",
+        reservation_id="reservation_snapshot_trusted",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        provider_request_id="resp_snapshot_trusted",
+        started_at="2026-04-12T12:05:00+00:00",
+        outcome_status="completed",
+    )
+    store.record_governed_external_reconciliation(
+        external_call_id="external_call_snapshot_trusted",
+        provider_request_id="resp_snapshot_trusted",
+        reconciliation_evidence_source="provider_ledger",
+        reconciliation_state="reconciled",
+        reconciliation_checked_at="2026-04-12T12:06:00+00:00",
+    )
+
+    snapshot = build_snapshot(repo_root, project_name="tactics-game")
+    cards = [card for column in snapshot["board"] for card in column["cards"]]
+    card_lookup = {card["id"]: card for card in cards}
+    milestone_lookup = {item["id"]: item for item in snapshot["milestones"]}
+
+    assert snapshot["project_trust_summary"] == {
+        "task_count": 3,
+        "tasks_with_trust_followup": 2,
+        "unreconciled_run_count": 3,
+        "reconciliation_failed_count": 1,
+        "reconciliation_pending_count": 1,
+        "proof_captured_not_reconciled_count": 1,
+        "trust_followup_needed": True,
+        "highest_priority_trust_issue": "reconciliation_failed",
+        "highest_priority_task_id": task_followup["id"],
+        "highest_priority_run_id": run_failed["id"],
+    }
+    assert milestone_lookup[milestone_active["id"]]["trust_summary"] == {
+        "task_count": 2,
+        "tasks_with_trust_followup": 2,
+        "unreconciled_run_count": 3,
+        "reconciliation_failed_count": 1,
+        "reconciliation_pending_count": 1,
+        "proof_captured_not_reconciled_count": 1,
+        "trust_followup_needed": True,
+        "highest_priority_trust_issue": "reconciliation_failed",
+        "highest_priority_task_id": task_followup["id"],
+        "highest_priority_run_id": run_failed["id"],
+    }
+    assert milestone_lookup[milestone_clean["id"]]["trust_summary"] == {
+        "task_count": 1,
+        "tasks_with_trust_followup": 0,
+        "unreconciled_run_count": 0,
+        "reconciliation_failed_count": 0,
+        "reconciliation_pending_count": 0,
+        "proof_captured_not_reconciled_count": 0,
+        "trust_followup_needed": False,
+        "highest_priority_trust_issue": None,
+        "highest_priority_task_id": None,
+        "highest_priority_run_id": None,
+    }
+    active_task_lookup = {item["id"]: item for item in milestone_lookup[milestone_active["id"]]["tasks"]}
+    assert active_task_lookup[task_followup["id"]]["trust_summary"] == card_lookup[task_followup["id"]]["trust_summary"]
+    assert card_lookup[task_followup["id"]]["trust_summary"] == {
+        "trust_followup_needed": True,
+        "trust_followup_count": 2,
+        "unreconciled_run_count": 2,
+        "reconciliation_failed_count": 1,
+        "reconciliation_pending_count": 0,
+        "proof_captured_not_reconciled_count": 1,
+        "latest_trust_status": "proof_captured_not_reconciled",
+        "latest_reconciliation_state": "not_reconciled",
+        "latest_reconciliation_reason_code": None,
+        "highest_priority_trust_issue": "reconciliation_failed",
+        "highest_priority_run_id": run_failed["id"],
+        "highest_priority_trust_status": "reconciliation_failed",
+        "highest_priority_reconciliation_state": "reconciliation_failed",
+        "highest_priority_reconciliation_reason_code": "provider_record_not_found",
+    }
+    assert card_lookup[task_pending["id"]]["trust_summary"]["highest_priority_trust_issue"] == "reconciliation_pending"
+    assert card_lookup[task_pending["id"]]["trust_summary"]["trust_followup_count"] == 1
+    assert card_lookup[task_clean["id"]]["trust_summary"]["trust_followup_needed"] is False
+    assert card_lookup[task_clean["id"]]["trust_summary"]["latest_trust_status"] == "trusted_reconciled"
+
+
+def test_operator_wall_snapshot_project_rollup_surfaces_project_trust_followup_summary(tmp_path):
+    repo_root = _prepare_repo(tmp_path)
+    (repo_root / "projects" / "program-kanban" / "execution").mkdir(parents=True)
+    (repo_root / "projects" / "program-kanban" / "governance").mkdir(parents=True)
+    (repo_root / "projects" / "program-kanban" / "governance" / "PROJECT_BRIEF.md").write_text(
+        "# Brief\n\nProgram Kanban.\n",
+        encoding="utf-8",
+    )
+    store = SessionStore(repo_root)
+
+    trusted_task = store.create_task(
+        "tactics-game",
+        "Trusted run task",
+        "Trusted work should stay out of follow-up.",
+        objective="Trusted work should stay out of follow-up.",
+    )
+    followup_task = store.create_task(
+        "program-kanban",
+        "Unreconciled board task",
+        "Proof-backed work still needs trust follow-up.",
+        objective="Proof-backed work still needs trust follow-up.",
+        owner_role="Dashboard Implementer",
+        assigned_role="Dashboard Implementer",
+        expected_artifact_path="projects/program-kanban/app/app.js",
+        acceptance={
+            "proposed_milestone": "M1 - Basic Operation Level",
+            "entry_goal": "Trust follow-up is hidden.",
+            "exit_goal": "Trust follow-up is visible.",
+            "approved_decisions": {"scope": "read_model"},
+        },
+    )
+    store.update_task(followup_task["id"], status="ready")
+
+    trusted_run = store.create_run("tactics-game", trusted_task["id"])
+    store.create_governed_external_call_record(
+        external_call_id="external_call_rollup_trusted",
+        execution_group_id="execution_group_rollup_trusted",
+        attempt_number=1,
+        run_id=trusted_run["id"],
+        task_packet_id="req_rollup_trusted",
+        reservation_id="reservation_rollup_trusted",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        provider_request_id="resp_rollup_trusted",
+        started_at="2026-04-12T12:10:00+00:00",
+        outcome_status="completed",
+    )
+    store.record_governed_external_reconciliation(
+        external_call_id="external_call_rollup_trusted",
+        provider_request_id="resp_rollup_trusted",
+        reconciliation_evidence_source="provider_ledger",
+        reconciliation_state="reconciled",
+        reconciliation_checked_at="2026-04-12T12:11:00+00:00",
+    )
+
+    followup_run = store.create_run("program-kanban", followup_task["id"])
+    store.create_governed_external_call_record(
+        external_call_id="external_call_rollup_followup",
+        execution_group_id="execution_group_rollup_followup",
+        attempt_number=1,
+        run_id=followup_run["id"],
+        task_packet_id="req_rollup_followup",
+        reservation_id="reservation_rollup_followup",
+        provider="openai",
+        model="gpt-5.4-mini",
+        execution_path="governed_api",
+        execution_path_classification="governed_api_executed",
+        claim_status="claimed",
+        proof_status="proved",
+        provider_request_id="resp_rollup_followup",
+        started_at="2026-04-12T12:12:00+00:00",
+        outcome_status="completed",
+    )
+
+    snapshot = build_snapshot(repo_root, project_name="all")
+    rollup_lookup = {item["project_name"]: item for item in snapshot["project_rollup"]}
+
+    assert rollup_lookup["tactics-game"]["trust_summary"]["trust_followup_needed"] is False
+    assert rollup_lookup["tactics-game"]["trust_summary"]["tasks_with_trust_followup"] == 0
+    assert rollup_lookup["program-kanban"]["trust_summary"] == {
+        "task_count": 1,
+        "tasks_with_trust_followup": 1,
+        "unreconciled_run_count": 1,
+        "reconciliation_failed_count": 0,
+        "reconciliation_pending_count": 0,
+        "proof_captured_not_reconciled_count": 1,
+        "trust_followup_needed": True,
+        "highest_priority_trust_issue": "proof_captured_not_reconciled",
+        "highest_priority_task_id": followup_task["id"],
+        "highest_priority_run_id": followup_run["id"],
+    }
 
 
 def test_operator_wall_snapshot_surfaces_canonical_visual_artifacts(tmp_path):

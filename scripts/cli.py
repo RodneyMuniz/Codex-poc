@@ -13,10 +13,16 @@ if str(ROOT) not in sys.path:
 from agents.orchestrator import Orchestrator, run_async
 from intake.ingress import intake_operator_request
 from intake.models import TaskPacket
+from sessions import SessionStore
+from workspace_root import WorkspaceRootAuthorityError, ensure_authoritative_workspace_root
 
 
 def _orchestrator() -> Orchestrator:
-    return Orchestrator()
+    try:
+        ensure_authoritative_workspace_root(ROOT, label="cli root")
+    except WorkspaceRootAuthorityError as exc:
+        raise click.ClickException(str(exc)) from exc
+    return Orchestrator(ROOT)
 
 
 def _load_task_packet_file(task_packet_file: Path) -> TaskPacket:
@@ -118,6 +124,17 @@ def projects() -> None:
 @projects.command("list")
 def list_projects() -> None:
     click.echo(json.dumps(_orchestrator().store.list_projects(), indent=2))
+
+
+@projects.command("ensure")
+@click.argument("project_name")
+def ensure_project(project_name: str) -> None:
+    try:
+        ensure_authoritative_workspace_root(ROOT, label="cli root")
+    except WorkspaceRootAuthorityError as exc:
+        raise click.ClickException(str(exc)) from exc
+    project = SessionStore.ensure_project_registered(ROOT, project_name)
+    click.echo(json.dumps(project, indent=2))
 
 
 @runs.command("list")

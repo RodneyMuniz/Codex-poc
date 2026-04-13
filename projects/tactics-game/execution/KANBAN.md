@@ -14,6 +14,7 @@ This file is rendered from `sessions/studio.db`. Do not use it as the source of 
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: Define progression or base layer concept after the tactical POC proves fun.
 - Details: Define progression or base layer concept after the tactical POC proves fun.
 
 ### Define future mission types such as capture flag, rescue VIP, capture chest, and kill target.
@@ -26,6 +27,7 @@ This file is rendered from `sessions/studio.db`. Do not use it as the source of 
 - Requires Approval: yes
 - Review State: None
 - Milestone: M4 - Content, AI, And Expansion Lanes
+- Objective: Define future mission types such as capture flag, rescue VIP, capture chest, and kill target.
 - Details: Define future mission types such as capture flag, rescue VIP, capture chest, and kill target.
 
 ### Plan future tactical depth expansion such as larger unit footprints, obstacle tiles, and additional classes.
@@ -38,6 +40,7 @@ This file is rendered from `sessions/studio.db`. Do not use it as the source of 
 - Requires Approval: yes
 - Review State: None
 - Milestone: M4 - Content, AI, And Expansion Lanes
+- Objective: Plan future tactical depth expansion such as larger unit footprints, obstacle tiles, and additional classes.
 - Details: Plan future tactical depth expansion such as larger unit footprints, obstacle tiles, and additional classes.
 
 ### Separate delivery-path evaluation from current range checks
@@ -50,6 +53,7 @@ This file is rendered from `sessions/studio.db`. Do not use it as the source of 
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Plan the future engine change that splits delivery-path evaluation from the current single-pass targeting or range logic.
 - Details: Plan the future engine change that splits delivery-path evaluation from the current single-pass targeting or range logic.
 
 Scope In:
@@ -74,6 +78,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Plan the future action-profile split that lets physical and magical attacks use different blocker and dodge assumptions under the approved `TG-058` baseline.
 - Details: Plan the future action-profile split that lets physical and magical attacks use different blocker and dodge assumptions under the approved `TG-058` baseline.
 
 Scope In:
@@ -98,6 +103,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Plan the future UI feedback needed so players can understand visible-but-blocked versus fully actionable targets once the combat model expands.
 - Details: Plan the future UI feedback needed so players can understand visible-but-blocked versus fully actionable targets once the combat model expands.
 
 Scope In:
@@ -122,6 +128,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Keep wards, resistances, anti-magic exceptions, reflection, absorption, or similar systems explicitly separated from the approved `TG-058` baseline.
 - Details: Keep wards, resistances, anti-magic exceptions, reflection, absorption, or similar systems explicitly separated from the approved `TG-058` baseline.
 
 Scope In:
@@ -146,6 +153,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Define how future invincible status and indestructible objects should behave so magical and physical attacks can interact with them cleanly later.
 - Details: Define how future invincible status and indestructible objects should behave so magical and physical attacks can interact with them cleanly later.
 
 Scope In:
@@ -170,6 +178,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define a future system for saved deployment layouts or loadouts so players can keep aggressive, defensive, combo-oriented, or other preferred battlefield presets.
 - Details: define a future system for saved deployment layouts or loadouts so players can keep aggressive, defensive, combo-oriented, or other preferred battlefield presets.
 
 Scope In:
@@ -194,6 +203,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define how progression and profile data should be stored as the project grows beyond a pure sandbox while staying local-first for now.
 - Details: define how progression and profile data should be stored as the project grows beyond a pure sandbox while staying local-first for now.
 
 Scope In:
@@ -218,6 +228,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M4 - Content, AI, And Expansion Lanes
+- Objective: define how local tactical AI should interact with the engine so scripted and heuristic opponents can be added later without coupling decision-making to UI code.
 - Details: define how local tactical AI should interact with the engine so scripted and heuristic opponents can be added later without coupling decision-making to UI code.
 
 Scope In:
@@ -242,6 +253,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M4 - Content, AI, And Expansion Lanes
+- Objective: define the first architecture for handling source art, exported assets, naming, metadata, and tool choices before the game starts accumulating larger visual content.
 - Details: define the first architecture for handling source art, exported assets, naming, metadata, and tool choices before the game starts accumulating larger visual content.
 
 Scope In:
@@ -266,6 +278,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: turn the housing portion of the progression vision into a small durable packet covering starting house state, upgrade steps, total capacity growth, and the first bounded cap for roster points.
 - Details: turn the housing portion of the progression vision into a small durable packet covering starting house state, upgrade steps, total capacity growth, and the first bounded cap for roster points.
 
 Scope In:
@@ -290,6 +303,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define how class-unlock buildings and first recruitment costs should work in the first progression pass.
 - Details: define how class-unlock buildings and first recruitment costs should work in the first progression pass.
 
 Scope In:
@@ -314,6 +328,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define the zero-gold recovery rule so progression testing never hard-locks the player out of basic play.
 - Details: define the zero-gold recovery rule so progression testing never hard-locks the player out of basic play.
 
 Scope In:
@@ -338,6 +353,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define the first mission loop that can support progression testing against AI or otherwise winnable content, so the economy is not blocked on PvP-only outcomes.
 - Details: define the first mission loop that can support progression testing against AI or otherwise winnable content, so the economy is not blocked on PvP-only outcomes.
 
 Scope In:
@@ -362,6 +378,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define the first test-only multiplier controls so progression pacing can be accelerated during development without rewriting the underlying economy rules.
 - Details: define the first test-only multiplier controls so progression pacing can be accelerated during development without rewriting the underlying economy rules.
 
 Scope In:
@@ -386,6 +403,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: turn the first gold-only economy into a durable packet covering wager logic, victory flow, net gain or loss logic, and first-pass building costs.
 - Details: turn the first gold-only economy into a durable packet covering wager logic, victory flow, net gain or loss logic, and first-pass building costs.
 
 Scope In:
@@ -411,6 +429,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: Plan and later implement clearer in-battle tile composition so units, props, and status signals occupy intentional positions within each tile.
 - Details: Capture the follow-up needed for live battle tiles now that the board and badge pass is functional. Objects and markers inside occupied tiles currently read as centered stacks rather than deliberately composed pieces. This future pass should revisit how battlefield pieces anchor within the tile, which signals deserve edge or corner placement, and how mixed tile contents should stay readable without waiting for the full art pipeline.
 - Review Notes: Logged from live operator review after the latest battle-mode cleanup pass.
 
@@ -424,6 +443,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: Plan and later implement a scalable battle roster/card treatment that works cleanly for larger armies.
 - Details: Capture the follow-up needed for the in-battle roster/card surface now that setups can exceed five units. The current player-card presentation no longer scales well once armies grow beyond the original smaller roster size. This future pass should redesign the battle roster so larger squads remain scannable, useful, and space-efficient during live play.
 - Review Notes: Logged from live operator review after larger-army setup became playable.
 
@@ -438,6 +458,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/app/src/ui/phaser/BattlefieldScene.ts
+- Objective: Integrate a Phaser battlefield shell into the React app.
 - Details: Introduce a Phaser-powered battlefield surface inside the existing React application shell so the renderer transition can begin without replacing the surrounding setup and HUD layers all at once.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -452,6 +473,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/app/src/ui/phaser/isometric.ts
+- Objective: Implement isometric coordinate transform and input mapping.
 - Details: Add the first isometric coordinate and input-mapping layer so the game can translate between board-state cells and an isometric battlefield presentation without changing core combat logic.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -466,6 +488,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/app/src/engine/data/isometricBoard.json
+- Objective: Add authored board import for the first isometric map.
 - Details: Add the first authored board import path for an isometric battlefield so map shape and terrain composition can come from an external map authoring step instead of being implied only by the current DOM grid.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -480,6 +503,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/app/src/ui/phaser/BattlefieldScene.ts
+- Objective: Implement unit anchor, depth, and facing presentation.
 - Details: Define how units sit on isometric tiles, resolve depth ordering, and present facing in a readable way. The first pass should make the battlefield legible before chasing full production-quality animation.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -494,6 +518,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/app/src/ui/phaser/assetManifest.ts
+- Objective: Consume approved visual artifacts in the runtime.
 - Details: Wire the renderer to approved visual artifact manifests instead of relying on ad hoc asset placement. The first pass should prove that reviewed visual outputs can become explicit runtime inputs.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -508,6 +533,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/app/src/ui/phaser/effects.ts
+- Objective: Add the first skill VFX and SFX hook.
 - Details: Add the first integrated visual and sound-effect hook to a skill path so the vertical slice starts to feel like a real game instead of a presentation-only renderer shift.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -522,6 +548,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M10 - TacticsGame Isometric Vertical Slice
 - Expected Artifact: projects/tactics-game/artifacts/isometric_vertical_slice_proof.md
+- Objective: Prove the isometric vertical slice through QA and operator review.
 - Details: Record the first vertical-slice proof for the isometric renderer path, including operator review, runtime checks, and evidence that the new presentation feels materially closer to a real game.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -536,6 +563,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M11 - Gameplay AI And Encounter Quality
 - Expected Artifact: projects/tactics-game/governance/LOCAL_BOT_ARCHITECTURE.md
+- Objective: Define the deterministic local bot architecture.
 - Details: Define the first deterministic local bot architecture so enemy turns, heuristics, and evaluation loops can be implemented without relying on live model calls. The first pass should describe how the bot selects legal actions, difficulty modifiers, and debug outputs.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -550,6 +578,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M11 - Gameplay AI And Encounter Quality
 - Expected Artifact: projects/tactics-game/app/src/engine/ai/localBot.ts
+- Objective: Implement the local bot framework skeleton.
 - Details: Build the first deterministic local bot skeleton that can enumerate legal actions and prepare future heuristic scoring. This should be a real gameplay runtime layer, not a speculative design document.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -564,6 +593,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M11 - Gameplay AI And Encounter Quality
 - Expected Artifact: projects/tactics-game/app/src/app/presentation/createAiDebugViewModel.ts
+- Objective: Add bot telemetry and debug review.
 - Details: Add operator-usable telemetry and debug review for the deterministic bot so decision quality can be inspected without reading raw engine internals. The first pass should support basic move reasoning, priority visibility, and failure diagnosis.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -578,6 +608,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M11 - Gameplay AI And Encounter Quality
 - Expected Artifact: projects/tactics-game/app/src/engine/ai/difficultyProfiles.ts
+- Objective: Implement difficulty tiers.
 - Details: Add multiple deterministic difficulty tiers so the local bot can behave differently across easy, normal, and hard modes without changing the fundamental runtime model.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -592,6 +623,7 @@ Acceptance Criteria:
 - Review State: None
 - Milestone: M11 - Gameplay AI And Encounter Quality
 - Expected Artifact: projects/tactics-game/artifacts/ai_playtest_evidence.md
+- Objective: Prove AI playtest quality and balancing evidence.
 - Details: Record playtest and balancing evidence for the deterministic bot so the studio can judge encounter quality from actual runs instead of intuition. The first pass should capture strengths, failures, and tuning priorities.
 - Review Notes: Created during the approved M7-M11 board rewrite on 2026-03-27.
 
@@ -607,6 +639,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: analyze the current code and documentation structure to confirm how progression, persistence, AI, and richer content can be added without creating expensive coupling later.
 - Details: analyze the current code and documentation structure to confirm how progression, persistence, AI, and richer content can be added without creating expensive coupling later.
 
 Scope In:
@@ -632,6 +665,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Define the future action-profile fields needed to support the approved separation between visibility, targetability, delivery path, and damage family.
 - Details: Define the future action-profile fields needed to support the approved separation between visibility, targetability, delivery path, and damage family.
 
 Scope In:
@@ -656,6 +690,7 @@ Acceptance Criteria:
 - Requires Approval: yes
 - Review State: None
 - Milestone: M2 - Combat Model Expansion Foundations
+- Objective: Plan the future blocker-tag model so delivery and visibility systems can query board blockers without hardcoding special cases.
 - Details: Plan the future blocker-tag model so delivery and visibility systems can query board blockers without hardcoding special cases.
 
 Scope In:
@@ -682,6 +717,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: In Review
 - Milestone: M3 - Progression And Meta-Loop Foundation
+- Objective: define the future vision where players begin with a very small roster and gradually earn additional units over time, so the tactical game grows toward an army-building identity instead of assuming an effectively infinite bench.
 - Details: define the future vision where players begin with a very small roster and gradually earn additional units over time, so the tactical game grows toward an army-building identity instead of assuming an effectively infinite bench.
 
 Scope In:
@@ -710,6 +746,7 @@ Acceptance Criteria:
 - Review State: In Review
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/styles.css
+- Objective: define the first cohesive visual direction for the playable prototype so the battle screen starts feeling like a real game instead of only a functional sandbox, while staying inside the current grim / medieval / metal / gore direction.
 - Details: define the first cohesive visual direction for the playable prototype so the battle screen starts feeling like a real game instead of only a functional sandbox, while staying inside the current grim / medieval / metal / gore direction.
 
 Scope In:
@@ -738,6 +775,7 @@ Acceptance Criteria:
 - Review State: In Review
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/ui/react/App.tsx
+- Objective: Upgrade live battlefield unit presentation with heraldic token treatment, clearer class identity, and cleaner status readability.
 - Details: Upgrade live battlefield unit presentation with heraldic token treatment, clearer class identity, and cleaner status readability.
 
 Scope In:
@@ -764,6 +802,7 @@ Acceptance Criteria:
 - Review State: In Review
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/ui/react/App.tsx
+- Objective: Turn the current battle panels into a more game-like command folio while preserving clarity.
 - Details: Turn the current battle panels into a more game-like command folio while preserving clarity.
 
 Scope In:
@@ -790,6 +829,7 @@ Acceptance Criteria:
 - Review State: In Review
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/styles.css
+- Objective: Restyle setup mode so army placement and objective preparation feel like part of the game rather than a utility form.
 - Details: Restyle setup mode so army placement and objective preparation feel like part of the game rather than a utility form.
 
 Scope In:
@@ -816,6 +856,7 @@ Acceptance Criteria:
 - Review State: In Review
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/styles.css
+- Objective: Add moderate motion and feedback cues that make the prototype feel more alive without overwhelming tactical readability.
 - Details: Add moderate motion and feedback cues that make the prototype feel more alive without overwhelming tactical readability.
 
 Scope In:
@@ -844,6 +885,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/ui/react/App.tsx
+- Objective: reduce the text-heavy feeling of the current right-side battle panel while preserving its usefulness for rotation, objective reminders, and selected-unit support.
 - Details: reduce the text-heavy feeling of the current right-side battle panel while preserving its usefulness for rotation, objective reminders, and selected-unit support.
 
 Scope In:
@@ -871,6 +913,7 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: define the first-pass player flow through the tactical battle screen so the prototype can communicate state, choices, outcomes, and battle closure clearly enough for the Milestone 2 comprehension test.
 - Details: define the first-pass player flow through the tactical battle screen so the prototype can communicate state, choices, outcomes, and battle closure clearly enough for the Milestone 2 comprehension test.
 
 Scope In:
@@ -898,6 +941,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: Produce a low-fidelity wireframe for the tactical battle screen that stabilizes information hierarchy before larger UI implementation work.
 - Details: Produce a low-fidelity wireframe for the tactical battle screen that stabilizes information hierarchy before larger UI implementation work.
 
 Scope In:
@@ -926,6 +970,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: Identify the reusable first-pass battle-screen components so the interface can evolve through deliberate components rather than one-off UI patches.
 - Details: Identify the reusable first-pass battle-screen components so the interface can evolve through deliberate components rather than one-off UI patches.
 
 Scope In:
@@ -952,6 +997,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: Define the first-pass feedback states the tactical interface must communicate so players understand turn state, legality, risk, and outcome.
 - Details: Define the first-pass feedback states the tactical interface must communicate so players understand turn state, legality, risk, and outcome.
 
 Scope In:
@@ -979,6 +1025,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: define how the project can move from the current prototype presentation toward the intended isometric end state without committing too early to a full visual conversion.
 - Details: define how the project can move from the current prototype presentation toward the intended isometric end state without committing too early to a full visual conversion.
 
 Scope In:
@@ -1004,6 +1051,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: define the first battle-side card strip so players can inspect their live roster state each turn, starting with the current player's units only and supporting later deeper character-sheet behavior.
 - Details: define the first battle-side card strip so players can inspect their live roster state each turn, starting with the current player's units only and supporting later deeper character-sheet behavior.
 
 Scope In:
@@ -1031,6 +1079,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
+- Objective: define how digital assets should be conceived, maintained, and evolved for the future visual direction, including unit art, card art, sprite references, and battlefield presentation, while optimizing first for speed of experimentation and consistency.
 - Details: define how digital assets should be conceived, maintained, and evolved for the future visual direction, including unit art, card art, sprite references, and battlefield presentation, while optimizing first for speed of experimentation and consistency.
 
 Scope In:
@@ -1058,6 +1107,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Lock tactical sandbox defaults and rewrite the first playable plan around them.
 - Details: Lock tactical sandbox defaults and rewrite the first playable plan around them.
 
 ### Choose first-slice opposing-side control mode.
@@ -1070,6 +1120,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Choose first-slice opposing-side control mode.
 - Details: Choose first-slice opposing-side control mode.
 
 ### Choose exact starting team size for the tactical sandbox.
@@ -1082,6 +1133,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Choose exact starting team size for the tactical sandbox.
 - Details: Choose exact starting team size for the tactical sandbox.
 
 ### Confirm technology stack for the POC.
@@ -1094,6 +1146,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Confirm technology stack for the POC.
 - Details: Confirm technology stack for the POC.
 
 ### Draft architecture boundaries for the tactical sandbox slice.
@@ -1106,6 +1159,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Draft architecture boundaries for the tactical sandbox slice.
 - Details: Draft architecture boundaries for the tactical sandbox slice.
 
 ### Draft updated data model with locked movement defaults.
@@ -1118,6 +1172,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Draft updated data model with locked movement defaults.
 - Details: Draft updated data model with locked movement defaults.
 
 ### Draft confirmed battle rules summary.
@@ -1130,6 +1185,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Draft confirmed battle rules summary.
 - Details: Draft confirmed battle rules summary.
 
 ### Draft tiny execution-prep task sequence.
@@ -1142,6 +1198,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Draft tiny execution-prep task sequence.
 - Details: Draft tiny execution-prep task sequence.
 
 ### Write board preset specification packet.
@@ -1154,6 +1211,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Write board preset specification packet.
 - Details: Write board preset specification packet.
 
 ### Write unit schema and starting roster packet.
@@ -1166,6 +1224,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Write unit schema and starting roster packet.
 - Details: Write unit schema and starting roster packet.
 
 ### Write activation and fatigue rules packet.
@@ -1178,6 +1237,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Write activation and fatigue rules packet.
 - Details: Write activation and fatigue rules packet.
 
 ### Write movement and attack legality packet.
@@ -1190,6 +1250,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Write movement and attack legality packet.
 - Details: Write movement and attack legality packet.
 
 ### Choose sandbox opposing-side control setup.
@@ -1202,6 +1263,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Choose sandbox opposing-side control setup.
 - Details: Choose sandbox opposing-side control setup.
 
 ### Assemble tactical sandbox implementation brief.
@@ -1214,6 +1276,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Assemble tactical sandbox implementation brief.
 - Details: Assemble tactical sandbox implementation brief.
 
 ### Implement first tactical sandbox slice in code and verify the battle loop locally.
@@ -1226,6 +1289,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Implement first tactical sandbox slice in code and verify the battle loop locally.
 - Details: Implement first tactical sandbox slice in code and verify the battle loop locally.
 
 ### Build army setup foundation and expand the sandbox roster with Scout and Cleric.
@@ -1238,6 +1302,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Build army setup foundation and expand the sandbox roster with Scout and Cleric.
 - Details: Build army setup foundation and expand the sandbox roster with Scout and Cleric.
 
 ### Fix deployment layout stability regression in the React setup flow.
@@ -1250,6 +1315,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Fix deployment layout stability regression in the React setup flow.
 - Details: Fix deployment layout stability regression in the React setup flow.
 
 ### Restore clear unit HP visibility in the compact board UI.
@@ -1262,6 +1328,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Restore clear unit HP visibility in the compact board UI.
 - Details: Restore clear unit HP visibility in the compact board UI.
 
 ### Recover the working build and retry occupied-tile readability in a smaller safer pass.
@@ -1274,6 +1341,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Recover the working build and retry occupied-tile readability in a smaller safer pass.
 - Details: Recover the working build and retry occupied-tile readability in a smaller safer pass.
 
 ### Establish version control for `TacticsGame` as a workflow safeguard.
@@ -1286,6 +1354,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Establish version control for `TacticsGame` as a workflow safeguard.
 - Details: Establish version control for `TacticsGame` as a workflow safeguard.
 
 ### Fix follow-up issues from the latest QoL pass.
@@ -1298,6 +1367,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Fix follow-up issues from the latest QoL pass.
 - Details: Fix follow-up issues from the latest QoL pass.
 
 ### Fix the pre-commit unit-reselection crash
@@ -1310,6 +1380,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Fix the runtime crash caused by selecting a different eligible unit during the intended pre-commit reselection flow, while preserving the corrected log order and stable layout.
 - Details: Fix the runtime crash caused by selecting a different eligible unit during the intended pre-commit reselection flow, while preserving the corrected log order and stable layout.
 
 Scope In:
@@ -1338,6 +1409,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Add a first-pass wall object that occupies tiles and blocks movement, placement, and ranged line-of-fire without changing the validated core battle loop.
 - Details: Add a first-pass wall object that occupies tiles and blocks movement, placement, and ranged line-of-fire without changing the validated core battle loop.
 
 Scope In:
@@ -1366,6 +1438,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Add a first-pass destructible high-grass field object that blocks tiles until attacked, while preserving current validated unit rules.
 - Details: Add a first-pass destructible high-grass field object that blocks tiles until attacked, while preserving current validated unit rules.
 
 Scope In:
@@ -1393,6 +1466,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Replace separate move/action/rotate activity-log lines with a clearer single-line summary per activation without changing battle rules.
 - Details: Replace separate move/action/rotate activity-log lines with a clearer single-line summary per activation without changing battle rules.
 
 Scope In:
@@ -1421,6 +1495,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Keep the one-line activation summaries from `TG-055` while making older log entries accessible once the log exceeds the visible window.
 - Details: Keep the one-line activation summaries from `TG-055` while making older log entries accessible once the log exceeds the visible window.
 
 Scope In:
@@ -1451,6 +1526,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Replace fixed center-line wall and grass placement with player-controlled setup placement so walls cost 10 points and high grass costs 5 points during the setup phase.
 - Details: Replace fixed center-line wall and grass placement with player-controlled setup placement so walls cost 10 points and high grass costs 5 points during the setup phase.
 
 Scope In:
@@ -1479,6 +1555,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Define future line-of-sight and attack-type rules so units, walls, and high grass can interact cleanly with physical and magical attacks.
 - Details: Define future line-of-sight and attack-type rules so units, walls, and high grass can interact cleanly with physical and magical attacks.
 
 Scope In:
@@ -1506,6 +1583,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Make board-side colors contextual so setup emphasizes the active player's deployment area, while battle uses a neutral board presentation.
 - Details: Make board-side colors contextual so setup emphasizes the active player's deployment area, while battle uses a neutral board presentation.
 
 Scope In:
@@ -1533,6 +1611,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: Add the first live separation between physical and magical damage and introduce a new Pyromancer unit with a plus-shaped magical area attack.
 - Details: Add the first live separation between physical and magical damage and introduce a new Pyromancer unit with a plus-shaped magical area attack.
 
 Scope In:
@@ -1565,6 +1644,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: turn the current Stage 4 backlog into a small milestone ladder with a clear closure order so the project can show visible progression and avoid opening too many design and systems fronts at once.
 - Details: turn the current Stage 4 backlog into a small milestone ladder with a clear closure order so the project can show visible progression and avoid opening too many design and systems fronts at once.
 
 Scope In:
@@ -1591,6 +1671,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: define the smallest first-pass rule for one unit capturing and carrying a VIP so later objective-based win conditions can share the same base behavior.
 - Details: define the smallest first-pass rule for one unit capturing and carrying a VIP so later objective-based win conditions can share the same base behavior.
 
 Scope In:
@@ -1616,6 +1697,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: replace the browser-native ally-hit confirmation popup with an in-game warning layer that matches the tactical board's own visual language and avoids browser-specific dialog behavior.
 - Details: replace the browser-native ally-hit confirmation popup with an in-game warning layer that matches the tactical board's own visual language and avoids browser-specific dialog behavior.
 
 Scope In:
@@ -1643,6 +1725,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: make unit fatigue or cooldown state legible in the battle UI so the player can easily see which units are unavailable and how many turns remain before they can act again.
 - Details: make unit fatigue or cooldown state legible in the battle UI so the player can easily see which units are unavailable and how many turns remain before they can act again.
 
 Scope In:
@@ -1669,6 +1752,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: add the first objective-based win condition where each side rescues its own captive VIP and wins by bringing that rescued VIP into its own extraction zone.
 - Details: add the first objective-based win condition where each side rescues its own captive VIP and wins by bringing that rescued VIP into its own extraction zone.
 
 Scope In:
@@ -1698,6 +1782,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: step back from isolated unit tweaks and define a broader balance pass for the current live roster so the milestone can close on a more coherent combat feel.
 - Details: step back from isolated unit tweaks and define a broader balance pass for the current live roster so the milestone can close on a more coherent combat feel.
 
 Scope In:
@@ -1723,6 +1808,7 @@ Acceptance Criteria:
 - Requires Approval: no
 - Review State: Accepted
 - Milestone: M0 - Sandbox Foundation And First Combat Slice
+- Objective: apply the first approved presentation improvements so the prototype feels more like a coherent game loop while preserving the validated tactical rules and producing a milestone jump similar to the confidence gain felt after `TG-081`.
 - Details: apply the first approved presentation improvements so the prototype feels more like a coherent game loop while preserving the validated tactical rules and producing a milestone jump similar to the confidence gain felt after `TG-081`.
 
 Scope In:
@@ -1751,6 +1837,7 @@ Acceptance Criteria:
 - Priority: high
 - Requires Approval: yes
 - Review State: Accepted
+- Objective: Design and implement the Archer class for the tactics game.
 - Details: Create the Archer class adhering to the current architecture constraints. Provide explicit proof chain including design decisions, code implementation, and testing evidence.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -1766,6 +1853,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_9d4e1a2802ce
 - Expected Artifact: projects/tactics-game/artifacts/archer_design.md
+- Objective: Create the architecture and gameplay design document for Archer.
 - Details: Document the Archer unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1781,6 +1869,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_9d4e1a2802ce
 - Expected Artifact: projects/tactics-game/artifacts/archer.py
+- Objective: Implement the Archer class in Python.
 - Details: Write a Python module for Archer suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1796,6 +1885,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_9d4e1a2802ce
 - Expected Artifact: projects/tactics-game/artifacts/archer_ui_notes.md
+- Objective: Create UI and visual notes for presenting Archer.
 - Details: Describe how the UI should communicate Archer identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1809,6 +1899,7 @@ Acceptance Criteria:
 - Priority: medium
 - Requires Approval: no
 - Review State: Accepted
+- Objective: Locate and verify wireframe and reviewable results for TG-071 and other 'for review' tasks in Tactics game project.
 - Details: Find the tasks marked as 'for review' in the Tactics game project, confirm the existence and location of wireframes, provide content details and proof of wireframe creation and review results.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -1824,6 +1915,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_eeca89d2af97
 - Expected Artifact: projects/tactics-game/artifacts/project_design.md
+- Objective: Create the architecture and gameplay design document for Project.
 - Details: Document the Project unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1839,6 +1931,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_eeca89d2af97
 - Expected Artifact: projects/tactics-game/artifacts/project.py
+- Objective: Implement the Project class in Python.
 - Details: Write a Python module for Project suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1854,6 +1947,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_eeca89d2af97
 - Expected Artifact: projects/tactics-game/artifacts/project_ui_notes.md
+- Objective: Create UI and visual notes for presenting Project.
 - Details: Describe how the UI should communicate Project identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1867,6 +1961,7 @@ Acceptance Criteria:
 - Priority: medium
 - Requires Approval: no
 - Review State: Accepted
+- Objective: Locate wireframe and related content for TG-071 and other tasks marked 'for my review' in the Tactics game project.
 - Details: Retrieve task TG-071 details, verify existence and location of its wireframe, and list other tasks in the same project marked 'for my review' with their content and wireframe availability. Provide explicit proof or evidence for findings.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -1882,6 +1977,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_3e0e01726bd1
 - Expected Artifact: projects/tactics-game/artifacts/project_design.md
+- Objective: Create the architecture and gameplay design document for Project.
 - Details: Document the Project unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1897,6 +1993,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_3e0e01726bd1
 - Expected Artifact: projects/tactics-game/artifacts/project.py
+- Objective: Implement the Project class in Python.
 - Details: Write a Python module for Project suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1912,6 +2009,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_3e0e01726bd1
 - Expected Artifact: projects/tactics-game/artifacts/project_ui_notes.md
+- Objective: Create UI and visual notes for presenting Project.
 - Details: Describe how the UI should communicate Project identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1925,6 +2023,7 @@ Acceptance Criteria:
 - Priority: medium
 - Requires Approval: no
 - Review State: Accepted
+- Objective: Locate wireframes and review content for tasks in the Tactics Game project, including TG-071.
 - Details: Find the task TG-071 content and confirm if a wireframe was created for review. Provide similar information for other tasks in the Tactics Game project that are marked for review. Include explicit proof and evidence of wireframe locations and content.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -1940,6 +2039,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_e014fe66fbc1
 - Expected Artifact: projects/tactics-game/artifacts/tg_design.md
+- Objective: Create the architecture and gameplay design document for Tg.
 - Details: Document the Tg unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1955,6 +2055,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_e014fe66fbc1
 - Expected Artifact: projects/tactics-game/artifacts/tg.py
+- Objective: Implement the Tg class in Python.
 - Details: Write a Python module for Tg suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1970,6 +2071,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_e014fe66fbc1
 - Expected Artifact: projects/tactics-game/artifacts/tg_ui_notes.md
+- Objective: Create UI and visual notes for presenting Tg.
 - Details: Describe how the UI should communicate Tg identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -1983,6 +2085,7 @@ Acceptance Criteria:
 - Priority: medium
 - Requires Approval: no
 - Review State: Accepted
+- Objective: Move task TG-098 for M1 tacticsgame back to 'In Progress'.
 - Details: The user cannot see the outcome of the task from the current build, so the task TG-098 needs to be moved back to 'In Progress' status to continue work.
 - Result: Moved TG-098 to in progress.
 - Review Notes: Moved TG-098 to in progress.
@@ -1996,6 +2099,7 @@ Acceptance Criteria:
 - Priority: medium
 - Requires Approval: yes
 - Review State: Accepted
+- Objective: Add a test-only support unit called 'Beacon' for tactics-game SDK migration proof.
 - Details: Implement a single bounded slice of functionality for the 'Beacon' unit within the tactics game, focusing on test-only use. Provide explicit proof and evidence of correct implementation as part of the deliverable.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -2011,6 +2115,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_ac500b518bd8
 - Expected Artifact: projects/tactics-game/artifacts/functionality_design.md
+- Objective: Create the architecture and gameplay design document for Functionality.
 - Details: Document the Functionality unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2026,6 +2131,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_ac500b518bd8
 - Expected Artifact: projects/tactics-game/artifacts/functionality.py
+- Objective: Implement the Functionality class in Python.
 - Details: Write a Python module for Functionality suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2041,6 +2147,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_ac500b518bd8
 - Expected Artifact: projects/tactics-game/artifacts/functionality_ui_notes.md
+- Objective: Create UI and visual notes for presenting Functionality.
 - Details: Describe how the UI should communicate Functionality identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2054,6 +2161,7 @@ Acceptance Criteria:
 - Priority: medium
 - Requires Approval: no
 - Review State: Accepted
+- Objective: Create a bounded proof slice for Beacon with explicit proof evidence.
 - Details: Generate a proof slice that is bounded in scope specifically for the Beacon component, ensuring explicit proof evidence is included to validate the slice.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -2069,6 +2177,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_3111bbc53123
 - Expected Artifact: projects/tactics-game/artifacts/evidence_design.md
+- Objective: Create the architecture and gameplay design document for Evidence.
 - Details: Document the Evidence unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2084,6 +2193,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_3111bbc53123
 - Expected Artifact: projects/tactics-game/artifacts/evidence.py
+- Objective: Implement the Evidence class in Python.
 - Details: Write a Python module for Evidence suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2099,6 +2209,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_3111bbc53123
 - Expected Artifact: projects/tactics-game/artifacts/evidence_ui_notes.md
+- Objective: Create UI and visual notes for presenting Evidence.
 - Details: Describe how the UI should communicate Evidence identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2112,6 +2223,7 @@ Acceptance Criteria:
 - Priority: high
 - Requires Approval: yes
 - Review State: Accepted
+- Objective: Create a bounded proof slice for the Beacon component.
 - Details: Develop a focused and concise proof slice that covers essential functionalities of the Beacon module, ensuring the proof scope is limited and manageable to maintain clarity and efficiency.
 - Result: PM completed all subtasks and QA approved the final deliverables.
 - Review Notes: QA approved the parent task.
@@ -2127,6 +2239,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_a40c6fdb9da9
 - Expected Artifact: projects/tactics-game/artifacts/component_design.md
+- Objective: Create the architecture and gameplay design document for Component.
 - Details: Document the Component unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2142,6 +2255,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_a40c6fdb9da9
 - Expected Artifact: projects/tactics-game/artifacts/component.py
+- Objective: Implement the Component class in Python.
 - Details: Write a Python module for Component suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2157,6 +2271,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Parent Task: task_a40c6fdb9da9
 - Expected Artifact: projects/tactics-game/artifacts/component_ui_notes.md
+- Objective: Create UI and visual notes for presenting Component.
 - Details: Describe how the UI should communicate Component identity, spellcasting feedback, and player readability.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
@@ -2172,6 +2287,7 @@ Acceptance Criteria:
 - Review State: Accepted
 - Milestone: M1 - Playable Prototype Surface And Visual Cohesion
 - Expected Artifact: projects/tactics-game/app/src/styles.css
+- Objective: Apply the approved Gilded War Table direction to the live battlefield shell and board so the prototype feels like a game surface instead of a flat prototype grid.
 - Details: Apply the approved Gilded War Table direction to the live battlefield shell and board so the prototype feels like a game surface instead of a flat prototype grid.
 
 Scope In:
@@ -2195,6 +2311,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Imported Legacy Board
+- Assigned Role: Imported Legacy Board
+- Milestone: M5 - Deferred Post-Prototype Platform Work
+- Objective: Multiplayer planning.
 - Details: Multiplayer planning.
 
 ### Base management implementation.
@@ -2202,6 +2321,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Imported Legacy Board
+- Assigned Role: Imported Legacy Board
+- Milestone: M5 - Deferred Post-Prototype Platform Work
+- Objective: Base management implementation.
 - Details: Base management implementation.
 
 ### Create a bounded proof slice for Beacon with explicit proof evidence.
@@ -2209,6 +2331,8 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Orchestrator
+- Objective: Create a bounded proof slice for Beacon with explicit proof evidence.
 - Details: Develop a proof slice that is limited in scope (bounded) for the Beacon component and ensure all proof evidence is detailed explicitly.
 
 ### Evidence Architecture Design
@@ -2216,6 +2340,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Architect
+- Expected Artifact: projects/tactics-game/artifacts/evidence_design.md
+- Objective: Create the architecture and gameplay design document for Evidence.
 - Details: Document the Evidence unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 
 ### Evidence Python Module
@@ -2223,6 +2350,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Developer
+- Expected Artifact: projects/tactics-game/artifacts/evidence.py
+- Objective: Implement the Evidence class in Python.
 - Details: Write a Python module for Evidence suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 
 ### Evidence UI Notes
@@ -2230,6 +2360,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Design
+- Expected Artifact: projects/tactics-game/artifacts/evidence_ui_notes.md
+- Objective: Create UI and visual notes for presenting Evidence.
 - Details: Describe how the UI should communicate Evidence identity, spellcasting feedback, and player readability.
 
 ### Create a bounded proof slice for Beacon with explicit proof evidence.
@@ -2237,6 +2370,8 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Orchestrator
+- Objective: Create a bounded proof slice for Beacon with explicit proof evidence.
 - Details: Generate a proof slice specifically scoped to the Beacon component and document the explicit evidence supporting the proof.
 
 ### Evidence Architecture Design
@@ -2244,6 +2379,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Architect
+- Expected Artifact: projects/tactics-game/artifacts/evidence_design.md
+- Objective: Create the architecture and gameplay design document for Evidence.
 - Details: Document the Evidence unit for the tactics game with explicit sections for overview, attributes, abilities, and acceptance criteria.
 
 ### Evidence Python Module
@@ -2251,6 +2389,9 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Developer
+- Expected Artifact: projects/tactics-game/artifacts/evidence.py
+- Objective: Implement the Evidence class in Python.
 - Details: Write a Python module for Evidence suitable for the tactics game domain. Include health, mana, spell power, and casting behavior.
 
 ### Evidence UI Notes
@@ -2258,4 +2399,7 @@ Accepted by Studio Lead on 2026-03-27 after live app review.
 - Status: deferred
 - Secondary State: deferred
 - Owner: Orchestrator
+- Assigned Role: Design
+- Expected Artifact: projects/tactics-game/artifacts/evidence_ui_notes.md
+- Objective: Create UI and visual notes for presenting Evidence.
 - Details: Describe how the UI should communicate Evidence identity, spellcasting feedback, and player readability.

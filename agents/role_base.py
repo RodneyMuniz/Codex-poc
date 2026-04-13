@@ -51,7 +51,11 @@ class StudioRoleAgent:
         task_packet = self._enforce_task_packet_contract(task_id=task_id, tool_name=direct_tool_name)
         if self._delegated_work_requested(run_id=run_id, task_id=task_id):
             self._assert_api_router_authority(run_id=run_id, task_id=task_id)
-            authority = self._resolve_authority_context(run_id=run_id, task_id=task_id)
+            authority = self._ensure_delegated_execution_reservation(
+                run_id=run_id,
+                task_id=task_id,
+                authority=self._resolve_authority_context(run_id=run_id, task_id=task_id),
+            )
             routed = await asyncio.to_thread(
                 partial(
                     self._get_api_router().invoke_text,
@@ -78,6 +82,7 @@ class StudioRoleAgent:
                 usage_already_recorded=True,
             )
             return content
+        self._assert_local_compatibility_path_allowed(run_id=run_id, task_id=task_id, task_packet=task_packet)
         result = await llm_call_async(
             self.role_name,
             self._resolve_task_state(task_id),
@@ -119,7 +124,11 @@ class StudioRoleAgent:
         task_packet = self._enforce_task_packet_contract(task_id=task_id, tool_name=direct_tool_name)
         if self._delegated_work_requested(run_id=run_id, task_id=task_id):
             self._assert_api_router_authority(run_id=run_id, task_id=task_id)
-            authority = self._resolve_authority_context(run_id=run_id, task_id=task_id)
+            authority = self._ensure_delegated_execution_reservation(
+                run_id=run_id,
+                task_id=task_id,
+                authority=self._resolve_authority_context(run_id=run_id, task_id=task_id),
+            )
             parsed, routed = await asyncio.to_thread(
                 partial(
                     self._get_api_router().invoke_json,
@@ -145,6 +154,7 @@ class StudioRoleAgent:
                 usage_already_recorded=True,
             )
             return parsed
+        self._assert_local_compatibility_path_allowed(run_id=run_id, task_id=task_id, task_packet=task_packet)
         result = await llm_call_async(
             self.role_name,
             self._resolve_task_state(task_id),
@@ -211,6 +221,40 @@ class StudioRoleAgent:
             "task_packet_token_budget": task_packet.token_budget.model_dump(),
         }
 
+    def _task_packet_budget_authority(self, task_id: str | None):
+        task_packet = self._load_task_packet(task_id)
+        if task_packet is None:
+            return None
+        task = self.store.get_task(task_id) if task_id else None
+        acceptance = (task or {}).get("acceptance") or {}
+        budget = task_packet.token_budget
+        declared_budget_max = acceptance.get("budget_max_tokens")
+        if declared_budget_max is not None and int(declared_budget_max) != int(budget.max_total_tokens):
+            raise RuntimeError(
+                "Inconsistent governed budget authority: acceptance budget_max_tokens does not match TaskPacket.token_budget.max_total_tokens."
+            )
+        declared_retry_limit = acceptance.get("retry_limit")
+        if declared_retry_limit is not None and int(declared_retry_limit) != int(budget.max_retries):
+            raise RuntimeError(
+                "Inconsistent governed budget authority: acceptance retry_limit does not match TaskPacket.token_budget.max_retries."
+            )
+        return budget
+
+    def _assert_local_compatibility_path_allowed(
+        self,
+        *,
+        run_id: str | None,
+        task_id: str | None,
+        task_packet: TaskPacket | None,
+    ) -> None:
+        if task_packet is None:
+            return
+        if not self._delegated_work_requested(run_id=run_id, task_id=task_id):
+            raise RuntimeError(
+                "TaskPacket-backed specialist execution requires tracked run_id and task_id routed through api_router; "
+                "the local compatibility path is non-governed only."
+            )
+
     async def _model_client_create(self, prepared_messages: list[dict[str, str]], json_output=None):
         model_messages = []
         for message in prepared_messages:
@@ -228,6 +272,71 @@ class StudioRoleAgent:
         if self._api_router is None:
             self._api_router = APIRouter(repo_root=self.repo_root, store=self.store)
         return self._api_router
+
+    def _ensure_delegated_execution_reservation(
+        self,
+        *,
+        run_id: str | None,
+        task_id: str | None,
+        authority: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not self._delegated_work_requested(run_id=run_id, task_id=task_id):
+            return authority
+        if not run_id or not task_id:
+            raise RuntimeError("Delegated execution requires tracked run_id and task_id.")
+        budget = self._task_packet_budget_authority(task_id)
+        if budget is None:
+            raise RuntimeError("Delegated execution requires TaskPacket token_budget authority.")
+        reservation_id = str(authority.get("budget_reservation_id") or "").strip()
+        priority_class = str(authority.get("priority_class") or "").strip()
+        reserved_max_tokens = int(authority.get("budget_max_tokens") or 0)
+        retry_limit = int(authority.get("retry_limit") or 0)
+        if not reservation_id:
+            raise RuntimeError("Delegated execution requires a budget_reservation_id.")
+        if not priority_class:
+            raise RuntimeError("Delegated execution requires a priority_class.")
+        if reserved_max_tokens <= 0:
+            raise RuntimeError("Delegated execution requires a positive budget_max_tokens cap.")
+        if reserved_max_tokens != int(budget.max_total_tokens):
+            raise RuntimeError(
+                "Inconsistent governed budget authority: authority budget_max_tokens does not match TaskPacket.token_budget.max_total_tokens."
+            )
+        if retry_limit != int(budget.max_retries):
+            raise RuntimeError(
+                "Inconsistent governed budget authority: authority retry_limit does not match TaskPacket.token_budget.max_retries."
+            )
+        existing = self.store.get_execution_job_reservation(reservation_id)
+        if existing is None:
+            self.store.create_execution_job_reservation(
+                job_id=reservation_id,
+                priority_class=priority_class,
+                reserved_max_tokens=int(budget.max_total_tokens),
+                reservation_status="reserved",
+                run_id=run_id,
+                task_id=task_id,
+            )
+            return authority
+        existing_priority = str(existing.get("priority_class") or "").strip()
+        if existing_priority not in {"", priority_class}:
+            raise RuntimeError(
+                "Inconsistent governed budget authority: reservation priority_class does not match the packet authority."
+            )
+        if int(existing.get("reserved_max_tokens") or 0) != int(budget.max_total_tokens):
+            raise RuntimeError(
+                "Inconsistent governed budget authority: reservation reserved_max_tokens does not match TaskPacket.token_budget.max_total_tokens."
+            )
+        existing_run_id = existing.get("run_id")
+        if existing_run_id not in {None, "", run_id}:
+            raise RuntimeError("Delegated execution reservation is already bound to a different run.")
+        existing_task_id = existing.get("task_id")
+        if existing_task_id not in {None, "", task_id}:
+            raise RuntimeError("Delegated execution reservation is already bound to a different task.")
+        self.store.update_execution_job_reservation(
+            reservation_id,
+            run_id=run_id,
+            task_id=task_id,
+        )
+        return authority
 
     def _should_use_api_router(self, *, run_id: str | None, task_id: str | None) -> bool:
         return bool(run_id and task_id and not self._use_legacy_client)
@@ -287,6 +396,7 @@ class StudioRoleAgent:
     def _resolve_authority_context(self, *, run_id: str | None, task_id: str | None) -> dict[str, Any]:
         task = self.store.get_task(task_id) if task_id else None
         acceptance = (task or {}).get("acceptance") or {}
+        budget = self._task_packet_budget_authority(task_id)
         priority_class = acceptance.get("priority_class") or (task or {}).get("priority_class") or (task or {}).get("priority") or "medium"
         job_id = run_id or task_id or f"{self.role_name.lower()}-job"
         packet_id = task_id or run_id or f"{self.role_name.lower()}-packet"
@@ -305,13 +415,23 @@ class StudioRoleAgent:
             ),
             "authority_delegated_work": True,
             "priority_class": str(priority_class),
-            "budget_max_tokens": int(acceptance.get("budget_max_tokens") or (task or {}).get("budget_max_tokens") or 4096),
+            "budget_max_tokens": int(
+                budget.max_total_tokens
+                if budget is not None
+                else (acceptance.get("budget_max_tokens") or (task or {}).get("budget_max_tokens") or 4096)
+            ),
             "budget_reservation_id": str(
                 acceptance.get("budget_reservation_id") or (task or {}).get("budget_reservation_id") or f"{job_id}:reservation"
             ),
-            "retry_limit": int(acceptance.get("retry_limit") or (task or {}).get("retry_limit") or 1),
+            "retry_limit": int(
+                budget.max_retries
+                if budget is not None
+                else (acceptance.get("retry_limit") or (task or {}).get("retry_limit") or 1)
+            ),
             "early_stop_rule": str(
-                acceptance.get("early_stop_rule") or (task or {}).get("early_stop_rule") or "accept_on_first_sufficient_output"
+                acceptance.get("early_stop_rule")
+                or (task or {}).get("early_stop_rule")
+                or ("single_pass_only" if budget is not None and budget.max_retries == 0 else "stop_on_first_success")
             ),
         }
 

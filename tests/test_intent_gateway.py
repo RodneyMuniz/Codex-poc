@@ -139,7 +139,7 @@ def test_gateway_validation_rejects_wrong_schema_version(tmp_path, monkeypatch):
         allowed_roles=["Orchestrator", "PromptSpecialist", "PM"],
         allowed_tools=["model_client.create"],
         forbidden_actions=["raw_text_reroute"],
-        token_budget=TokenBudget(max_prompt_tokens=1024, max_completion_tokens=512, max_retries=1),
+        token_budget=TokenBudget(max_prompt_tokens=1024, max_completion_tokens=512, max_total_tokens=1536, max_retries=1),
     )
 
     with pytest.raises(RuntimeError, match="Invalid TaskPacket"):
@@ -180,7 +180,7 @@ def test_orchestrator_rejects_unsafe_task_packet(tmp_path, monkeypatch):
         allowed_roles=["Orchestrator", "PromptSpecialist", "PM"],
         allowed_tools=["model_client.create"],
         forbidden_actions=["raw_text_reroute"],
-        token_budget=TokenBudget(max_prompt_tokens=1024, max_completion_tokens=512, max_retries=1),
+        token_budget=TokenBudget(max_prompt_tokens=1024, max_completion_tokens=512, max_total_tokens=1536, max_retries=1),
     )
 
     with pytest.raises(RuntimeError, match="Invalid TaskPacket|Unsafe TaskPacket"):

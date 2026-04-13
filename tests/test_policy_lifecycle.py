@@ -12,7 +12,12 @@ from intake.compiler import compile_policy_proposal
 from intake.gateway import classify_operator_request
 from intake.ingress import intake_operator_request
 from intake.policy_store import load_policy_proposal, record_policy_proposal
-from workspace_root import AUTHORITATIVE_ROOT_ENV, KNOWN_DUPLICATE_ROOT_ENV, WorkspaceRootAuthorityError
+from workspace_root import (
+    AUTHORITATIVE_ROOT_ENV,
+    KNOWN_DUPLICATE_ROOT_ENV,
+    WorkspaceRootAuthorityError,
+    write_workspace_authority_marker,
+)
 
 
 def _prepare_repo(tmp_path: Path) -> None:
@@ -115,6 +120,7 @@ def test_workspace_root_authority_still_applies_to_policy_apply_storage(tmp_path
     authoritative_root.mkdir()
     duplicate_root.mkdir()
     _prepare_repo(authoritative_root)
+    write_workspace_authority_marker(authoritative_root, repo_name="authoritative-test-root")
     monkeypatch.setenv(AUTHORITATIVE_ROOT_ENV, str(authoritative_root))
     monkeypatch.setenv(KNOWN_DUPLICATE_ROOT_ENV, str(duplicate_root))
     proposal = _supported_policy_proposal()

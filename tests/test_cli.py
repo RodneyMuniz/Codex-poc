@@ -85,6 +85,19 @@ def test_cli_task_create_requires_task_packet_file():
     assert "--task-packet-file" in result.output
 
 
+def test_cli_rejects_missing_authority_marker(tmp_path, monkeypatch):
+    runner = CliRunner()
+    marker_path = tmp_path / ".workspace_authority.json"
+    if marker_path.exists():
+        marker_path.unlink()
+    monkeypatch.setattr(cli, "ROOT", tmp_path)
+
+    result = runner.invoke(cli.cli, ["health-check"])
+
+    assert result.exit_code != 0
+    assert "authoritative workspace root marker required" in result.output
+
+
 def test_cli_run_fails_closed_when_next_task_has_no_task_packet(tmp_path, monkeypatch):
     _prepare_repo(tmp_path)
     monkeypatch.chdir(tmp_path)

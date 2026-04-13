@@ -8,7 +8,12 @@ from intake.compiler import compile_task_packet
 from intake.gateway import classify_operator_request
 from intake.interpreter import compile_interpreter_summary
 from intake.models import InterpreterSummary, TaskPacket
-from workspace_root import AUTHORITATIVE_ROOT_ENV, KNOWN_DUPLICATE_ROOT_ENV, WorkspaceRootAuthorityError
+from workspace_root import (
+    AUTHORITATIVE_ROOT_ENV,
+    KNOWN_DUPLICATE_ROOT_ENV,
+    WorkspaceRootAuthorityError,
+    write_workspace_authority_marker,
+)
 
 
 def _prepare_repo(tmp_path: Path) -> None:
@@ -102,6 +107,7 @@ def test_interpreter_workspace_root_enforcement_still_applies(tmp_path, monkeypa
     authoritative_root.mkdir()
     duplicate_root.mkdir()
     _prepare_repo(authoritative_root)
+    write_workspace_authority_marker(authoritative_root, repo_name="authoritative-test-root")
     monkeypatch.setenv(AUTHORITATIVE_ROOT_ENV, str(authoritative_root))
     monkeypatch.setenv(KNOWN_DUPLICATE_ROOT_ENV, str(duplicate_root))
     decision = classify_operator_request("Implement the gateway")

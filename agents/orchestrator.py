@@ -102,7 +102,7 @@ class Orchestrator:
         return self._require_routable_task_packet(validated)
 
     def _task_packet_budget_total(self, task_packet: TaskPacket) -> int:
-        return int(task_packet.token_budget.max_prompt_tokens + task_packet.token_budget.max_completion_tokens)
+        return int(task_packet.token_budget.max_total_tokens)
 
     def _task_packet_early_stop_rule(self, task_packet: TaskPacket) -> str:
         return "single_pass_only" if task_packet.token_budget.max_retries == 0 else "stop_on_first_success"
@@ -1127,13 +1127,13 @@ class Orchestrator:
                         "runtime_role": "PromptSpecialist",
                         "model_role": "prompt_specialist",
                         "runtime_mode": "api",
-                        "route_reason": "Fallback tracked intake call for legacy start paths without preview usage evidence.",
+                        "route_reason": "Tracked intake call required because preview usage evidence was unavailable.",
                     },
                 )
-                return
+                raise
             packet = packet_model.model_dump()
             summary = "Tracked prompt-specialist intake usage recorded for this run."
-            route_reason = "Fallback tracked intake call for legacy start paths without preview usage evidence."
+            route_reason = "Tracked intake call required because preview usage evidence was unavailable."
         self.store.record_trace_event(
             run_id,
             task["id"],
@@ -2035,21 +2035,26 @@ class Orchestrator:
             }
             team_state["execution_mode"] = "local_exception"
         if runtime_mode == "sdk":
-            task["sdk_runtime_context"] = {
+            error = (
+                "Governed specialist execution requires the API-backed custom runtime; "
+                "SDK specialist execution is excluded until reservation and evidence parity exists."
+            )
+            team_state["specialist_runtime"] = {
+                "mode": "sdk",
+                "rejected": True,
+                "reason": error,
                 "planning_layer": SDK_PLANNING_LAYER,
-                "orchestrator_source": "chat_or_control_room",
-                "specialist_roles": ["Architect", "Developer", "Design"],
             }
-            team_state["specialist_runtime"] = dict(task["sdk_runtime_context"])
+            team_state["phase"] = "failed"
             self.store.record_trace_event(
                 run_id,
                 task["id"],
-                "sdk_specialist_runtime_selected",
+                "sdk_specialist_runtime_rejected",
                 source="Orchestrator",
-                summary="Orchestrator kept control and selected the official Agents SDK for downstream specialist work.",
+                summary=error,
                 packet={
                     "mode": "sdk",
-                    "orchestrator_source": "chat_or_control_room",
+                    "governed_execution": True,
                     "planning_layer": SDK_PLANNING_LAYER,
                     "specialist_roles": ["Architect", "Developer", "Design"],
                 },
@@ -2059,13 +2064,19 @@ class Orchestrator:
                     "model_role": "orchestrator",
                     "profile_label": "Project Orchestrator",
                 },
-                raw_json={
-                    "mode": "sdk",
-                    "orchestrator_source": "chat_or_control_room",
-                    "planning_layer": SDK_PLANNING_LAYER,
-                    "specialist_roles": ["Architect", "Developer", "Design"],
-                },
+                raw_json=team_state["specialist_runtime"],
             )
+            self.store.update_task(task["id"], status="blocked", owner_role="Orchestrator", review_notes=error)
+            self.store.update_run(
+                run_id,
+                status="failed",
+                stop_reason="sdk_runtime_rejected",
+                last_error=error,
+                team_state=team_state,
+                completed=True,
+            )
+            self.telemetry.error("run_failed", run_id=run_id, task_id=task["id"], error=error)
+            raise RuntimeError(error)
         self.store.update_run(run_id, team_state=team_state)
         self.store.record_trace_event(
             run_id,

@@ -230,6 +230,25 @@ def _run_summary(run: dict[str, Any] | None) -> dict[str, Any] | None:
     }
 
 
+def _governed_external_run_summary(evidence: dict[str, Any] | None) -> dict[str, int]:
+    summary = evidence.get("governed_external_run_summary") if isinstance(evidence, dict) else None
+    if not isinstance(summary, dict):
+        summary = {}
+    return {
+        "total_execution_groups": int(summary.get("total_execution_groups") or 0),
+        "total_attempts": int(summary.get("total_attempts") or 0),
+        "governed_api_execution_count": int(summary.get("governed_api_execution_count") or 0),
+        "blocked_execution_count": int(summary.get("blocked_execution_count") or 0),
+        "pre_observation_block_count": int(summary.get("pre_observation_block_count") or 0),
+        "final_success_count": int(summary.get("final_success_count") or 0),
+        "final_failed_count": int(summary.get("final_failed_count") or 0),
+        "final_stopped_count": int(summary.get("final_stopped_count") or 0),
+        "final_budget_stopped_count": int(summary.get("final_budget_stopped_count") or 0),
+        "final_proof_missing_count": int(summary.get("final_proof_missing_count") or 0),
+        "final_proved_count": int(summary.get("final_proved_count") or 0),
+    }
+
+
 def _artifact_summary(artifact: dict[str, Any] | None) -> dict[str, Any] | None:
     if artifact is None:
         return None
@@ -281,21 +300,29 @@ def _validation_summary(validation: dict[str, Any] | None) -> dict[str, Any] | N
 def _task_card(
     task: dict[str, Any],
     *,
+    project_lookup: dict[str, dict[str, Any]],
     milestone_lookup: dict[str, dict[str, Any]],
     board_column_lookup: dict[str, str],
     latest_run_lookup: dict[str, dict[str, Any]],
+    latest_run_work_graph_lookup: dict[str, dict[str, Any]],
+    task_run_count_lookup: dict[str, int],
+    task_trust_summary_lookup: dict[str, dict[str, Any]],
     run_compliance_lookup: dict[str, dict[str, Any] | None],
     latest_artifact_lookup: dict[str, dict[str, Any]],
     latest_validation_lookup: dict[str, dict[str, Any]],
     store: SessionStore,
 ) -> dict[str, Any]:
+    project = project_lookup.get(task["project_name"])
     milestone = milestone_lookup.get(task.get("milestone_id"))
     board_column_key = store.task_board_column_key(task)
     latest_run = latest_run_lookup.get(task["id"])
+    latest_run_summary = latest_run_work_graph_lookup.get(task["id"])
+    trust_summary = task_trust_summary_lookup.get(task["id"])
     compliance_summary = run_compliance_lookup.get(latest_run["id"]) if latest_run else None
     return {
         "id": task["id"],
         "copy_text": task["id"],
+        "project_id": project.get("id") if project else None,
         "project_name": task["project_name"],
         "project_label": _project_label(task["project_name"]),
         "title": task["title"],
@@ -320,7 +347,12 @@ def _task_card(
         "board_column_label": board_column_lookup[board_column_key],
         "secondary_state": _secondary_state(task),
         "gate_issues": store.task_gate_issues(task, target_status=task["status"]) if task["status"] in {"ready", "completed"} else [],
-        "latest_run": _run_summary(latest_run),
+        "linked_run_count": int(task_run_count_lookup.get(task["id"], 0)),
+        "latest_run": latest_run_summary or _run_summary(latest_run),
+        "latest_attention_summary": latest_run_summary.get("attention_summary") if latest_run_summary else None,
+        "latest_health_summary": latest_run_summary.get("health_summary") if latest_run_summary else None,
+        "latest_execution_summary": latest_run_summary.get("execution_summary") if latest_run_summary else None,
+        "trust_summary": trust_summary,
         "latest_artifact": _artifact_summary(latest_artifact_lookup.get(task["id"])),
         "latest_validation": _validation_summary(latest_validation_lookup.get(task["id"])),
         "compliance_state": _decorate_task_compliance(task, run_compliance_summary=compliance_summary),
@@ -349,6 +381,7 @@ def _milestone_cards(
     milestones: list[dict[str, Any]],
     *,
     task_cards: list[dict[str, Any]],
+    milestone_trust_lookup: dict[str, dict[str, Any]],
 ) -> list[dict[str, Any]]:
     tasks_by_milestone: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for task in task_cards:
@@ -367,6 +400,7 @@ def _milestone_cards(
                 "task_count": total,
                 "completed_task_count": completed,
                 "completion_percent": int((completed / total) * 100) if total else 0,
+                "trust_summary": milestone_trust_lookup.get(milestone["id"]),
                 "tasks": [
                     {
                         "id": item["id"],
@@ -380,6 +414,7 @@ def _milestone_cards(
                         "secondary_state": item.get("secondary_state"),
                         "review_state": item.get("review_state"),
                         "latest_run": item.get("latest_run"),
+                        "trust_summary": item.get("trust_summary"),
                         "latest_artifact": item.get("latest_artifact"),
                         "compliance_state": item.get("compliance_state"),
                     }
@@ -409,6 +444,7 @@ def _project_rollup(
                 "root_path": project["root_path"],
                 "task_count": len(tasks),
                 "milestone_count": len(milestones),
+                "trust_summary": store.summarize_project_trust(project["name"]),
                 "status_counts": {key: counts.get(key, 0) for key, _ in store.board_columns()},
                 "status_labels": board_column_lookup,
                 "latest_updated_at": latest_update,
@@ -569,6 +605,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
     board_column_lookup = dict(board_columns)
 
     registered_projects = store.list_projects()
+    project_lookup = {project["name"]: project for project in registered_projects}
     available_projects = [
         {
             "name": project["name"],
@@ -602,6 +639,9 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
     all_artifacts: list[dict[str, Any]] = []
     all_validations: list[dict[str, Any]] = []
     latest_run_lookup: dict[str, dict[str, Any]] = {}
+    latest_run_work_graph_lookup: dict[str, dict[str, Any]] = {}
+    task_trust_summary_lookup: dict[str, dict[str, Any]] = {}
+    task_run_count_lookup = Counter(run["task_id"] for run in all_runs)
     approvals_by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
     local_exception_approvals_by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
     run_compliance_lookup: dict[str, dict[str, Any]] = {}
@@ -614,6 +654,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
 
     for run in all_runs:
         latest_run_lookup.setdefault(run["task_id"], run)
+        latest_run_work_graph_lookup.setdefault(run["task_id"], store.summarize_task_linked_run(run["id"]))
         compliance_records_by_run[run["id"]] = store.list_compliance_records(run["id"])
         run_compliance_lookup[run["id"]] = _run_compliance_summary(
             store=store,
@@ -657,12 +698,25 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
     for validation in all_validations:
         latest_validation_lookup.setdefault(validation["task_id"], validation)
 
+    for task in tasks:
+        task_trust_summary_lookup[task["id"]] = store.summarize_task_trust(task["id"])
+
+    milestone_trust_lookup = {
+        milestone["id"]: store.summarize_milestone_trust(milestone["id"])
+        for milestone in milestones
+    }
+    project_trust_summary = store.summarize_project_trust(scoped_project) if scoped_project is not None else None
+
     task_cards = [
         _task_card(
             task,
+            project_lookup=project_lookup,
             milestone_lookup=milestone_lookup,
             board_column_lookup=board_column_lookup,
             latest_run_lookup=latest_run_lookup,
+            latest_run_work_graph_lookup=latest_run_work_graph_lookup,
+            task_run_count_lookup=task_run_count_lookup,
+            task_trust_summary_lookup=task_trust_summary_lookup,
             run_compliance_lookup=run_compliance_lookup,
             latest_artifact_lookup=latest_artifact_lookup,
             latest_validation_lookup=latest_validation_lookup,
@@ -815,12 +869,14 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
     decorated_runs = []
     for run in runs:
         task = task_lookup.get(run["task_id"])
+        evidence = store.get_run_evidence(run["id"])
         decorated_runs.append(
             {
                 **run,
                 "task_title": task["title"] if task else run["task_id"],
                 "project_name": task["project_name"] if task else run["project_name"],
                 "project_label": _project_label(task["project_name"] if task else run["project_name"]),
+                "governed_external_run_summary": _governed_external_run_summary(evidence),
             }
         )
 
@@ -892,6 +948,7 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
         "canonical_store": str(store.paths.db_path),
         "available_views": ["board", "milestones", "orchestrator"],
         "summary": summary,
+        "project_trust_summary": project_trust_summary,
         "compliance": {
             "breach_count": len(breach_records),
             "compliant_run_count": len(compliant_records),
@@ -943,7 +1000,11 @@ def build_snapshot(repo_root: str | Path, *, project_name: str = "all", limit: i
             }
             for key, label in board_columns
         ],
-        "milestones": _milestone_cards(milestones, task_cards=task_cards),
+        "milestones": _milestone_cards(
+            milestones,
+            task_cards=task_cards,
+            milestone_trust_lookup=milestone_trust_lookup,
+        ),
         "planning_warnings": planning_warnings,
         "pending_approvals": approvals,
         "recent_runs": decorated_runs,

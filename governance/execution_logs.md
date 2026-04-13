@@ -25,3 +25,5 @@ Note:
 | run_cccc82b405c6 | PK-117 | pk076e_guarded_redispatch | tier_2_mid | gpt-5.4-mini | 7012 | 0 | 926 | 0.008037 | projects/program-kanban/artifacts/pk076_slice2_registration_propagation.md | PK076-E guarded re-dispatch after missing canonical dispatch record |
 | run_9a4a3312232e | PK-117 | pk076e_guarded_implementation_redispatch | tier_2_mid | gpt-5.4-mini | 8273 | 0 | 546 | 0.007843 | projects/program-kanban/artifacts/pk076_slice2_registration_propagation.md | PK076-E guarded re-dispatch with implementation-mode provisioning |
 | run_eb8535f400fe | PK-118 | pk076g_guarded_implementation_dispatch | tier_2_mid | gpt-5.4-mini | 8407 | 0 | 519 | 0.007862 | projects/program-kanban/artifacts/pk076_final_operator_wall_visibility.md | PK076-G guarded implementation dispatch for final PK-076 visibility blocker |
+| run_ac7624821821 | PK-114 | Developer | tier_2_mid | gpt-5.4-mini | 24 | 0 | 21 | 0.000081 | - | audit_live_governed_text via StudioRoleAgent |
+| run_cbfef7e75b58 | PK-115 | Developer | tier_2_mid | gpt-5.4-mini | 65 | 0 | 22 | 0.000112 | - | audit_live_governed_text via StudioRoleAgent |

@@ -6,11 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
+from agents.cost_tracker import CostTracker
 from agents.pm import ProjectManagerAgent
 from agents.schemas import QAReviewResult
 from agents.telemetry import TelemetryRecorder
 from intake.compiler import compile_task_packet
 from intake.gateway import classify_operator_request
+from scripts import worker as worker_script
 from sessions import SessionStore
 from skills.tools import WORKER_WRITE_MANIFEST_ENV, require_worker_write_manifest
 
@@ -41,6 +43,14 @@ class _DummyClient:
         return None
 
 
+class _TrackedModelClient:
+    async def create(self, messages, json_output=None):
+        raise AssertionError("Governed tracked specialist work must route through APIRouter.")
+
+    async def close(self) -> None:
+        return None
+
+
 class _NoInlineProducer:
     async def produce_artifact(self, *args, **kwargs):
         raise AssertionError("Inline producer path should not run once worker delegation is enabled.")
@@ -49,6 +59,81 @@ class _NoInlineProducer:
 class _QAStub:
     async def review_artifact(self, *, run_id: str, task: dict) -> QAReviewResult:
         return QAReviewResult(approved=True, summary="Approved", issues=[])
+
+
+class _WorkerAPIRouter:
+    def __init__(self, repo_root, *, store, **kwargs):
+        self.repo_root = repo_root
+        self.store = store
+        self.calls = []
+        self.cost_tracker = CostTracker(repo_root=repo_root, store=store)
+
+    def invoke_text(
+        self,
+        *,
+        run_id,
+        task_id,
+        tier,
+        system_prompt,
+        user_prompt,
+        source,
+        lane="sync_api",
+        route_family=None,
+        artifact_path=None,
+        notes=None,
+        metadata=None,
+        background=None,
+        authority_packet_id=None,
+        authority_job_id=None,
+        authority_token=None,
+        authority_schema_name=None,
+        authority_execution_tier=None,
+        authority_execution_lane=None,
+        authority_delegated_work=False,
+        priority_class=None,
+        budget_max_tokens=None,
+        budget_reservation_id=None,
+        retry_limit=None,
+        early_stop_rule=None,
+    ):
+        reservation = self.store.get_execution_job_reservation(str(budget_reservation_id or ""))
+        self.calls.append(
+            {
+                "run_id": run_id,
+                "task_id": task_id,
+                "tier": tier,
+                "source": source,
+                "lane": lane,
+                "route_family": route_family,
+                "reservation_status_at_call": reservation["reservation_status"] if reservation else None,
+                "budget_reservation_id": budget_reservation_id,
+                "authority_execution_lane": authority_execution_lane,
+            }
+        )
+        estimate = self.cost_tracker.record_api_usage(
+            run_id=run_id,
+            task_id=task_id,
+            source=source,
+            model="gpt-5.4-mini",
+            tier=tier,
+            lane=lane,
+            usage={
+                "input_tokens": 96,
+                "input_tokens_details": {"cached_tokens": 0},
+                "output_tokens": 44,
+                "output_tokens_details": {"reasoning_tokens": 3},
+            },
+            notes=notes,
+        )
+        return SimpleNamespace(
+            model="gpt-5.4-mini",
+            output_text="class Mage:\n    pass\n",
+            input_tokens=estimate.input_tokens,
+            cached_input_tokens=estimate.cached_input_tokens,
+            output_tokens=estimate.output_tokens,
+            reasoning_tokens=estimate.reasoning_tokens,
+            estimated_cost_usd=estimate.estimated_cost_usd,
+        )
 
 
 def _pm(tmp_path, monkeypatch) -> ProjectManagerAgent:
@@ -338,8 +423,9 @@ def test_pm_runs_approved_developer_subtask_via_worker_manifest(tmp_path, monkey
         "Mage request",
         "Design and implement the mage class",
         objective="Design and implement the mage class",
+        acceptance={"task_packet": compile_task_packet(classify_operator_request("Implement the mage class")).model_dump()},
     )
-    run = store.create_run("tactics-game", parent["id"], team_state={"runtime_mode": "sdk"})
+    run = store.create_run("tactics-game", parent["id"], team_state={"runtime_mode": "custom"})
     developer_plan = next(item for item in pm._build_plan(parent).subtasks if item.assignee == "Developer")
     subtask = pm._create_subtask(parent, developer_plan)
     approval = store.create_approval(run["id"], subtask["id"], "PM", "Dispatch developer work", approval_scope="project", target_role="Developer")
@@ -359,12 +445,88 @@ def test_pm_runs_approved_developer_subtask_via_worker_manifest(tmp_path, monkey
 
     assert result["approved"] is True
     assert captured["manifest"]["role"] == "Developer"
-    assert captured["manifest"]["runtime_mode"] == "sdk"
+    assert captured["manifest"]["runtime_mode"] == "custom"
     assert captured["manifest"]["write_scope"] == "exact_paths_only"
     assert captured["manifest"]["seal_sha256"]
     assert team_state is not None
     assert team_state["execution_mode"] == "worker_only"
     assert "pending_sdk_approval" not in team_state
+
+
+def test_pm_rejects_governed_sdk_worker_dispatch(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    pm = _pm(repo_root, monkeypatch)
+    store = pm.store
+
+    parent = store.create_task(
+        "program-kanban",
+        "Governed sdk dispatch",
+        "Attempt governed specialist execution through the sdk runtime.",
+        objective="Attempt governed specialist execution through the sdk runtime.",
+        acceptance={"task_packet": compile_task_packet(classify_operator_request("Implement the gateway")).model_dump()},
+    )
+    run = store.create_run("program-kanban", parent["id"], team_state={"runtime_mode": "sdk"})
+    subtask_plan = pm._build_plan(parent).subtasks[0]
+    subtask = pm._create_subtask(parent, subtask_plan)
+
+    with pytest.raises(RuntimeError, match="API-backed custom runtime"):
+        pm._build_write_manifest(run_id=run["id"], subtask=subtask, correction_notes=None)
+
+
+def test_governed_worker_developer_uses_api_router_with_reservation(tmp_path, monkeypatch):
+    repo_root = _prepare_repo(tmp_path)
+    monkeypatch.chdir(repo_root)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.OpenAIChatCompletionClient", _TrackedModelClient)
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _TrackedModelClient())
+    store = SessionStore(repo_root)
+    fake_router = _WorkerAPIRouter(repo_root, store=store)
+    monkeypatch.setattr("agents.role_base.APIRouter", lambda *args, **kwargs: fake_router)
+    monkeypatch.setattr(worker_script, "ROOT", repo_root)
+    monkeypatch.setattr("scripts.worker.resolve_runtime_mode", lambda: "custom")
+
+    telemetry = TelemetryRecorder(repo_root)
+    pm = ProjectManagerAgent(repo_root=repo_root, store=store, telemetry=telemetry, project_brief="# Brief\n")
+    parent = store.create_task(
+        "tactics-game",
+        "Mage request",
+        "Design and implement the mage class",
+        objective="Design and implement the mage class",
+        acceptance={"task_packet": compile_task_packet(classify_operator_request("Implement the mage class")).model_dump()},
+    )
+    run = store.create_run("tactics-game", parent["id"], team_state={"runtime_mode": "custom"})
+    developer_plan = next(item for item in pm._build_plan(parent).subtasks if item.assignee == "Developer")
+    subtask = pm._create_subtask(parent, developer_plan)
+    manifest = pm._build_write_manifest(run_id=run["id"], subtask=subtask, correction_notes=None)
+    monkeypatch.setenv(WORKER_WRITE_MANIFEST_ENV, pm._canonical_manifest_json(manifest))
+
+    result = asyncio.run(
+        worker_script._run(
+            SimpleNamespace(
+                role="Developer",
+                run_id=run["id"],
+                task_id=subtask["id"],
+                input_artifact_path=None,
+                correction_notes=None,
+            )
+        )
+    )
+
+    reservation = store.get_execution_job_reservation(f"{run['id']}:reservation")
+    usage_events = store.list_usage_events(run["id"], task_id=subtask["id"])
+
+    assert result.artifact_path == subtask["expected_artifact_path"]
+    assert (repo_root / subtask["expected_artifact_path"]).exists()
+    assert len(fake_router.calls) == 1
+    assert fake_router.calls[0]["source"] == "Developer"
+    assert fake_router.calls[0]["lane"] == "sync_api"
+    assert fake_router.calls[0]["reservation_status_at_call"] == "reserved"
+    assert reservation is not None
+    assert reservation["reservation_status"] == "reserved"
+    assert reservation["run_id"] == run["id"]
+    assert reservation["task_id"] == subtask["id"]
+    assert len(usage_events) == 1
+    assert usage_events[0]["model"] == "gpt-5.4-mini"
 
 
 def test_pm_registers_visual_artifact_from_worker_output_before_qa(tmp_path, monkeypatch):

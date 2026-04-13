@@ -67,7 +67,7 @@ class ProjectManagerAgent(StudioRoleAgent):
         return self._task_packet_for_task(parent_task)
 
     def _task_packet_budget_total(self, task_packet: TaskPacket) -> int:
-        return int(task_packet.token_budget.max_prompt_tokens + task_packet.token_budget.max_completion_tokens)
+        return int(task_packet.token_budget.max_total_tokens)
 
     def _task_packet_early_stop_rule(self, task_packet: TaskPacket) -> str:
         return "single_pass_only" if task_packet.token_budget.max_retries == 0 else "stop_on_first_success"
@@ -363,6 +363,12 @@ class ProjectManagerAgent(StudioRoleAgent):
         expected_output_path = subtask["expected_artifact_path"]
         task_packet = self._task_packet_for_subtask(subtask)
         self._require_task_packet_role(subtask, task_packet)
+        runtime_mode = self._runtime_mode(run_id)
+        if task_packet is not None and runtime_mode == "sdk":
+            raise RuntimeError(
+                "Governed specialist execution requires the API-backed custom runtime; "
+                "SDK specialist execution is excluded until reservation and evidence parity exists."
+            )
         allowed_tools = self._resolve_manifest_allowed_tools(subtask, task_packet)
         manifest = {
             "manifest_version": 1,
@@ -371,7 +377,7 @@ class ProjectManagerAgent(StudioRoleAgent):
             "task_id": subtask["id"],
             "project_name": subtask["project_name"],
             "role": subtask["owner_role"],
-            "runtime_mode": self._runtime_mode(run_id),
+            "runtime_mode": runtime_mode,
             "write_scope": "exact_paths_only",
             "expected_output_path": expected_output_path,
             "allowed_write_paths": [expected_output_path],

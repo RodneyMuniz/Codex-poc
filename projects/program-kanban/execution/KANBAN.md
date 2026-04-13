@@ -109,6 +109,21 @@ This file is rendered from `sessions/studio.db`. Do not use it as the source of 
 - Details: Add a bounded design or artist specialist path that can call the current OpenAI image-generation workflow for concept exploration and iterative revisions. Persist model, provider, prompt summary, revised prompt, parent artifact, response identifiers, and output file metadata for each generated artifact.
 - Review Notes: Moved into M8 Visual Production And Digital Asset Management on 2026-03-27.
 
+### Implement canonical visual artifact storage, manifests, and SQLite indexing
+- ID: PK-076
+- Kind: request
+- Status: backlog
+- Owner: Architect
+- Assigned Role: Architect
+- Priority: high
+- Requires Approval: no
+- Review State: None
+- Milestone: M8 - Visual Production And Digital Asset Management
+- Expected Artifact: sessions/store.py
+- Objective: Create the canonical visual-artifact data model so generated and imported design assets are stored on disk, indexed in SQLite, and ready for review and handoff.
+- Details: Add the first filesystem-backed storage model for generated or imported visual artifacts under projects/<project>/artifacts/design/, with SQLite keeping metadata only. Record prompt summary, provider, parent artifact, review state, selected direction, file paths, and file hashes.
+- Review Notes: Retitled and moved into M8 on 2026-03-27.
+
 ### Implement approved visual artifact to implementation handoff
 - ID: PK-079
 - Kind: request
@@ -287,6 +302,42 @@ This file is rendered from `sessions/studio.db`. Do not use it as the source of 
 - Expected Artifact: agents/sdk_specialists.py
 - Objective: Enable a bounded OpenAI audio specialist runtime with provenance capture so the audio lane can generate or transform assets without bypassing canonical artifact discipline.
 - Details: Add the missing audio-runtime task so M9 has the same bounded runtime foundation that M8 already expects for image generation.
+
+### AUDIT governed API truth check
+- ID: PK-113
+- Kind: request
+- Status: backlog
+- Owner: Developer
+- Assigned Role: Developer
+- Priority: medium
+- Requires Approval: no
+- Review State: None
+- Objective: Audit governed external API execution truth.
+- Details: Audit-only governed specialist execution against the real external provider boundary.
+
+### AUDIT governed API truth check
+- ID: PK-114
+- Kind: request
+- Status: backlog
+- Owner: Developer
+- Assigned Role: Developer
+- Priority: medium
+- Requires Approval: no
+- Review State: None
+- Objective: Audit governed external API execution truth.
+- Details: Audit-only governed specialist execution against the real external provider boundary.
+
+### AUDIT governed API truth check
+- ID: PK-115
+- Kind: request
+- Status: backlog
+- Owner: Developer
+- Assigned Role: Developer
+- Priority: medium
+- Requires Approval: no
+- Review State: None
+- Objective: Audit governed external API execution truth.
+- Details: Audit-only governed specialist execution against the real external provider boundary.
 
 ## Ready for Build
 
@@ -1064,22 +1115,6 @@ Accepted by Studio Lead on 2026-03-27 as a governance/planning checkpoint. The t
 - Result: Design request previews now create tracked prompt-specialist API usage and pause for clarification before downstream execution.
 - Review Notes: April 2, 2026 audit confirmed fresh API usage on tracked PK-075 runs. Root cause was split runtime visibility plus a milestone-normalization gap in request-preview execution.
 
-### Implement canonical visual artifact storage, manifests, and SQLite indexing
-- ID: PK-076
-- Kind: request
-- Status: completed
-- Owner: Project Orchestrator
-- Assigned Role: Architect
-- Priority: high
-- Requires Approval: no
-- Review State: Accepted
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Expected Artifact: sessions/store.py
-- Objective: Create the canonical visual-artifact data model so generated and imported design assets are stored on disk, indexed in SQLite, and ready for review and handoff.
-- Details: Add the first filesystem-backed storage model for generated or imported visual artifacts under projects/<project>/artifacts/design/, with SQLite keeping metadata only. Record prompt summary, provider, parent artifact, review state, selected direction, file paths, and file hashes.
-- Result: Accepted: canonical visual artifact storage, provenance, deterministic registration propagation, and operator wall snapshot visibility alignment are complete.
-- Review Notes: Closed after accepted child slices PK-113 through PK-118 satisfied the remaining PK-076 parent scope.
-
 ### Add a deliverable contract schema for code, image, audio, map, review, and implementation handoff
 - ID: PK-084
 - Kind: request
@@ -1397,98 +1432,3 @@ Closed on 2026-03-28 after delegated implementation and QA PASS for the approved
 - Details: Write an implementation-ready architecture note for Implementation covering scope, constraints, routing, risks, and acceptance criteria.
 - Result: QA approved the artifact.
 - Review Notes: QA approved the artifact.
-
-### PK076-A - Extract PK-076 Slice 1 evidence
-- ID: PK-113
-- Kind: execution_slice
-- Status: completed
-- Owner: QA
-- Assigned Role: Repository Extractor
-- Priority: medium
-- Requires Approval: no
-- Review State: Accepted
-- Parent Task: PK-076
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Expected Artifact: projects/program-kanban/execution/KANBAN.md
-- Objective: Extract PK-076 Slice 1 evidence
-- Details: Extract the minimal evidence required to validate PK-076 Slice 1 under the guarded API-first workflow.
-
-### PK076-B - Implement PK-076 Slice 1 store lineage and edit-session provenance
-- ID: PK-114
-- Kind: execution_slice
-- Status: completed
-- Owner: QA
-- Assigned Role: Repository Implementer
-- Priority: medium
-- Requires Approval: no
-- Review State: Accepted
-- Parent Task: PK-076
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Objective: Implement PK-076 Slice 1 store lineage and edit-session provenance
-- Details: Implement the store lineage and edit-session provenance fields required by PK-076 Slice 1.
-
-### PK076-C - Validate PK-076 Slice 1 acceptance
-- ID: PK-115
-- Kind: execution_slice
-- Status: completed
-- Owner: QA
-- Assigned Role: QA
-- Priority: medium
-- Requires Approval: no
-- Review State: Accepted
-- Parent Task: PK-076
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Expected Artifact: projects/program-kanban/artifacts/pk076_slice_c.md
-- Objective: Validate PK-076 Slice 1 acceptance
-- Details: Validate the PK-076 Slice 1 acceptance state and confirm the store-only board slice is complete.
-
-### PK076-D - Extract PK-076 Slice 2 registration-path evidence
-- ID: PK-116
-- Kind: execution_slice
-- Status: completed
-- Owner: QA
-- Assigned Role: Repo Evidence Extractor
-- Priority: high
-- Requires Approval: no
-- Review State: Accepted
-- Parent Task: PK-076
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Expected Artifact: C:\Users\rodne\Dev\_AIStudio_worktrees\studio-control\projects\program-kanban\artifacts\pk076_slice2_registration_path_evidence.md
-- Objective: Extract the current deterministic registration path, currently available metadata, missing Slice 1 fields not yet propagated, and exact files/functions PK076-E must touch.
-- Details: Extract the minimum evidence needed to implement PK-076 Slice 2 deterministic registration propagation.
-- Result: Returned the required registration-path evidence artifact for PK-076 Slice 2 and isolated the deterministic propagation gap.
-- Review Notes: Accepted on 2026-04-03. Evidence artifact identified the exact deterministic registration path, the missing propagated lineage fields, and the minimal PM/store surfaces PK076-E must touch.
-
-### PK076-E - Implement PK-076 Slice 2 deterministic registration propagation
-- ID: PK-117
-- Kind: execution_slice
-- Status: completed
-- Owner: Project Orchestrator
-- Assigned Role: Repository Implementer
-- Priority: high
-- Requires Approval: no
-- Review State: Accepted
-- Parent Task: PK-076
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Expected Artifact: projects/program-kanban/artifacts/pk076_slice2_registration_propagation.md
-- Objective: Implement deterministic registration propagation for the accepted PK-076 Slice 1 lineage/edit fields.
-- Details: Implement deterministic registration propagation for the accepted PK-076 Slice 1 lineage/edit fields.
-- Result: Accepted: deterministic registration now propagates approved lineage/edit fields into canonical visual artifacts and run evidence.
-- Review Notes: Accepted after PK076-E implementation artifact review and focused proof.
-
-### PK076-G - Align operator wall snapshot with canonical visual artifact visibility
-- ID: PK-118
-- Kind: execution_slice
-- Status: completed
-- Owner: Project Orchestrator
-- Assigned Role: Repository Implementer
-- Priority: high
-- Requires Approval: no
-- Review State: Accepted
-- Parent Task: PK-076
-- Milestone: M8 - Visual Production And Digital Asset Management
-- Expected Artifact: projects/program-kanban/artifacts/pk076_final_operator_wall_visibility.md
-- Objective: Align operator wall snapshot visibility with canonical visual artifact records for the remaining PK-076 parent blocker.
-- Details: Align operator wall snapshot visibility with canonical visual artifact records for the remaining PK-076 parent blocker.
-- Result: Accepted: operator wall snapshot now surfaces canonical visual artifact visibility for task-card latest_artifact and recent_artifacts.
-- Review Notes: Accepted after PK076-G implementation artifact review and focused snapshot proof.

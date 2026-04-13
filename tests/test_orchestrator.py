@@ -420,7 +420,7 @@ def test_preview_request_rejects_direct_board_actions_before_prompt_specialist(t
     assert preview["route_preview"] == []
 
 
-def test_execute_run_selects_sdk_specialist_runtime_without_second_orchestrator(tmp_path, monkeypatch):
+def test_execute_run_rejects_sdk_specialist_runtime_for_governed_execution(tmp_path, monkeypatch):
     _prepare_repo(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -437,32 +437,24 @@ def test_execute_run_selects_sdk_specialist_runtime_without_second_orchestrator(
         acceptance={"task_packet": _task_packet_for_request("Implement the SDK specialist runtime path").model_dump()},
     )
     run = orchestrator.store.create_run("tactics-game", task["id"])
-    captured: dict[str, str] = {}
 
-    async def _fake_pm_execute(self, *, run_id: str, task: dict):
-        captured["objective"] = task["objective"]
-        captured["details"] = task["details"]
-        captured["runtime_mode"] = task["runtime_mode"]
-        captured["authority_delegated_work"] = task["authority_delegated_work"]
-        captured["planning_layer"] = task["sdk_runtime_context"]["planning_layer"]
-        return {"completed": True, "summary": "Planning layer completed the migrated run.", "task_id": task["id"]}
+    with pytest.raises(RuntimeError, match="API-backed custom runtime"):
+        asyncio.run(orchestrator._execute_run(run["id"], task))
 
-    monkeypatch.setattr("agents.pm.ProjectManagerAgent.execute_request", _fake_pm_execute)
-
-    result = asyncio.run(orchestrator._execute_run(run["id"], task))
+    refreshed_run = orchestrator.store.get_run(run["id"])
+    refreshed_task = orchestrator.store.get_task(task["id"])
     team_state = orchestrator.store.load_team_state(run["id"])
     evidence = orchestrator.get_run_evidence(run["id"])
 
-    assert result["run_status"] == "completed"
-    assert captured["objective"] == "Use SDK specialists while keeping orchestration deterministic."
-    assert captured["details"] == "Verify the SDK specialist runtime is selected without a second orchestrator."
-    assert captured["runtime_mode"] == "sdk"
-    assert captured["authority_delegated_work"] is True
-    assert captured["planning_layer"] == "deterministic_internal_helper"
+    assert refreshed_run is not None
+    assert refreshed_run["status"] == "failed"
+    assert refreshed_run["stop_reason"] == "sdk_runtime_rejected"
+    assert refreshed_task is not None
+    assert refreshed_task["status"] == "blocked"
     assert team_state is not None
     assert team_state["runtime_mode"] == "sdk"
-    assert team_state["execution_mode"] == "worker_only"
-    assert any(event["event_type"] == "sdk_specialist_runtime_selected" for event in evidence["trace_events"])
+    assert team_state["specialist_runtime"]["rejected"] is True
+    assert any(event["event_type"] == "sdk_specialist_runtime_rejected" for event in evidence["trace_events"])
 
 
 def test_start_task_seeds_context_receipt_from_preview_packet(tmp_path, monkeypatch):
@@ -548,6 +540,47 @@ def test_start_task_fails_closed_when_prompt_specialist_tracked_request_lacks_ap
                         "deliverables": ["design request preview", "screen or UI review packet"],
                         "constraints": ["Keep it review-first and avoid clutter."],
                         "open_questions": ["What visual direction or references should guide the first pass?"],
+                    },
+                },
+                task_packet=_task_packet_for_request("Design the control-room preview flow"),
+            )
+        )
+
+
+def test_start_task_fails_closed_when_tracked_prompt_specialist_api_path_errors(tmp_path, monkeypatch):
+    _prepare_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("agents.role_base.create_model_client", lambda role: _DummyClient())
+
+    orchestrator = Orchestrator(tmp_path)
+    task = orchestrator.store.create_task(
+        "program-kanban",
+        "Tracked prompt failure",
+        "Ensure tracked prompt-specialist intake failures stop execution.",
+        objective="Ensure tracked prompt-specialist intake failures stop execution.",
+        raw_request="Design the first control-room gallery screen.",
+        expected_artifact_path="projects/program-kanban/artifacts/tracked_prompt_failure.md",
+    )
+
+    async def _failing_process_input(user_text: str, *, run_id=None, task_id=None):
+        raise RuntimeError("api unavailable")
+
+    async def _fake_execute_run(run_id: str, task: dict, *, local_exception_approval=None):
+        raise AssertionError("Execution should not continue after tracked prompt-specialist failure.")
+
+    orchestrator.prompt_specialist.process_input = _failing_process_input
+    monkeypatch.setattr(orchestrator, "_execute_run", _fake_execute_run)
+
+    with pytest.raises(RuntimeError, match="api unavailable"):
+        asyncio.run(
+            orchestrator.start_task(
+                task["id"],
+                preview_payload={
+                    "packet": {
+                        "objective": task["objective"],
+                        "details": task["details"],
+                        "assumptions": [],
                     },
                 },
                 task_packet=_task_packet_for_request("Design the control-room preview flow"),

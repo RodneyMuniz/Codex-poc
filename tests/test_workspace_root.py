@@ -17,9 +17,11 @@ from skills.tools import write_project_artifact
 from workspace_root import (
     AUTHORITATIVE_ROOT_ENV,
     KNOWN_DUPLICATE_ROOT_ENV,
+    WORKSPACE_AUTHORITY_MARKER,
     WorkspaceRootAuthorityError,
     ensure_authoritative_workspace_path,
     ensure_authoritative_workspace_root,
+    write_workspace_authority_marker,
 )
 
 
@@ -107,6 +109,7 @@ def test_known_duplicate_root_is_rejected(tmp_path, monkeypatch):
     duplicate_root = tmp_path / "duplicate"
     authoritative_root.mkdir()
     duplicate_root.mkdir()
+    write_workspace_authority_marker(authoritative_root, repo_name="authoritative-test-root")
     monkeypatch.setenv(AUTHORITATIVE_ROOT_ENV, str(authoritative_root))
     monkeypatch.setenv(KNOWN_DUPLICATE_ROOT_ENV, str(duplicate_root))
 
@@ -143,6 +146,7 @@ def test_tool_layer_rejects_known_duplicate_workspace_root(tmp_path, monkeypatch
     duplicate_root = tmp_path / "duplicate"
     (authoritative_root / "projects" / "tactics-game" / "artifacts").mkdir(parents=True)
     (duplicate_root / "projects" / "tactics-game" / "artifacts").mkdir(parents=True)
+    write_workspace_authority_marker(authoritative_root, repo_name="authoritative-test-root")
     monkeypatch.setenv(AUTHORITATIVE_ROOT_ENV, str(authoritative_root))
     monkeypatch.setenv(KNOWN_DUPLICATE_ROOT_ENV, str(duplicate_root))
     monkeypatch.chdir(duplicate_root)
@@ -156,6 +160,7 @@ def test_orchestrator_rejects_known_duplicate_repo_root(tmp_path, monkeypatch):
     duplicate_root = tmp_path / "duplicate"
     authoritative_root.mkdir()
     duplicate_root.mkdir()
+    write_workspace_authority_marker(authoritative_root, repo_name="authoritative-test-root")
     monkeypatch.setenv(AUTHORITATIVE_ROOT_ENV, str(authoritative_root))
     monkeypatch.setenv(KNOWN_DUPLICATE_ROOT_ENV, str(duplicate_root))
 
@@ -196,3 +201,11 @@ def test_normal_in_root_task_policy_and_status_paths_still_work(tmp_path):
     assert status_result["status"] == "status_only"
     assert status_result["status_response"]["schema_version"] == "status_response_v1"
     assert status_result["status_response"]["status_kind"] == "TASK"
+
+
+def test_missing_authority_marker_fails_closed(tmp_path):
+    _prepare_repo(tmp_path)
+    (tmp_path / WORKSPACE_AUTHORITY_MARKER).unlink()
+
+    with pytest.raises(WorkspaceRootAuthorityError, match="authoritative workspace root marker required"):
+        ensure_authoritative_workspace_root(tmp_path)

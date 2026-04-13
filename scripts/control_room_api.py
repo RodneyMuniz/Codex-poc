@@ -10,9 +10,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from sessions import SessionStore
+from workspace_root import ensure_authoritative_workspace_root
 
 
 def _store() -> SessionStore:
+    ensure_authoritative_workspace_root(ROOT, label="control_room_api root")
     return SessionStore(ROOT)
 
 
@@ -24,10 +26,9 @@ def main() -> None:
     restore.add_argument("--backup-id", required=True)
     restore.add_argument("--requested-by", default="Control Room")
 
-    args = parser.parse_args()
-    store = _store()
-
     try:
+        args = parser.parse_args()
+        store = _store()
         if args.command == "restore-backup":
             payload = store.restore_dispatch_backup(backup_id=args.backup_id, requested_by=args.requested_by)
         else:
