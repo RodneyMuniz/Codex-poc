@@ -1,0 +1,1440 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Program Kanban Studio Operations Wiki</title>
+  <meta name="description" content="Canonical operations wiki for the authoritative AI Studio Program Kanban repository.">
+  <style>
+    :root {
+      --bg: #f6f2ea;
+      --panel: #fffdf9;
+      --panel-strong: #fff7ec;
+      --ink: #1d1b18;
+      --muted: #625a52;
+      --line: #d9cfc3;
+      --accent: #0f766e;
+      --accent-soft: #dff5f1;
+      --warm: #b65f24;
+      --warm-soft: #fbe9db;
+      --danger: #8f2d24;
+      --danger-soft: #fde8e5;
+      --shadow: 0 20px 48px rgba(27, 24, 19, 0.08);
+      --radius: 22px;
+      --radius-sm: 14px;
+      --content-width: 1380px;
+      --code-bg: #f3eee6;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Aptos", "Segoe UI", "Trebuchet MS", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.11), transparent 34%),
+        radial-gradient(circle at top right, rgba(182, 95, 36, 0.1), transparent 30%),
+        var(--bg);
+      color: var(--ink);
+      line-height: 1.65;
+    }
+
+    a { color: var(--accent); }
+    code, pre { font-family: "Cascadia Code", "Consolas", "Courier New", monospace; }
+    .page-shell { max-width: var(--content-width); margin: 0 auto; padding: 36px 24px 80px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 2fr) minmax(310px, 1fr); gap: 24px; align-items: stretch; margin-bottom: 26px; }
+    .hero-main, .hero-side, .section-card, .nav-card, .metric-card {
+      background: var(--panel);
+      border: 1px solid rgba(98, 90, 82, 0.12);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .hero-main {
+      padding: 34px;
+      background:
+        linear-gradient(140deg, rgba(15, 118, 110, 0.08), transparent 34%),
+        linear-gradient(315deg, rgba(182, 95, 36, 0.08), transparent 34%),
+        var(--panel);
+    }
+    .hero-side { padding: 26px; display: grid; gap: 16px; align-content: start; }
+    .eyebrow, .section-kicker {
+      margin: 0 0 10px;
+      color: var(--warm);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-weight: 700;
+    }
+    h1, h2, h3 {
+      font-family: "Georgia", "Times New Roman", serif;
+      line-height: 1.12;
+      margin: 0 0 12px;
+      color: #153f3c;
+    }
+    h1 { font-size: clamp(2.4rem, 4vw, 4rem); max-width: 12ch; }
+    h2 { font-size: clamp(1.7rem, 2.4vw, 2.35rem); margin-bottom: 14px; }
+    h3 { font-size: 1.14rem; }
+    p { margin: 0 0 16px; }
+    .lede { max-width: 72ch; color: var(--muted); font-size: 1.08rem; }
+    .chip-row, .metric-grid, .mini-grid, .two-col, .three-col, .path-grid, .truth-grid, .status-grid { display: grid; gap: 16px; }
+    .chip-row { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-top: 22px; }
+    .chip {
+      padding: 13px 15px;
+      background: rgba(15, 118, 110, 0.08);
+      border: 1px solid rgba(15, 118, 110, 0.14);
+      border-radius: 999px;
+      color: #134c48;
+      font-size: 0.95rem;
+    }
+    .hero-note {
+      padding: 16px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(15, 118, 110, 0.16);
+      background: var(--accent-soft);
+    }
+    .hero-note strong { display: block; margin-bottom: 6px; color: #124d48; }
+    .hero-note.danger { border-color: rgba(143, 45, 36, 0.16); background: var(--danger-soft); }
+    .hero-note.danger strong { color: var(--danger); }
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 24px; }
+    .metric-card { padding: 20px 22px; }
+    .metric-card span {
+      display: block;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .metric-card strong { display: block; font-size: 2rem; color: #153f3c; margin-bottom: 8px; }
+    .layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 24px; align-items: start; }
+    .nav-card { position: sticky; top: 22px; padding: 22px 20px; }
+    .nav-card ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+    .nav-card a {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--ink);
+      background: rgba(98, 90, 82, 0.05);
+    }
+    .nav-card a:hover { background: rgba(15, 118, 110, 0.1); }
+    .main-stack { display: grid; gap: 22px; }
+    .section-card { padding: 28px; }
+    .section-intro { color: var(--muted); max-width: 74ch; }
+    .mini-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mini-card, .status-card, .truth-card {
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(98, 90, 82, 0.12);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 18px;
+    }
+    .mini-card ul, .status-card ul, .truth-card ul { margin: 0; padding-left: 20px; }
+    .timeline { display: grid; gap: 16px; margin-top: 18px; }
+    .timeline-step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 16px; align-items: start; }
+    .timeline-dot {
+      width: 18px; height: 18px; border-radius: 50%; margin-top: 6px;
+      background: linear-gradient(135deg, var(--accent), var(--warm));
+      box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.12);
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(98, 90, 82, 0.12);
+      margin-top: 18px;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 720px; background: var(--panel); }
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(98, 90, 82, 0.12);
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: rgba(15, 118, 110, 0.08);
+      color: #124d48;
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    tbody tr:nth-child(even) { background: rgba(246, 242, 234, 0.45); }
+    .status-live, .status-partial, .status-planned, .status-historical, .status-blocked {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-live { background: var(--accent-soft); color: #13514b; }
+    .status-partial { background: #eaf4ff; color: #234f82; }
+    .status-planned { background: var(--warm-soft); color: #7f4318; }
+    .status-historical { background: #ece8e2; color: #5f564d; }
+    .status-blocked { background: var(--danger-soft); color: var(--danger); }
+    .callout {
+      margin-top: 18px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border-left: 5px solid var(--warm);
+    }
+    .callout strong { color: #7a3d17; }
+    .callout.info { border-left-color: var(--accent); background: var(--accent-soft); }
+    .callout.info strong { color: #124d48; }
+    .callout.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+    .callout.danger strong { color: var(--danger); }
+    .path-grid, .truth-grid, .status-grid { margin-top: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .path-card, .truth-card, .status-card {
+      padding: 18px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(98, 90, 82, 0.12);
+    }
+    .path-card code, .truth-card code, td code { font-size: 0.92rem; word-break: break-word; }
+    pre {
+      margin: 18px 0 0;
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--code-bg);
+      color: #1d1b18;
+      overflow-x: auto;
+      border: 1px solid rgba(98, 90, 82, 0.12);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+    .checklist { margin: 0; padding-left: 20px; }
+    .checklist li + li { margin-top: 8px; }
+    .footer-note { margin-top: 26px; color: var(--muted); font-size: 0.92rem; }
+    @media (max-width: 1120px) {
+      .hero, .layout { grid-template-columns: 1fr; }
+      .nav-card { position: static; }
+      .metric-grid, .three-col, .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 760px) {
+      .page-shell { padding: 18px 14px 48px; }
+      .hero-main, .hero-side, .section-card, .nav-card, .metric-card { padding: 22px; }
+      .metric-grid, .three-col, .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <section class="hero-main">
+        <p class="eyebrow">Program Kanban Wiki</p>
+        <h1>Studio Operations Wiki</h1>
+        <p class="lede">
+          This is the canonical operations handoff for the current AI Studio repository. It documents the real process,
+          active technology, enforcement points, UI surfaces, storage layout, and exact paths another LLM should trust
+          when reusing or extending the work.
+        </p>
+        <div class="chip-row">
+          <div class="chip"><strong>Canonical Root</strong> <code>C:\Users\rodne\OneDrive\Desktop\_AIStudio_POC</code></div>
+          <div class="chip"><strong>Control Model</strong> Chat/Codex for intent, Program Kanban for evidence</div>
+          <div class="chip"><strong>Runtime Truth</strong> <code>sessions/studio.db</code> is the audit spine</div>
+          <div class="chip"><strong>Execution Plane</strong> Governed OpenAI Responses API routing</div>
+        </div>
+      </section>
+      <aside class="hero-side">
+        <div class="hero-note">
+          <strong>Last refreshed</strong>
+          This wiki was rebuilt on <code>2026-04-13</code> from the current authoritative repository layout and live implementation files.
+        </div>
+        <div class="hero-note danger">
+          <strong>Authority warning</strong>
+          Do not treat <code>C:\Users\rodne\OneDrive\Documentos\_AIStudio_POC</code> as authoritative. The code explicitly classifies it as a known duplicate workspace root.
+        </div>
+        <div class="hero-note">
+          <strong>Most important reading rule</strong>
+          In this repo, code-enforced behavior is more trustworthy than old prose. When docs and code disagree, trust
+          <code>workspace_root.py</code>, <code>wrappers/llm_wrapper.py</code>, <code>agents/api_router.py</code>,
+          <code>sessions/store.py</code>, and the tests.
+        </div>
+      </aside>
+    </header>
+
+    <section class="metric-grid" aria-label="Key metrics">
+      <article class="metric-card">
+        <span>Managed Roles</span>
+        <strong>7</strong>
+        <p>Orchestrator, Prompt Specialist, PM, Architect, Developer, Design, and QA are the main runtime roles.</p>
+      </article>
+      <article class="metric-card">
+        <span>Execution Tiers</span>
+        <strong>3</strong>
+        <p>Tiered model routing is defined and live in the governed API layer.</p>
+      </article>
+      <article class="metric-card">
+        <span>Primary Stores</span>
+        <strong>4</strong>
+        <p>SQLite evidence, project artifacts, runtime logs, and memory summaries work together to preserve state.</p>
+      </article>
+      <article class="metric-card">
+        <span>Truth Rule</span>
+        <strong>1</strong>
+        <p>SQLite and code-enforced invariants outrank rendered boards, stale docs, and duplicate roots.</p>
+      </article>
+    </section>
+
+    <div class="layout">
+      <nav class="nav-card" aria-label="Page sections">
+        <p class="section-kicker">On This Page</p>
+        <ul>
+          <li><a href="#summary">Executive Summary</a></li>
+          <li><a href="#evolution">Vision And Evolution</a></li>
+          <li><a href="#authority">Canonical Paths And Trust Hierarchy</a></li>
+          <li><a href="#technology">Technology Matrix</a></li>
+          <li><a href="#structure">Canonical File Structure</a></li>
+          <li><a href="#workflow">Process And Workflow</a></li>
+          <li><a href="#task-model">Task Governance, Naming, And Milestones</a></li>
+          <li><a href="#organization">Information Organization</a></li>
+          <li><a href="#governance">Governance And Enforcement</a></li>
+          <li><a href="#agents">Agent Structure And Tiers</a></li>
+          <li><a href="#api">API Use And Token Control</a></li>
+          <li><a href="#errors">Error Handling And Recovery</a></li>
+          <li><a href="#ui">User Interface Surfaces</a></li>
+          <li><a href="#reuse">Reuse Guide For Another LLM</a></li>
+        </ul>
+      </nav>
+
+      <main class="main-stack">
+        <section class="section-card" id="summary">
+          <p class="section-kicker">Executive Summary</p>
+          <h2>What The Studio Is Right Now</h2>
+          <p class="section-intro">
+            Program Kanban is not the main conversational brain. It is the operator-facing control room around a governed
+            multi-agent Python runtime. Chat or Codex is used for intent, steering, clarification, and final judgment.
+            The framework handles classification, task packets, routing, approvals, evidence capture, Kanban transitions,
+            and bounded API execution.
+          </p>
+          <div class="mini-grid">
+            <article class="mini-card">
+              <h3>What it is</h3>
+              <ul>
+                <li>A governed control plane around project work</li>
+                <li>A persistent evidence system backed by SQLite</li>
+                <li>A tiered API execution fabric for bounded downstream work</li>
+                <li>An operator wall for approvals, run inspection, restore, and trace visibility</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>What it is not</h3>
+              <ul>
+                <li>Not a second free-form Orchestrator chat client</li>
+                <li>Not a rootless collection of prompts and loose scripts</li>
+                <li>Not a system where tasks can mutate state outside the board model</li>
+                <li>Not a repo where historical duplicate folders should be trusted equally</li>
+              </ul>
+            </article>
+          </div>
+          <div class="callout info">
+            <strong>Working principle:</strong> the operator thinks in chat, the control room proves what happened, and the runtime
+            only delegates work through bounded, reviewable, and persisted execution paths.
+          </div>
+        </section>
+
+        <section class="section-card" id="evolution">
+          <p class="section-kicker">Vision And Evolution</p>
+          <h2>How The Project Evolved</h2>
+          <p class="section-intro">
+            The repo started as a manual markdown-driven studio and evolved into a more durable multi-agent framework with
+            explicit authority boundaries, task packets, approvals, traces, and a control-room UI. The current architecture
+            is the result of that evolution, not a blank-slate greenfield design.
+          </p>
+          <div class="timeline">
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>Manual studio origins</h3>
+                <p>The earliest workflow leaned on markdown memory, manual handoffs, and conversational continuity more than on durable runtime state.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>Repository normalization</h3>
+                <p>The repo was rebuilt around stable folders for <code>governance/</code>, <code>agents/</code>, <code>sessions/</code>,
+                  <code>projects/</code>, <code>scripts/</code>, <code>skills/</code>, and <code>tests/</code>.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>M2 operator-client trust boundary</h3>
+                <p>The project explicitly chose chat as the best orchestration surface and Program Kanban as the trusted evidence surface for approvals, trace visibility, and control-room operations.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>M5 SDK migration target</h3>
+                <p>The repo introduced the OpenAI Agents SDK dependency and bridge concepts, but kept the control room, SQLite store, and safety model as the non-negotiable framework foundation.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>M6 trust, restore, and operator speed</h3>
+                <p>The current emphasis shifted from "can the studio orchestrate at all?" to "can the operator trust it, inspect it quickly, and recover safely from bad turns?"</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>2026-04 API-first architecture baseline</h3>
+                <p>The active design direction formalized a hybrid model: deterministic local control plane plus governed OpenAI API execution for bounded planning and implementation work.</p>
+              </div>
+            </article>
+          </div>
+          <div class="callout">
+            <strong>Important reading rule:</strong> milestone specs explain why the studio looks the way it does, but they are not the same thing as live code. Use them for intent, then confirm behavior in implementation files and tests.
+          </div>
+        </section>
+
+        <section class="section-card" id="authority">
+          <p class="section-kicker">Canonical Paths And Trust Hierarchy</p>
+          <h2>What To Trust First</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Path Or Source</th>
+                  <th>Status</th>
+                  <th>How To Treat It</th>
+                  <th>Why It Matters</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>C:\Users\rodne\OneDrive\Desktop\_AIStudio_POC</code></td>
+                  <td><span class="status-live">Authoritative</span></td>
+                  <td>Use this as the only canonical repo root.</td>
+                  <td><code>workspace_root.py</code> and <code>.workspace_authority.json</code> are aligned to this root.</td>
+                </tr>
+                <tr>
+                  <td><code>C:\Users\rodne\OneDrive\Desktop\_AIStudio_POC\.workspace_authority.json</code></td>
+                  <td><span class="status-live">Authoritative</span></td>
+                  <td>Trust it over prose docs when roots conflict.</td>
+                  <td>It is the runtime marker proving the repo is the authoritative workspace.</td>
+                </tr>
+                <tr>
+                  <td><code>C:\Users\rodne\OneDrive\Documentos\_AIStudio_POC</code></td>
+                  <td><span class="status-blocked">Known Duplicate</span></td>
+                  <td>Do not dispatch governed work from here.</td>
+                  <td>The code explicitly rejects this root as non-authoritative.</td>
+                </tr>
+                <tr>
+                  <td>Older prose references to <code>C:\Users\rodne\Dev\_AIStudio_worktrees\studio-control</code></td>
+                  <td><span class="status-historical">Historical</span></td>
+                  <td>Treat as stale documentation context, not current operational truth.</td>
+                  <td>Some architecture documents and the older wiki snapshot still reference this path.</td>
+                </tr>
+                <tr>
+                  <td><code>C:\Users\rodne\OneDrive\Documentos\_Codex Projects\Program Kanban</code></td>
+                  <td><span class="status-historical">Imported Provenance</span></td>
+                  <td>Use only as legacy source context.</td>
+                  <td>It explains import origin, not the current runtime root.</td>
+                </tr>
+                <tr>
+                  <td>Implementation code and tests</td>
+                  <td><span class="status-live">Highest Runtime Truth</span></td>
+                  <td>If prose and code disagree, trust code and tests.</td>
+                  <td>The repo intentionally enforces many rules mechanically, not narratively.</td>
+                </tr>
+                <tr>
+                  <td><code>sessions/studio.db</code></td>
+                  <td><span class="status-live">Operational Truth</span></td>
+                  <td>Use as the canonical evidence store for runs, approvals, traces, validations, and artifacts.</td>
+                  <td>Boards and views should be rebuilt from it, not vice versa.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="truth-grid">
+            <article class="truth-card">
+              <h3>Truth hierarchy</h3>
+              <ul>
+                <li>1. Code-enforced authority and tests</li>
+                <li>2. SQLite evidence and runtime logs</li>
+                <li>3. Current governance docs describing architecture</li>
+                <li>4. Project milestone specs and imported briefs</li>
+                <li>5. Archived or duplicate roots</li>
+              </ul>
+            </article>
+            <article class="truth-card">
+              <h3>Why another LLM can get confused</h3>
+              <ul>
+                <li>The repo contains active code, proposed policy, migration scaffolding, and stale imported prose at the same time.</li>
+                <li>Some old docs still embed non-authoritative root paths.</li>
+                <li>The SDK path exists in code and dependencies, but governed execution currently fails closed before using it.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+        <section class="section-card" id="technology">
+          <p class="section-kicker">Technology Matrix</p>
+          <h2>What Is Live, Partial, Or Planned</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Technology</th>
+                  <th>Status</th>
+                  <th>Primary Files</th>
+                  <th>What It Means In Practice</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Python 3.14 control plane</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>pyproject.toml</code>, <code>scripts/</code>, <code>agents/</code></td>
+                  <td>The orchestration, governance, storage, APIs, and CLI all run in Python.</td>
+                </tr>
+                <tr>
+                  <td>Click CLI</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>scripts/cli.py</code></td>
+                  <td>CLI entrypoints exist for request intake, task listing, approvals, runs, wall snapshots, and legacy import.</td>
+                </tr>
+                <tr>
+                  <td>OpenAI Python SDK + Responses API</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>runtime.py</code>, <code>agents/api_router.py</code></td>
+                  <td>The active bounded execution path calls <code>client.responses.create(..., store=True)</code> with tier-based model selection.</td>
+                </tr>
+                <tr>
+                  <td>Tiered model routing</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>agents/config.py</code>, <code>governance/AGENT_TIERS.md</code></td>
+                  <td>The system chooses among senior, mid, and junior API lanes, each with model and reasoning defaults.</td>
+                </tr>
+                <tr>
+                  <td>SQLite canonical state store</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>sessions/store.py</code>, <code>sessions/studio.db</code></td>
+                  <td>Tasks, runs, approvals, traces, usage, artifacts, and trust records persist here.</td>
+                </tr>
+                <tr>
+                  <td>Vanilla HTML/CSS/JS operator surfaces</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>projects/program-kanban/app/</code>, <code>scripts/operator_wall/</code></td>
+                  <td>The control room is a lightweight Node-hosted static interface backed by Python scripts.</td>
+                </tr>
+                <tr>
+                  <td>Node HTTP wrapper for UI</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>projects/program-kanban/app/server.mjs</code></td>
+                  <td>The UI shells out to Python scripts for snapshots, approvals, resume, restore, and launcher status.</td>
+                </tr>
+                <tr>
+                  <td>YAML governance rules</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>governance/rules.yml</code>, <code>governance/rules.py</code></td>
+                  <td>Role/state/tool access and forbidden prompt patterns are checked before model execution.</td>
+                </tr>
+                <tr>
+                  <td>Pydantic contracts</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>intake/models.py</code>, <code>agents/schemas.py</code></td>
+                  <td>Intake decisions, task packets, worker outputs, and router results are strongly structured.</td>
+                </tr>
+                <tr>
+                  <td>Governed external observability and reconciliation</td>
+                  <td><span class="status-live">Live</span></td>
+                  <td><code>sessions/governed_external_observability.py</code>, <code>agents/api_router.py</code></td>
+                  <td>The router records proof, trust, reconciliation, and governed-execution evidence for external API calls.</td>
+                </tr>
+                <tr>
+                  <td>OpenAI Agents SDK dependency</td>
+                  <td><span class="status-partial">Present But Not Default</span></td>
+                  <td><code>agents/sdk_runtime.py</code>, <code>scripts/sdk_runtime_bridge.py</code>, <code>tests/test_sdk_runtime.py</code></td>
+                  <td>The dependency and bridge exist, but the current governed runtime intentionally fails closed before letting SDK execution bypass the enforced API path.</td>
+                </tr>
+                <tr>
+                  <td>AutoGen packages</td>
+                  <td><span class="status-historical">Compatibility / Residue</span></td>
+                  <td><code>pyproject.toml</code>, older migration docs</td>
+                  <td>The packages remain in dependencies, but the repo's active bounded execution path is the custom governed router, not an AutoGen-first runtime.</td>
+                </tr>
+                <tr>
+                  <td>Prompt caching strategy</td>
+                  <td><span class="status-planned">Policy Direction</span></td>
+                  <td><code>governance/THIN_MANAGER_API_FIRST_POLICY.md</code></td>
+                  <td>Stable prefixes and cache keys are documented as a target, but the current <code>runtime.py</code> does not yet send <code>prompt_cache_key</code> or <code>prompt_cache_retention</code>.</td>
+                </tr>
+                <tr>
+                  <td>Batch lane</td>
+                  <td><span class="status-planned">Policy Direction</span></td>
+                  <td><code>governance/ARCHITECTURE.md</code>, <code>governance/THIN_MANAGER_API_FIRST_POLICY.md</code></td>
+                  <td>The architecture talks about sync, background, and batch, but the currently visible live router behavior is sync and background.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section-card" id="structure">
+          <p class="section-kicker">Canonical File Structure</p>
+          <h2>How The Repository Is Organized</h2>
+          <p class="section-intro">
+            Another LLM should begin from the authoritative root, ignore generated noise, and read the control-plane,
+            persistence, UI, and test layers in that order.
+          </p>
+          <pre><code>C:\Users\rodne\OneDrive\Desktop\_AIStudio_POC\
+|- .workspace_authority.json              # Root authority marker
+|- README.md                             # High-level repo summary
+|- pyproject.toml                        # Python package metadata and dependencies
+|- runtime.py                            # OpenAI Responses runtime wrapper
+|- state_machine.py                      # Board states and legal transitions
+|- workspace_root.py                     # Authoritative-root enforcement
+|- governance\
+|  |- rules.yml                          # Role/tool/state policy
+|  |- rules.py                           # Policy checks
+|  |- CONTROL_INVARIANTS.md              # Enforced safety and trust rules
+|  |- ARCHITECTURE.md                    # Hybrid API-first architecture baseline
+|  |- AGENT_TIERS.md                     # Tier model and routing intent
+|  `- THIN_MANAGER_API_FIRST_POLICY.md   # Optimization direction and future lane policy
+|- intake\
+|  |- gateway.py                         # Intent classification and fail-closed routing
+|  |- compiler.py                        # TaskPacket and policy proposal compilation
+|  |- interpreter.py                     # Interpreter summary logic
+|  `- models.py                          # Intake schemas and token budgets
+|- agents\
+|  |- orchestrator.py                    # Main control-plane coordinator
+|  |- prompt_specialist.py               # Request normalization / intake specialist
+|  |- pm.py                              # Decomposition, subtasks, worker dispatch
+|  |- api_router.py                      # Governed Responses API execution fabric
+|  |- role_base.py                       # Shared governed role behavior
+|  |- cost_tracker.py                    # Token and cost estimation
+|  |- architect.py / developer.py / design.py / qa.py
+|  |- config.py                          # Models, tiers, deliverable registry
+|  |- sdk_runtime.py                     # SDK adapter (not current governed default)
+|  `- sdk_specialists.py                 # SDK specialist coordination path
+|- scripts\
+|  |- cli.py                             # CLI entrypoint
+|  |- operator_api.py                    # Preview / dispatch / approve / resume service wrapper
+|  |- control_room_api.py                # Restore-backup service wrapper
+|  |- worker.py                          # Manifest-gated worker execution process
+|  |- operator_wall_snapshot.py          # Snapshot builder for UI
+|  |- sdk_runtime_bridge.py              # SDK bridge helper
+|  `- operator_wall\                     # Framework-level operator wall assets
+|- sessions\
+|  |- studio.db                          # Canonical SQLite store
+|  |- sdk_sessions.db                    # SDK-side session storage
+|  |- store.py                           # All persistence and audit logic
+|  |- governed_external_observability.py # Trust and reconciliation models
+|  |- backups\                           # SQLite and dispatch backups
+|  `- runtime_logs\                      # App/stdout/stderr logs
+|- memory\
+|  |- framework_health.json              # Lightweight health summary
+|  |- session_summaries.json             # Session rollups
+|  `- memory_store.py                    # Memory retrieval and metric writes
+|- kanban\
+|  `- board.py                           # Local or GitHub-backed board adapter
+|- skills\
+|  `- tools.py                           # Manifest-restricted read/write/test helpers
+|- wrappers\
+|  |- llm_wrapper.py                     # Governance gate before provider invocation
+|  `- logging.py                         # LLM call logging
+|- projects\
+|  |- program-kanban\
+|  |  |- app\                            # Program Kanban control-room UI
+|  |  |- artifacts\                      # Output artifacts for Program Kanban work
+|  |  |- execution\KANBAN.md             # Project board view / projected execution surface
+|  |  `- governance\                     # Program Kanban milestone specs and brief
+|  `- tactics-game\
+|     |- app\                            # Example/game client app
+|     |- artifacts\                      # Example generated artifacts
+|     |- execution\KANBAN.md             # Example project board view
+|     `- governance\                     # Example project governance
+`- tests\                                # Regression coverage by subsystem</code></pre>
+          <div class="callout info">
+            <strong>Important distinction:</strong> the top-level <code>program-kanban/</code> folder also exists, but it contains older
+            compatibility data such as memory and session remnants. For active product code, follow <code>projects/program-kanban/</code>,
+            <code>sessions/</code>, and <code>memory/</code> at the repo root.
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Start Here</th>
+                  <th>Why</th>
+                  <th>Key Paths</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Authority and root safety</td>
+                  <td>Prevents edits or reads against the wrong duplicate repo.</td>
+                  <td><code>workspace_root.py</code>, <code>.workspace_authority.json</code></td>
+                </tr>
+                <tr>
+                  <td>Intake and routing contracts</td>
+                  <td>Defines what can be routed, rejected, or split before work begins.</td>
+                  <td><code>intake/gateway.py</code>, <code>intake/compiler.py</code>, <code>intake/models.py</code></td>
+                </tr>
+                <tr>
+                  <td>Orchestration and decomposition</td>
+                  <td>Shows how tasks become subtasks, approvals, and worker runs.</td>
+                  <td><code>agents/orchestrator.py</code>, <code>agents/pm.py</code></td>
+                </tr>
+                <tr>
+                  <td>Execution and governance gate</td>
+                  <td>Shows how model calls are actually allowed, routed, and observed.</td>
+                  <td><code>wrappers/llm_wrapper.py</code>, <code>agents/api_router.py</code>, <code>runtime.py</code></td>
+                </tr>
+                <tr>
+                  <td>Persistence and evidence</td>
+                  <td>Shows what data exists and how to trust or restore it.</td>
+                  <td><code>sessions/store.py</code>, <code>sessions/governed_external_observability.py</code></td>
+                </tr>
+                <tr>
+                  <td>Operator UI</td>
+                  <td>Shows how the control room talks to the backend scripts.</td>
+                  <td><code>projects/program-kanban/app/server.mjs</code>, <code>projects/program-kanban/app/app.js</code>, <code>scripts/operator_wall_snapshot.py</code></td>
+                </tr>
+                <tr>
+                  <td>Regression proof</td>
+                  <td>Shows expected behavior and the safest way to modify code confidently.</td>
+                  <td><code>tests/test_api_router.py</code>, <code>tests/test_operator_api.py</code>, <code>tests/test_orchestrator.py</code>, <code>tests/test_store.py</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section-card" id="workflow">
+          <p class="section-kicker">Process And Workflow</p>
+          <h2>End-To-End Operating Flow</h2>
+          <p class="section-intro">
+            The current process is intentionally bounded. Work does not move from operator request to specialist output
+            by free-form delegation; it moves through classification, compilation, authorization, storage, and review.
+          </p>
+          <div class="timeline">
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>1. Operator entry</h3>
+                <p>The request enters through chat/Codex, the CLI, or the control-room web wrapper. Primary operational entrypoints are <code>scripts/cli.py</code> and <code>scripts/operator_api.py</code>.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>2. Intent gateway</h3>
+                <p><code>intake/gateway.py</code> classifies the request as <code>ROUTE_TASK</code>, <code>ROUTE_STATUS</code>, <code>ROUTE_ADMIN</code>, <code>NEEDS_SPLIT</code>, or <code>REJECT</code>. Mixed or unsafe requests fail closed.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>3. Task packet compilation</h3>
+                <p><code>intake/compiler.py</code> creates a <code>TaskPacket</code> with normalized request text, allowed roles, allowed tools, forbidden actions, and token budget limits.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>4. Orchestrator binding</h3>
+                <p><code>agents/orchestrator.py</code> loads the authoritative root, attaches the task packet to team state, creates tasks/runs in <code>sessions/studio.db</code>, and ensures only routable packets proceed.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>5. PM decomposition</h3>
+                <p><code>agents/pm.py</code> breaks parent tasks into deliverable-backed subtasks using the project capability registry in <code>agents/config.py</code>. Each subtask inherits budget, route, lane, and tool restrictions.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>6. Worker manifest sealing</h3>
+                <p><code>scripts/worker.py</code> and <code>skills/tools.py</code> require an exact-path write manifest. Delegated workers may only write the approved artifact path and only with approved tools.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>7. Governed API execution</h3>
+                <p><code>agents/api_router.py</code> validates authority packets and budget reservations, then routes the call through <code>wrappers/llm_wrapper.py</code> into <code>runtime.py</code>, which uses the OpenAI Responses API.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>8. Evidence capture</h3>
+                <p>The router, store, and logging layers persist usage events, trace events, validation results, artifacts, governed external call records, and reconciliation state into SQLite and markdown logs.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>9. QA and board review</h3>
+                <p>The QA role reviews subtask artifacts, the board enforces legal state transitions, and the final move to <code>Done</code> requires review consensus.</p>
+              </div>
+            </article>
+            <article class="timeline-step">
+              <div class="timeline-dot" aria-hidden="true"></div>
+              <div>
+                <h3>10. Operator inspection and recovery</h3>
+                <p>The Program Kanban UI reads snapshots, approvals, run details, trust worklists, and restore controls through Python wrappers rather than by mutating the database directly from the browser.</p>
+              </div>
+            </article>
+          </div>
+          <div class="callout danger">
+            <strong>Boundary to preserve:</strong> direct board-control actions remain deterministic framework code paths. The system explicitly avoids creating a second uncontrolled "agent manager" layer that can bypass storage, governance, or review.
+          </div>
+        </section>
+        <section class="section-card" id="task-model">
+          <p class="section-kicker">Task Governance, Naming, And Milestones</p>
+          <h2>How Tasks Are Created, Grouped, And Controlled</h2>
+          <p class="section-intro">
+            The wiki previously described high-level flow but did not capture the operating discipline that now governs task creation,
+            naming, milestone grouping, and readiness. The authoritative implementation lives in
+            <code>sessions/store.py</code>, <code>governance/TASK_DECOMPOSITION.md</code>, and the rendered board view in
+            <code>projects/program-kanban/execution/KANBAN.md</code>.
+          </p>
+          <div class="callout">
+            <strong>Core rule:</strong> no delegated task should go directly to execution without decomposition. Deterministic local board-control actions are the only intentional exception.
+          </div>
+          <div class="status-grid">
+            <article class="status-card">
+              <h3>Canonical task IDs</h3>
+              <ul>
+                <li><code>program-kanban</code> tasks use the <code>PK-###</code> prefix.</li>
+                <li><code>tactics-game</code> tasks use the <code>TG-###</code> prefix.</li>
+                <li><code>TGD-###</code> is still accepted as a legacy alias for <code>program-kanban</code> parsing, but it should not be used for new work.</li>
+                <li>The board lifecycle is <code>backlog</code>, <code>ready</code>, <code>in_progress</code>, <code>in_review</code>, <code>completed</code>, <code>blocked</code>.</li>
+              </ul>
+            </article>
+            <article class="status-card">
+              <h3>Milestone naming convention</h3>
+              <ul>
+                <li>Milestones are named as <code>M&lt;number&gt; - &lt;Capability Wave Name&gt;</code>.</li>
+                <li>Examples already in use include <code>M8 - Visual Production And Digital Asset Management</code>, <code>M9 - Audio Production Pipeline</code>, and <code>M10 - Platform Scaling And Operational Follow-Ons</code>.</li>
+                <li>Milestones should represent a delivery wave or capability theme, not a temporary task bucket.</li>
+                <li>Each milestone carries an explicit <code>entry_goal</code>, <code>exit_goal</code>, <code>owner_role</code>, and ordered placement.</li>
+              </ul>
+            </article>
+            <article class="status-card">
+              <h3>Exact output paths</h3>
+              <ul>
+                <li>Every governed task should declare a single canonical <code>expected_artifact_path</code>.</li>
+                <li>Use repo-relative paths such as <code>projects/program-kanban/app/app.js</code>, <code>sessions/store.py</code>, <code>scripts/worker.py</code>, or <code>projects/program-kanban/governance/LARGE_MEDIA_POLICY.md</code>.</li>
+                <li>That path is reused by PM planning, manifest sealing, worker write controls, and board rendering.</li>
+                <li>Another LLM should treat the approved artifact path as the write boundary, not as a suggestion.</li>
+              </ul>
+            </article>
+          </div>
+          <div class="two-col">
+            <article class="mini-card">
+              <h3>Task creation minimum standard</h3>
+              <p>A Program Kanban task should not be considered properly formed unless it includes the following fields either directly on the task row or in acceptance metadata:</p>
+              <ul>
+                <li><code>title</code> and <code>details</code> describing the work without relying on chat history</li>
+                <li><code>objective</code> describing the intended outcome</li>
+                <li><code>owner_role</code> and usually <code>assigned_role</code> identifying who is responsible</li>
+                <li><code>expected_artifact_path</code> pointing to the exact governed output location</li>
+                <li><code>acceptance</code> metadata carrying milestone intent, approved decisions, and task constraints</li>
+                <li><code>milestone_id</code> or enough milestone metadata for auto-resolution</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>Milestone auto-resolution contract</h3>
+              <p>Program Kanban tasks can propose milestone creation through acceptance metadata. The store resolves and creates milestones from these fields when needed:</p>
+<pre><code>{
+  "proposed_milestone": "M8 - Visual Production And Digital Asset Management",
+  "entry_goal": "Visual review is still conflated with specialist behavior.",
+  "exit_goal": "The deterministic media-service boundary is operator-visible.",
+  "milestone_status": "planned",
+  "milestone_owner_role": "Project Orchestrator",
+  "milestone_details": "Optional longer explanation",
+  "milestone_slug": "m8-visual-production"
+}</code></pre>
+              <p>If <code>milestone_order</code> is not supplied when a milestone is created, the store assigns the next value after the current project maximum. Milestones are listed in <code>milestone_order ASC, created_at ASC</code>.</p>
+            </article>
+          </div>
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>Control Area</th>
+                <th>Implemented Rule</th>
+                <th>Practical Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Decomposition</td>
+                <td><code>governance/TASK_DECOMPOSITION.md</code> requires classification, tier assignment, and decomposition before delegated execution.</td>
+                <td>Parent tasks are profiled first, then PM converts them into bounded subtasks instead of sending vague requests directly to workers.</td>
+              </tr>
+              <tr>
+                <td>Ready gate</td>
+                <td>For <code>program-kanban</code>, moving to <code>ready</code> requires milestone assignment, acceptance criteria, expected artifact path, and a responsible owner or assigned role.</td>
+                <td>A task is not truly buildable until scope, owner, deliverable, and milestone are explicit in durable state.</td>
+              </tr>
+              <tr>
+                <td>Completed gate</td>
+                <td>Moving to <code>completed</code> requires the same readiness fields plus <code>review_state = Accepted</code>.</td>
+                <td>Finished code or docs are not enough by themselves; completion is review-backed closure.</td>
+              </tr>
+              <tr>
+                <td>Subtask inheritance</td>
+                <td><code>create_subtask()</code> inherits <code>milestone_id</code> from the parent task.</td>
+                <td>Milestone grouping stays coherent even when work is decomposed across specialists.</td>
+              </tr>
+              <tr>
+                <td>PM propagation</td>
+                <td>PM-generated subtasks persist <code>deliverable_type</code>, <code>allowed_tools</code>, <code>deliverable_contract</code>, <code>assigned_tier</code>, and <code>expected_output_format</code>.</td>
+                <td>Downstream specialists receive a concrete operating contract instead of inferring format, write scope, or tool authority.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="two-col">
+            <article class="mini-card">
+              <h3>How milestone grouping should be done</h3>
+              <ul>
+                <li>Group tasks by major delivery objective or operating capability wave, not by who is currently working on them.</li>
+                <li>Prefer extending an existing milestone when a task clearly advances that same capability boundary.</li>
+                <li>Create a new milestone only when the entry and exit conditions define a distinct wave of value or governance.</li>
+                <li>Keep milestone titles stable once used in tasks and artifacts; rename only through an intentional migration, not ad hoc edits.</li>
+                <li>Use milestone order to express roadmap sequence. Do not infer order from creation date alone.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>How another LLM should create new tasks</h3>
+              <ul>
+                <li>Choose the correct project prefix first: <code>PK</code> for Program Kanban, <code>TG</code> for Tactics Game.</li>
+                <li>Write the task so it can stand alone without conversational memory.</li>
+                <li>Attach or resolve the milestone before attempting to mark the task <code>ready</code>.</li>
+                <li>Set an exact governed artifact path and keep the task scoped to that output.</li>
+                <li>When decomposing, preserve the parent's milestone and pass explicit tool and deliverable contracts into the subtask acceptance metadata.</li>
+                <li>Do not mark a Program Kanban task <code>completed</code> until review has explicitly set <code>review_state</code> to <code>Accepted</code>.</li>
+              </ul>
+            </article>
+          </div>
+          <article class="mini-card">
+            <h3>Rendered board template</h3>
+            <p>The human-readable board renderer in <code>projects/program-kanban/execution/KANBAN.md</code> presents each task using the following shape. This is a useful canonical checklist when creating or auditing tasks:</p>
+<pre><code>### &lt;Task Title&gt;
+- ID: PK-###
+- Kind: request | subtask
+- Status: backlog | ready | in_progress | in_review | completed | blocked
+- Owner: &lt;owner role&gt;
+- Assigned Role: &lt;assigned role&gt;
+- Priority: low | medium | high
+- Requires Approval: yes | no
+- Review State: None | Accepted | other review state
+- Parent Task: PK-###            # only for subtasks
+- Milestone: M&lt;number&gt; - &lt;Title&gt;
+- Expected Artifact: &lt;repo-relative path&gt;
+- Objective: &lt;outcome statement&gt;
+- Details: &lt;standalone task brief&gt;
+- Result: &lt;closure summary&gt;      # present after execution
+- Review Notes: &lt;review evidence&gt; # present after review</code></pre>
+            <p>This shape matters because the board is not just a display; it mirrors the minimum governed evidence expected by the orchestration and review flow.</p>
+          </article>
+        </section>
+        <section class="section-card" id="organization">
+          <p class="section-kicker">Information Organization</p>
+          <h2>How Runtime Information Is Stored</h2>
+          <div class="two-col">
+            <article class="mini-card">
+              <h3>Canonical database</h3>
+              <p><code>sessions/studio.db</code> is the core evidence store. The code declares the following major table families inside <code>sessions/store.py</code>:</p>
+              <ul>
+                <li>Planning and board: <code>projects</code>, <code>milestones</code>, <code>tasks</code>, <code>runs</code>, <code>agent_runs</code></li>
+                <li>Control and approvals: <code>approvals</code>, <code>local_exception_approvals</code>, <code>compliance_records</code></li>
+                <li>Trace and validation: <code>messages</code>, <code>trace_events</code>, <code>validation_results</code>, <code>usage_events</code>, <code>delegation_edges</code></li>
+                <li>Execution authority: <code>execution_packets</code>, <code>execution_job_reservations</code></li>
+                <li>Trust and observability: <code>governed_pre_execution_blocks</code>, <code>governed_external_call_records</code>, <code>governed_external_reconciliation_records</code>, <code>governed_external_call_events</code></li>
+                <li>Artifacts: <code>artifacts</code>, <code>visual_artifacts</code></li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>Supporting files on disk</h3>
+              <ul>
+                <li><code>memory/framework_health.json</code> for lightweight health state</li>
+                <li><code>memory/session_summaries.json</code> for compact rollups</li>
+                <li><code>governance/execution_logs.md</code> for human-readable token/cost logs</li>
+                <li><code>sessions/backups/</code> for dispatch and database backup recovery assets</li>
+                <li><code>sessions/runtime_logs/*.log</code> for launcher and app process logs</li>
+                <li><code>projects/&lt;project&gt;/artifacts/</code> for project outputs under write-boundary control</li>
+              </ul>
+            </article>
+          </div>
+          <div class="status-grid">
+            <article class="status-card">
+              <h3>Rendered board files</h3>
+              <p><code>projects/program-kanban/execution/KANBAN.md</code> and <code>projects/tactics-game/execution/KANBAN.md</code> are useful project views, but they should not overrule SQLite evidence if the two ever diverge.</p>
+            </article>
+            <article class="status-card">
+              <h3>Imported briefs</h3>
+              <p><code>projects/program-kanban/governance/PROJECT_BRIEF.md</code> still contains imported root references under <code>Documentos</code>. Treat those as provenance notes, not current authority.</p>
+            </article>
+            <article class="status-card">
+              <h3>Backups and receipts</h3>
+              <p>Recovery is a first-class concern. The store creates and restores backup artifacts through dedicated code paths and a control-room API wrapper.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-card" id="governance">
+          <p class="section-kicker">Governance And Enforcement</p>
+          <h2>How Governance Is Actually Enforced</h2>
+          <p class="section-intro">
+            The most important safety property of this repo is that governance is not just advisory prose. Several rules are
+            encoded directly in Python and backed by tests.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Invariant</th>
+                  <th>Main Enforcement Points</th>
+                  <th>What It Prevents</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Wrapper-required model calls</td>
+                  <td><code>wrappers/llm_wrapper.py</code>, <code>agents/api_router.py</code>, <code>agents/role_base.py</code></td>
+                  <td>Direct model calls that skip role, state, prompt, and tool checks.</td>
+                </tr>
+                <tr>
+                  <td>Fail-closed SDK mode</td>
+                  <td><code>agents/config.py</code>, <code>agents/sdk_runtime.py</code>, <code>scripts/sdk_runtime_bridge.py</code></td>
+                  <td>Accidental runtime switching into an ungoverned or parity-incomplete SDK path.</td>
+                </tr>
+                <tr>
+                  <td>No fallback prompt-specialist path</td>
+                  <td><code>agents/prompt_specialist.py</code>, <code>hooks.py</code></td>
+                  <td>Silent packet fabrication when governance or model execution fails.</td>
+                </tr>
+                <tr>
+                  <td>Exact-path write manifests</td>
+                  <td><code>skills/tools.py</code>, <code>scripts/worker.py</code>, <code>sessions/store.py</code></td>
+                  <td>Delegated writes outside manifest-approved project artifact paths.</td>
+                </tr>
+                <tr>
+                  <td>Kanban/state-machine authority</td>
+                  <td><code>state_machine.py</code>, <code>kanban/board.py</code>, <code>governance/rules.py</code></td>
+                  <td>Ad hoc status jumps that skip required states or review consensus.</td>
+                </tr>
+                <tr>
+                  <td>Role and tool allowlists</td>
+                  <td><code>governance/rules.yml</code>, <code>governance/rules.py</code>, <code>wrappers/llm_wrapper.py</code></td>
+                  <td>Roles using tools or operating in board states they are not allowed to touch.</td>
+                </tr>
+                <tr>
+                  <td>Single approved delegated execution path</td>
+                  <td><code>agents/orchestrator.py</code>, <code>agents/pm.py</code>, <code>scripts/worker.py</code>, <code>agents/api_router.py</code></td>
+                  <td>Side-door specialist execution that does not carry reservation, packet, and authority metadata.</td>
+                </tr>
+                <tr>
+                  <td>Authoritative workspace root</td>
+                  <td><code>workspace_root.py</code></td>
+                  <td>Running governed operations from the duplicate <code>Documentos</code> tree.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="two-col">
+            <article class="mini-card">
+              <h3>Trust model</h3>
+              <ul>
+                <li>Claims about governed execution are not enough by themselves.</li>
+                <li>The system distinguishes claim status, proof status, and reconciliation state.</li>
+                <li>Provider request IDs and follow-up reconciliation determine whether a call becomes trusted.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>Files to read for trust logic</h3>
+              <ul>
+                <li><code>sessions/governed_external_observability.py</code></li>
+                <li><code>agents/api_router.py</code></li>
+                <li><code>scripts/operator_api.py</code> for trust-worklist and reconciliation commands</li>
+                <li><code>tests/test_api_router.py</code> and <code>tests/test_operator_api.py</code></li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-card" id="agents">
+          <p class="section-kicker">Agent Structure And Tiers</p>
+          <h2>Roles, Tiers, And Routing Boundaries</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Main Responsibility</th>
+                  <th>Default Tier Floor</th>
+                  <th>Main Files</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Orchestrator</td>
+                  <td>Root control-plane coordinator, task/run creation, preview, gating, and board movement.</td>
+                  <td><code>tier_1_senior</code></td>
+                  <td><code>agents/orchestrator.py</code></td>
+                </tr>
+                <tr>
+                  <td>Prompt Specialist</td>
+                  <td>Request normalization and safe intake packet generation.</td>
+                  <td><code>tier_2_mid</code></td>
+                  <td><code>agents/prompt_specialist.py</code></td>
+                </tr>
+                <tr>
+                  <td>PM</td>
+                  <td>Plan decomposition, subtask creation, worker dispatch, and final parent-task review prep.</td>
+                  <td><code>tier_2_mid</code></td>
+                  <td><code>agents/pm.py</code></td>
+                </tr>
+                <tr>
+                  <td>Architect</td>
+                  <td>Architecture notes and high-level implementation contracts.</td>
+                  <td><code>tier_1_senior</code></td>
+                  <td><code>agents/architect.py</code></td>
+                </tr>
+                <tr>
+                  <td>Developer</td>
+                  <td>Implementation artifacts produced from approved inputs and bounded manifests.</td>
+                  <td><code>tier_2_mid</code></td>
+                  <td><code>agents/developer.py</code></td>
+                </tr>
+                <tr>
+                  <td>Design</td>
+                  <td>UI notes, design-facing review outputs, and project-specific presentation guidance.</td>
+                  <td><code>tier_2_mid</code></td>
+                  <td><code>agents/design.py</code></td>
+                </tr>
+                <tr>
+                  <td>QA</td>
+                  <td>Artifact review, validation checks, and final acceptance gating.</td>
+                  <td><code>tier_3_junior</code></td>
+                  <td><code>agents/qa.py</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th>Default Model</th>
+                  <th>Reasoning</th>
+                  <th>Default Use</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>tier_1_senior</code></td>
+                  <td><code>gpt-5.4</code></td>
+                  <td>High</td>
+                  <td>Architecture, ambiguity, cross-system risk, recovery, and escalated review.</td>
+                </tr>
+                <tr>
+                  <td><code>tier_2_mid</code></td>
+                  <td><code>gpt-5.4-mini</code></td>
+                  <td>Medium</td>
+                  <td>Planning, decomposition, synthesis, review framing, and medium-complexity work.</td>
+                </tr>
+                <tr>
+                  <td><code>tier_3_junior</code></td>
+                  <td><code>gpt-5.4-mini</code></td>
+                  <td>Low</td>
+                  <td>Routine bounded transforms, scaffolding, and repetitive low-risk tasks.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <strong>Practical interpretation:</strong> the repo defines both role-based model floors and tier-based routing. Another LLM should not assume every role uses the same model or that "best model available" is the intended default.
+          </div>
+        </section>
+        <section class="section-card" id="api">
+          <p class="section-kicker">API Use And Token Control</p>
+          <h2>How External Model Calls Are Managed</h2>
+          <div class="two-col">
+            <article class="mini-card">
+              <h3>What is implemented now</h3>
+              <ul>
+                <li><code>runtime.py</code> uses <code>client.responses.create()</code> with <code>store=True</code>.</li>
+                <li><code>agents/api_router.py</code> resolves tier, model, reasoning effort, lane, and route family.</li>
+                <li><code>intake/models.py</code> task packets enforce <code>max_prompt_tokens</code>, <code>max_completion_tokens</code>, <code>max_total_tokens</code>, and <code>max_retries</code>.</li>
+                <li><code>agents/cost_tracker.py</code> records input, cached input, output, and reasoning tokens and estimates cost.</li>
+                <li>Governed external observability records proof, claim, trust, retry, and reconciliation data.</li>
+                <li>Background execution is supported through the Responses API <code>background</code> flag and route lane metadata.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>What is documented but not fully live</h3>
+              <ul>
+                <li>Prompt-cache shaping is defined as policy, but the current runtime does not pass cache-key parameters.</li>
+                <li>Batch execution is part of the architecture direction, but is not the obvious live default in the current router implementation.</li>
+                <li>The SDK runtime migration is scaffolded but still blocked from becoming the governed default path.</li>
+              </ul>
+            </article>
+          </div>
+          <pre><code>Current active API call shape (simplified):
+
+1. Orchestrator / PM / worker prepares bounded task context
+2. llm_wrapper enforces:
+   - allowed role
+   - allowed board state
+   - forbidden prompt patterns
+   - allowed tool access
+3. api_router validates:
+   - authority packet fields
+   - budget reservation
+   - retry rules
+   - execution lane
+4. runtime.py sends:
+   - model
+   - input messages
+   - reasoning effort
+   - metadata
+   - background flag
+   - store=True
+5. cost_tracker and store persist:
+   - prompt/output/reasoning tokens
+   - cached input tokens
+   - estimated cost
+   - trace / proof / reconciliation metadata</code></pre>
+          <div class="callout info">
+            <strong>Token optimization summary:</strong> the repo already enforces token budgets and logs cached token usage when returned by the provider. The larger cache-optimization strategy exists mostly as architecture policy and should not be mistaken for already-wired runtime behavior.
+          </div>
+        </section>
+
+        <section class="section-card" id="errors">
+          <p class="section-kicker">Error Handling And Recovery</p>
+          <h2>How The System Fails Closed And Recovers</h2>
+          <div class="mini-grid">
+            <article class="mini-card">
+              <h3>Fail-closed behavior</h3>
+              <ul>
+                <li>Unsafe or mixed requests are rejected or forced into <code>NEEDS_SPLIT</code> at intake.</li>
+                <li>Invalid roles, states, tools, and forbidden prompt content raise exceptions before provider invocation.</li>
+                <li>Governed worker execution without a valid manifest is rejected.</li>
+                <li>SDK mode is blocked for governed specialist execution until evidence parity exists.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>API retry behavior</h3>
+              <ul>
+                <li><code>agents/api_router.py</code> retries retryable provider failures.</li>
+                <li>The retry set includes rate limits, timeouts, connection errors, and internal server errors.</li>
+                <li>Retry backoff is simple and explicit: <code>time.sleep(0.5 * (attempt + 1))</code>.</li>
+                <li>Budget authority can stop execution even if the provider would otherwise succeed.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>Recovery surfaces</h3>
+              <ul>
+                <li><code>sessions/backups/</code> stores backup assets and restore receipts.</li>
+                <li><code>scripts/control_room_api.py</code> exposes restore-backup operations to the control room.</li>
+                <li><code>sessions/runtime_logs/</code> stores process stdout/stderr logs for launcher troubleshooting.</li>
+                <li>The operator UI surfaces backup and launcher status instead of requiring raw SQL or manual file juggling.</li>
+              </ul>
+            </article>
+          </div>
+          <div class="callout danger">
+            <strong>Recovery rule:</strong> recover from backups through store-backed code paths and the control-room wrapper, not by manually editing SQLite files in place.
+          </div>
+        </section>
+
+        <section class="section-card" id="ui">
+          <p class="section-kicker">User Interface And Operator Surfaces</p>
+          <h2>Where The Operator Interacts With The System</h2>
+          <div class="two-col">
+            <article class="mini-card">
+              <h3>Primary surfaces</h3>
+              <ul>
+                <li><strong>Chat / Codex:</strong> natural-language intent, clarification, review, and steering.</li>
+                <li><strong>Program Kanban app:</strong> approvals, traces, run inspection, restore, and launcher control.</li>
+                <li><strong>CLI:</strong> automation-friendly local control, health checks, approvals, and snapshots.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>UI implementation files</h3>
+              <ul>
+                <li><code>projects/program-kanban/app/index.html</code></li>
+                <li><code>projects/program-kanban/app/app.js</code></li>
+                <li><code>projects/program-kanban/app/styles.css</code></li>
+                <li><code>projects/program-kanban/app/server.mjs</code></li>
+                <li><code>scripts/operator_wall/</code> for framework-level wall assets</li>
+              </ul>
+            </article>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Endpoint</th>
+                  <th>Backed By</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>GET /api/snapshot</code></td>
+                  <td><code>scripts/operator_wall_snapshot.py</code></td>
+                  <td>Builds the main control-room snapshot payload.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/operator/preview</code></td>
+                  <td><code>scripts/operator_api.py preview</code></td>
+                  <td>Preview intake interpretation without starting full execution.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/operator/dispatch</code></td>
+                  <td><code>scripts/operator_api.py dispatch</code></td>
+                  <td>Dispatch a request through intake/orchestrator and return run evidence.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/operator/approve</code></td>
+                  <td><code>scripts/operator_api.py approve</code></td>
+                  <td>Approve a pending gate.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/operator/approve-resume</code></td>
+                  <td><code>scripts/operator_api.py approve-resume</code></td>
+                  <td>Approve and resume a paused run.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/operator/reject</code></td>
+                  <td><code>scripts/operator_api.py reject</code></td>
+                  <td>Reject an approval request.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/operator/resume</code></td>
+                  <td><code>scripts/operator_api.py resume</code></td>
+                  <td>Resume an existing paused run.</td>
+                </tr>
+                <tr>
+                  <td><code>GET /api/operator/run</code></td>
+                  <td><code>scripts/operator_api.py run-details</code></td>
+                  <td>Fetch detailed evidence for a run.</td>
+                </tr>
+                <tr>
+                  <td><code>GET /api/operator/routing</code></td>
+                  <td><code>scripts/operator_api.py routing-catalog</code></td>
+                  <td>Expose route metadata used by the UI.</td>
+                </tr>
+                <tr>
+                  <td><code>POST /api/control-room/restore</code></td>
+                  <td><code>scripts/control_room_api.py restore-backup</code></td>
+                  <td>Restore from an approved backup path.</td>
+                </tr>
+                <tr>
+                  <td><code>GET /api/launcher/status</code></td>
+                  <td><code>projects/program-kanban/app/server.mjs</code></td>
+                  <td>Surface local launcher, runtime log, and URL availability status.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <strong>UI philosophy:</strong> the website is intentionally a control-room shell, not the best place for open-ended orchestration thinking. That design choice is deliberate and repeated across milestone specs.
+          </div>
+        </section>
+
+        <section class="section-card" id="reuse">
+          <p class="section-kicker">Reuse Guide For Another LLM</p>
+          <h2>How To Safely Reuse This Codebase</h2>
+          <div class="path-grid">
+            <article class="path-card">
+              <h3>Safe starting order</h3>
+              <ol class="checklist">
+                <li>Verify the authoritative root in <code>.workspace_authority.json</code>.</li>
+                <li>Read <code>workspace_root.py</code> so you do not operate in the duplicate workspace.</li>
+                <li>Read <code>governance/CONTROL_INVARIANTS.md</code> and <code>governance/rules.yml</code>.</li>
+                <li>Read <code>intake/models.py</code>, <code>intake/gateway.py</code>, and <code>intake/compiler.py</code>.</li>
+                <li>Read <code>agents/orchestrator.py</code>, <code>agents/pm.py</code>, and <code>scripts/worker.py</code>.</li>
+                <li>Read <code>wrappers/llm_wrapper.py</code>, <code>agents/api_router.py</code>, and <code>sessions/store.py</code>.</li>
+                <li>Only then move into project UI or artifact-specific code.</li>
+              </ol>
+            </article>
+            <article class="path-card">
+              <h3>Files most worth reusing</h3>
+              <ul>
+                <li><code>workspace_root.py</code> for authority enforcement</li>
+                <li><code>intake/models.py</code> for structured task packets and budget contracts</li>
+                <li><code>agents/api_router.py</code> for governed tiered Responses API execution</li>
+                <li><code>skills/tools.py</code> for exact-path write manifests</li>
+                <li><code>sessions/store.py</code> for canonical persistence and audit patterns</li>
+                <li><code>projects/program-kanban/app/server.mjs</code> for a thin Node wrapper around Python services</li>
+              </ul>
+            </article>
+            <article class="path-card">
+              <h3>Things to ignore or treat cautiously</h3>
+              <ul>
+                <li><code>projects/tactics-game/app/node_modules/</code> and other generated bundles</li>
+                <li>Old root paths embedded in imported briefs and older specs</li>
+                <li>The duplicate <code>Documentos</code> repo copy</li>
+                <li>Assuming prompt caching or batch execution is already wired just because policy docs mention them</li>
+                <li>Assuming the SDK path is the active default because the dependency is installed</li>
+              </ul>
+            </article>
+          </div>
+          <pre><code>Recommended mental model for reuse:
+
+Authority layer:
+  .workspace_authority.json
+  workspace_root.py
+
+Request and contract layer:
+  intake/models.py
+  intake/gateway.py
+  intake/compiler.py
+
+Control-plane layer:
+  agents/orchestrator.py
+  agents/pm.py
+  state_machine.py
+  kanban/board.py
+
+Execution and guardrail layer:
+  wrappers/llm_wrapper.py
+  agents/api_router.py
+  agents/cost_tracker.py
+  runtime.py
+  skills/tools.py
+
+Persistence and trust layer:
+  sessions/store.py
+  sessions/governed_external_observability.py
+
+UI layer:
+  projects/program-kanban/app/server.mjs
+  projects/program-kanban/app/app.js
+  scripts/operator_wall_snapshot.py
+
+Proof layer:
+  tests/test_api_router.py
+  tests/test_operator_api.py
+  tests/test_orchestrator.py
+  tests/test_store.py</code></pre>
+          <div class="callout info">
+            <strong>Best reuse strategy:</strong> reuse the patterns, contracts, and enforcement layers first. Then map them onto the
+            target project. Do not copy old root paths or rely on milestone prose as if it were runtime truth.
+          </div>
+          <p class="footer-note">
+            Source basis for this wiki: authoritative root marker, current implementation files in <code>agents/</code>,
+            <code>intake/</code>, <code>scripts/</code>, <code>sessions/</code>, <code>governance/</code>, <code>projects/program-kanban/app/</code>,
+            and regression tests under <code>tests/</code>.
+          </p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

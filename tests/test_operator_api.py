@@ -2,10 +2,140 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
 from scripts import operator_api
+from sessions import SessionStore
+from workspace_root import write_workspace_authority_marker
+
+
+def _prepare_control_kernel_repo(tmp_path: Path) -> Path:
+    (tmp_path / "projects" / "aioffice" / "execution").mkdir(parents=True)
+    (tmp_path / "projects" / "aioffice" / "governance").mkdir(parents=True)
+    (tmp_path / "sessions").mkdir(parents=True)
+    (tmp_path / "governance").mkdir(parents=True)
+    (tmp_path / "projects" / "aioffice" / "governance" / "PROJECT_BRIEF.md").write_text(
+        "# Brief\n\nAIOffice test project.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "sessions" / "approvals.json").write_text("", encoding="utf-8")
+    return tmp_path
+
+
+def _prepare_authoritative_operator_repo(tmp_path: Path) -> Path:
+    repo_root = _prepare_control_kernel_repo(tmp_path)
+    write_workspace_authority_marker(
+        repo_root,
+        repo_name="_AIStudio_POC",
+        canonical_root_hint=repo_root,
+    )
+    return repo_root
+
+
+def _build_control_kernel_fixture(tmp_path: Path) -> dict[str, object]:
+    repo_root = _prepare_control_kernel_repo(tmp_path)
+    store = SessionStore(repo_root)
+    workflow = store.create_workflow_run(
+        "aioffice",
+        task_id="AIO-025",
+        objective="Inspect persisted control-kernel state.",
+        authoritative_workspace_root="projects/aioffice",
+        current_stage="architect",
+    )
+    stage = store.create_stage_run(
+        workflow["id"],
+        stage_name="architect",
+        status="in_progress",
+    )
+    artifact = store.create_workflow_artifact(
+        "aioffice",
+        workflow_run_id=workflow["id"],
+        stage_run_id=stage["id"],
+        task_id="AIO-025",
+        contract_name="architecture_decision_v1",
+        kind="document",
+        content="# Architecture\n\nInspection-ready output.\n",
+        proof_value="architecture_output",
+    )
+    handoff = store.create_handoff(
+        workflow["id"],
+        from_stage_name="context_audit",
+        to_stage_name="architect",
+        summary="Audit context and architecture input are ready.",
+        stage_run_id=stage["id"],
+        upstream_artifact_ids=[artifact["id"]],
+    )
+    blocker = store.create_blocker(
+        workflow["id"],
+        blocker_kind="review_pending",
+        summary="Bundle review is still required.",
+        stage_run_id=stage["id"],
+    )
+    question = store.create_question_or_assumption(
+        workflow["id"],
+        record_type="question",
+        summary="Should inspection expose packet scope details?",
+        stage_run_id=stage["id"],
+    )
+    assumption = store.create_question_or_assumption(
+        workflow["id"],
+        record_type="assumption",
+        summary="Inspection remains read-only.",
+        stage_run_id=stage["id"],
+    )
+    trace = store.record_orchestration_trace(
+        workflow["id"],
+        stage_run_id=stage["id"],
+        event_type="inspection_requested",
+        source="Project Orchestrator",
+        payload={"surface": "operator_api"},
+    )
+    packet = store.issue_control_execution_packet(
+        "aioffice",
+        "AIO-025",
+        objective="Expose persisted control-kernel state read-only.",
+        authoritative_workspace_root="projects/aioffice",
+        allowed_write_paths=["scripts/operator_api.py", "tests/test_operator_api.py"],
+        scratch_path="tmp/aioffice/operator-inspection",
+        forbidden_paths=["projects/aioffice/governance"],
+        forbidden_actions=["self_accept", "self_promote"],
+        required_artifact_outputs=["scripts/operator_api.py"],
+        required_validations=["pytest tests/test_operator_api.py"],
+        expected_return_bundle_contents=["produced artifacts", "evidence receipts"],
+        failure_reporting_expectations=["report blockers", "report open risks"],
+        workflow_run_id=workflow["id"],
+        stage_run_id=stage["id"],
+        issued_by="Project Orchestrator",
+        provenance_note="AIO-025 bounded implementation bundle",
+    )
+    bundle = store.ingest_execution_bundle(
+        packet["packet_id"],
+        produced_artifact_ids=[artifact["id"]],
+        diff_refs=["scripts/operator_api.py"],
+        commands_run=["pytest tests/test_operator_api.py"],
+        test_results=[{"command": "pytest", "status": "passed"}],
+        blocker_ids=[blocker["id"]],
+        question_ids=[question["id"]],
+        assumption_ids=[assumption["id"]],
+        self_report_summary="Added a read-only inspection path for persisted control-kernel state.",
+        open_risks=["No writable inspection surface is allowed."],
+        evidence_receipts=[{"kind": "pytest", "status": "passed"}],
+    )
+    return {
+        "store": store,
+        "workflow": workflow,
+        "stage": stage,
+        "artifact": artifact,
+        "handoff": handoff,
+        "blocker": blocker,
+        "question": question,
+        "assumption": assumption,
+        "trace": trace,
+        "packet": packet,
+        "bundle": bundle,
+    }
 
 
 def test_operator_api_preview_routes_through_ingress_first(monkeypatch, capsys):
@@ -331,3 +461,291 @@ def test_operator_api_rejects_missing_authority_marker(tmp_path, monkeypatch, ca
     payload = json.loads(capsys.readouterr().out)
     assert payload["error_type"] == "WorkspaceRootAuthorityError"
     assert "authoritative workspace root marker required" in payload["error"]
+
+
+def test_operator_api_control_kernel_details_returns_persisted_state(monkeypatch, capsys, tmp_path):
+    fixture = _build_control_kernel_fixture(tmp_path)
+
+    class _DummyOrchestrator:
+        store = fixture["store"]
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(operator_api, "_routing_catalog", lambda: {"read_only": True})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "control-kernel-details",
+            "--bundle-id",
+            fixture["bundle"]["bundle_id"],
+        ],
+    )
+
+    operator_api.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["workflow_run"]["id"] == fixture["workflow"]["id"]
+    assert payload["stage_run"]["id"] == fixture["stage"]["id"]
+    assert payload["control_execution_packet"]["packet_id"] == fixture["packet"]["packet_id"]
+    assert payload["execution_bundle"]["bundle_id"] == fixture["bundle"]["bundle_id"]
+    assert payload["workflow_artifacts"][0]["id"] == fixture["artifact"]["id"]
+    assert payload["bundle_workflow_artifacts"][0]["id"] == fixture["artifact"]["id"]
+    assert payload["handoffs"][0]["id"] == fixture["handoff"]["id"]
+    assert payload["blockers"][0]["id"] == fixture["blocker"]["id"]
+    assert {item["record_type"] for item in payload["question_or_assumptions"]} == {"question", "assumption"}
+    assert payload["orchestration_traces"][0]["id"] == fixture["trace"]["id"]
+    assert payload["packet_execution_bundles"][0]["bundle_id"] == fixture["bundle"]["bundle_id"]
+    assert payload["routing_catalog"] == {"read_only": True}
+
+
+def test_operator_api_control_kernel_details_rejects_missing_identifiers(monkeypatch, capsys):
+    class _DummyStore:
+        pass
+
+    class _DummyOrchestrator:
+        store = _DummyStore()
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["operator_api.py", "control-kernel-details"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "At least one control-kernel identifier is required" in payload["error"]
+
+
+def test_operator_api_control_kernel_details_rejects_unknown_bundle_lookup(monkeypatch, capsys):
+    class _DummyStore:
+        def get_execution_bundle(self, bundle_id: str):
+            return None
+
+    class _DummyOrchestrator:
+        store = _DummyStore()
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["operator_api.py", "control-kernel-details", "--bundle-id", "bundle_missing"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "Execution bundle not found: bundle_missing" in payload["error"]
+
+
+def test_operator_api_control_kernel_details_reads_without_mutation(monkeypatch, capsys, tmp_path):
+    fixture = _build_control_kernel_fixture(tmp_path)
+
+    class _ReadOnlyStoreProxy:
+        def __init__(self, store):
+            self._store = store
+
+        def __getattr__(self, name: str):
+            if name.startswith(("create_", "update_", "issue_", "ingest_", "record_")):
+                raise AssertionError(f"Inspection must not call mutating store method: {name}")
+            return getattr(self._store, name)
+
+    class _DummyOrchestrator:
+        store = _ReadOnlyStoreProxy(fixture["store"])
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(operator_api, "_routing_catalog", lambda: {})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "control-kernel-details",
+            "--packet-id",
+            fixture["packet"]["packet_id"],
+        ],
+    )
+
+    operator_api.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["control_execution_packet"]["packet_id"] == fixture["packet"]["packet_id"]
+    assert payload["packet_execution_bundles"][0]["bundle_id"] == fixture["bundle"]["bundle_id"]
+
+
+def test_operator_api_aioffice_supervised_architect_rehearsal_succeeds(monkeypatch, capsys, tmp_path):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+    monkeypatch.setattr(operator_api, "ROOT", repo_root)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "aioffice-supervised-architect-rehearsal",
+            "--confirm-supervised",
+            "--operator",
+            "Project Orchestrator",
+            "--provider-request-id",
+            "prov_test_029",
+            "--reconciliation-evidence-source",
+            "operator_cli_test",
+        ],
+    )
+
+    operator_api.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["command"] == "aioffice-supervised-architect-rehearsal"
+    assert payload["workflow_run"]["task_id"] == "AIO-029"
+    assert payload["bundle"]["acceptance_state"] == "pending_review"
+    assert payload["gate_checks"]["architect_completion"]["allowed"] is True
+    assert payload["inspection"]["bundle_acceptance_state"] == "pending_review"
+    contracts = {item["contract_name"] for item in payload["produced_artifacts"]}
+    assert {"architecture_decision_v1", "provider_external_proof_v1", "architect_reconciliation_v1"} <= contracts
+    rehearsal_root = Path(payload["workspace_root"])
+    assert not (rehearsal_root / "projects" / "tactics-game" / "execution" / "KANBAN.md").exists()
+    assert not (rehearsal_root / "memory" / "framework_health.json").exists()
+
+
+def test_operator_api_aioffice_supervised_architect_rehearsal_rejects_wrong_workspace(monkeypatch, tmp_path):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path / "authoritative")
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    write_workspace_authority_marker(
+        duplicate_root,
+        repo_name="_AIStudio_POC",
+        canonical_root_hint=duplicate_root,
+    )
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+
+    with pytest.raises(Exception) as exc_info:
+        operator_api._run_aioffice_supervised_architect_rehearsal(
+            duplicate_root,
+            task_id="AIO-029",
+            operator_name="Project Orchestrator",
+            provider_request_id="prov_test_wrong_root",
+            reconciliation_evidence_source="operator_cli_test",
+            confirm_supervised=True,
+        )
+
+    assert "non-authoritative duplicate workspace root" in str(exc_info.value)
+
+
+def test_operator_api_aioffice_supervised_architect_rehearsal_rejects_missing_architect_artifact(
+    monkeypatch,
+    tmp_path,
+):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+
+    with pytest.raises(ValueError) as exc_info:
+        operator_api._run_aioffice_supervised_architect_rehearsal(
+            repo_root,
+            task_id="AIO-029",
+            operator_name="Project Orchestrator",
+            provider_request_id="prov_test_missing_arch",
+            reconciliation_evidence_source="operator_cli_test",
+            confirm_supervised=True,
+            create_architecture_artifact=False,
+        )
+
+    assert "architect-stage artifact missing" in str(exc_info.value)
+
+
+def test_operator_api_aioffice_supervised_architect_rehearsal_rejects_ambiguous_active_workflow(
+    monkeypatch,
+    tmp_path,
+):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+    store, _workspace_root = operator_api._aioffice_supervised_rehearsal_store(
+        repo_root,
+        rehearsal_root=operator_api.AIOFFICE_SUPERVISED_REHEARSAL_ROOT,
+    )
+    store.create_workflow_run(
+        "aioffice",
+        task_id="AIO-029",
+        objective="Existing active workflow.",
+        authoritative_workspace_root="projects/aioffice",
+        current_stage="architect",
+        status="active",
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        operator_api._run_aioffice_supervised_architect_rehearsal(
+            repo_root,
+            task_id="AIO-029",
+            operator_name="Project Orchestrator",
+            provider_request_id="prov_test_ambiguous",
+            reconciliation_evidence_source="operator_cli_test",
+            confirm_supervised=True,
+        )
+
+    assert "Ambiguous run/stage state" in str(exc_info.value)
+
+
+def test_operator_api_aioffice_supervised_architect_rehearsal_rejects_missing_provider_proof(
+    monkeypatch,
+    tmp_path,
+):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+
+    with pytest.raises(ValueError) as exc_info:
+        operator_api._run_aioffice_supervised_architect_rehearsal(
+            repo_root,
+            task_id="AIO-029",
+            operator_name="Project Orchestrator",
+            provider_request_id="prov_test_missing_proof",
+            reconciliation_evidence_source="operator_cli_test",
+            confirm_supervised=True,
+            create_provider_proof=False,
+        )
+
+    assert "provider/external proof missing" in str(exc_info.value)
+
+
+def test_operator_api_aioffice_supervised_architect_rehearsal_rejects_later_stage_continuation(
+    monkeypatch,
+    tmp_path,
+):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+
+    with pytest.raises(ValueError) as exc_info:
+        operator_api._run_aioffice_supervised_architect_rehearsal(
+            repo_root,
+            task_id="AIO-029",
+            operator_name="Project Orchestrator",
+            provider_request_id="prov_test_later_stage",
+            reconciliation_evidence_source="operator_cli_test",
+            confirm_supervised=True,
+            stop_after="publish",
+        )
+
+    assert "must stop after architect" in str(exc_info.value)

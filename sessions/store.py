@@ -134,6 +134,15 @@ REQUIRED_TABLES = (
     "governed_external_call_events",
     "artifacts",
     "visual_artifacts",
+    "workflow_runs",
+    "stage_runs",
+    "workflow_artifacts",
+    "handoffs",
+    "blockers",
+    "question_or_assumptions",
+    "orchestration_traces",
+    "control_execution_packets",
+    "execution_bundles",
 )
 CONTEXT_RECEIPT_LIST_FIELDS = (
     "accepted_assumptions",
@@ -276,6 +285,28 @@ def _normalize_string_list(value: Any) -> list[str]:
     return normalized
 
 
+def _require_non_empty_text(field_name: str, value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise ValueError(f"{field_name} is required.")
+    return text
+
+
+def _require_list(field_name: str, value: Any) -> list[Any]:
+    if value is None:
+        raise ValueError(f"{field_name} is required.")
+    if not isinstance(value, list):
+        raise ValueError(f"{field_name} must be a list.")
+    return list(value)
+
+
+def _require_non_empty_list(field_name: str, value: Any) -> list[Any]:
+    items = _require_list(field_name, value)
+    if not items:
+        raise ValueError(f"{field_name} must not be empty.")
+    return items
+
+
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug or "milestone"
@@ -342,11 +373,18 @@ class SessionStore:
             raise ValueError(f"Failed to register project: {project_name}")
         return dict(row)
 
-    def __init__(self, repo_root: str | Path | None = None, db_path: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        repo_root: str | Path | None = None,
+        db_path: str | Path | None = None,
+        *,
+        bootstrap_legacy_defaults: bool = True,
+    ) -> None:
         root = Path(repo_root or Path.cwd()).resolve()
         database_path = Path(db_path) if db_path else root / "sessions" / "studio.db"
         memory_dir = root / "memory"
         backups_dir = root / "sessions" / "backups"
+        self.bootstrap_legacy_defaults = bool(bootstrap_legacy_defaults)
         self.paths = StorePaths(
             repo_root=root,
             db_path=database_path.resolve(),
@@ -359,10 +397,11 @@ class SessionStore:
             legacy_approvals_path=root / "sessions" / "approvals.json",
         )
         self.paths.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.paths.memory_dir.mkdir(parents=True, exist_ok=True)
-        self.paths.backups_dir.mkdir(parents=True, exist_ok=True)
-        self.paths.restore_receipts_dir.mkdir(parents=True, exist_ok=True)
-        self.ensure_memory_files()
+        if self.bootstrap_legacy_defaults:
+            self.paths.memory_dir.mkdir(parents=True, exist_ok=True)
+            self.paths.backups_dir.mkdir(parents=True, exist_ok=True)
+            self.paths.restore_receipts_dir.mkdir(parents=True, exist_ok=True)
+            self.ensure_memory_files()
         self.initialize()
 
     @contextmanager
@@ -788,9 +827,173 @@ class SessionStore:
                     FOREIGN KEY(run_id) REFERENCES runs(id),
                     FOREIGN KEY(parent_visual_artifact_id) REFERENCES visual_artifacts(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS workflow_runs (
+                    id TEXT PRIMARY KEY,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    objective TEXT NOT NULL,
+                    scope_json TEXT NOT NULL DEFAULT '{}',
+                    authoritative_workspace_root TEXT NOT NULL,
+                    current_stage TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    review_state TEXT NOT NULL DEFAULT 'pending',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS stage_runs (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    stage_name TEXT NOT NULL,
+                    attempt_number INTEGER NOT NULL DEFAULT 1,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    started_at TEXT,
+                    completed_at TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS workflow_artifacts (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    stage_run_id TEXT,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    contract_name TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    proof_value TEXT NOT NULL,
+                    artifact_path TEXT,
+                    artifact_sha256 TEXT,
+                    bytes_written INTEGER,
+                    produced_by TEXT,
+                    source_packet_id TEXT,
+                    input_artifact_paths_json TEXT NOT NULL DEFAULT '[]',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS handoffs (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    stage_run_id TEXT,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    from_stage_name TEXT NOT NULL,
+                    to_stage_name TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    upstream_artifact_ids_json TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL DEFAULT 'recorded',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS blockers (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    stage_run_id TEXT,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    blocker_kind TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'open',
+                    resolution_note TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS question_or_assumptions (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    stage_run_id TEXT,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    record_type TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    why_it_matters TEXT,
+                    impact_or_risk TEXT,
+                    unresolved_implication TEXT,
+                    status TEXT NOT NULL DEFAULT 'open',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS orchestration_traces (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    stage_run_id TEXT,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT,
+                    source TEXT,
+                    event_type TEXT NOT NULL,
+                    payload_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS control_execution_packets (
+                    packet_id TEXT PRIMARY KEY,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    workflow_run_id TEXT,
+                    stage_run_id TEXT,
+                    objective TEXT NOT NULL,
+                    authoritative_workspace_root TEXT NOT NULL,
+                    allowed_write_paths_json TEXT NOT NULL,
+                    scratch_path TEXT,
+                    forbidden_paths_json TEXT NOT NULL,
+                    forbidden_actions_json TEXT NOT NULL,
+                    required_artifact_outputs_json TEXT NOT NULL,
+                    required_validations_json TEXT NOT NULL,
+                    expected_return_bundle_contents_json TEXT NOT NULL,
+                    failure_reporting_expectations_json TEXT NOT NULL,
+                    packet_status TEXT NOT NULL DEFAULT 'issued',
+                    issued_by TEXT,
+                    provenance_note TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS execution_bundles (
+                    bundle_id TEXT PRIMARY KEY,
+                    packet_id TEXT NOT NULL,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    workflow_run_id TEXT,
+                    stage_run_id TEXT,
+                    produced_artifact_ids_json TEXT NOT NULL,
+                    diff_refs_json TEXT NOT NULL,
+                    commands_run_json TEXT NOT NULL,
+                    test_results_json TEXT NOT NULL,
+                    blocker_ids_json TEXT NOT NULL,
+                    question_ids_json TEXT NOT NULL,
+                    assumption_ids_json TEXT NOT NULL,
+                    self_report_summary TEXT NOT NULL,
+                    open_risks_json TEXT NOT NULL,
+                    evidence_receipts_json TEXT NOT NULL,
+                    acceptance_state TEXT NOT NULL DEFAULT 'pending_review',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(packet_id) REFERENCES control_execution_packets(packet_id),
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
                 """
             )
-        self._ensure_project(PROJECT_NAME)
         self._ensure_task_columns()
         self._ensure_milestone_columns()
         self._ensure_approval_columns()
@@ -802,8 +1005,10 @@ class SessionStore:
         self._ensure_governed_external_call_record_columns()
         self._ensure_governed_external_reconciliation_record_columns()
         self.migrate_legacy_approvals_file()
-        self.normalize_legacy_statuses()
-        self.render_kanban(PROJECT_NAME)
+        if self.bootstrap_legacy_defaults:
+            self._ensure_project(PROJECT_NAME)
+            self.normalize_legacy_statuses()
+            self.render_kanban(PROJECT_NAME)
 
     def _ensure_task_columns(self) -> None:
         task_columns = {
@@ -1926,6 +2131,848 @@ class SessionStore:
                 (task_id,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def _normalize_repo_relative_path(self, path_value: str, *, field_name: str) -> str:
+        normalized = _require_non_empty_text(field_name, path_value).replace("\\", "/")
+        candidate = Path(normalized)
+        resolved = (candidate if candidate.is_absolute() else self.paths.repo_root / candidate).resolve()
+        try:
+            relative = resolved.relative_to(self.paths.repo_root)
+        except ValueError as exc:
+            raise ValueError(f"{field_name} must stay within the authoritative repository root.") from exc
+        relative_text = relative.as_posix()
+        return relative_text or "."
+
+    def _normalize_repo_relative_paths(self, field_name: str, values: list[Any]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for index, value in enumerate(values):
+            path_text = self._normalize_repo_relative_path(str(value), field_name=f"{field_name}[{index}]")
+            if path_text in seen:
+                continue
+            seen.add(path_text)
+            normalized.append(path_text)
+        if not normalized:
+            raise ValueError(f"{field_name} must contain at least one path.")
+        return normalized
+
+    def _effective_packet_workflow_run_id(self, packet: dict[str, Any]) -> str | None:
+        workflow_run_id = packet.get("workflow_run_id")
+        if workflow_run_id:
+            return workflow_run_id
+        stage_run_id = packet.get("stage_run_id")
+        if not stage_run_id:
+            return None
+        stage_run = self.get_stage_run(stage_run_id)
+        if stage_run is None:
+            raise ValueError(f"Packet references unknown stage run: {stage_run_id}")
+        return stage_run.get("workflow_run_id")
+
+    def _validate_packet_record_context(
+        self,
+        packet: dict[str, Any],
+        *,
+        record: dict[str, Any],
+        record_kind: str,
+    ) -> None:
+        record_project_name = record.get("project_name")
+        if record_project_name and record_project_name != packet["project_name"]:
+            raise ValueError(f"{record_kind} must belong to the same project_name as the packet.")
+        record_task_id = record.get("task_id")
+        if record_task_id and record_task_id != packet["task_id"]:
+            raise ValueError(f"{record_kind} must belong to the same task_id as the packet.")
+        effective_workflow_run_id = self._effective_packet_workflow_run_id(packet)
+        if effective_workflow_run_id and record.get("workflow_run_id") != effective_workflow_run_id:
+            raise ValueError(f"{record_kind} must belong to the same workflow_run_id as the packet.")
+        packet_stage_run_id = packet.get("stage_run_id")
+        record_stage_run_id = record.get("stage_run_id")
+        if packet_stage_run_id and record_stage_run_id and record_stage_run_id != packet_stage_run_id:
+            raise ValueError(f"{record_kind} must not point to another stage_run_id.")
+
+    def get_workflow_run(self, workflow_run_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM workflow_runs WHERE id = ?", (workflow_run_id,)).fetchone()
+        return self._deserialize_workflow_run(row) if row else None
+
+    def list_workflow_runs(
+        self,
+        *,
+        project_name: str | None = None,
+        task_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM workflow_runs WHERE 1 = 1"
+        params: list[Any] = []
+        if project_name:
+            query += " AND project_name = ?"
+            params.append(project_name)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_workflow_run(row) for row in rows]
+
+    def create_workflow_run(
+        self,
+        project_name: str,
+        *,
+        task_id: str | None,
+        objective: str,
+        authoritative_workspace_root: str,
+        current_stage: str,
+        scope: dict[str, Any] | None = None,
+        status: str = "active",
+        review_state: str = "pending",
+    ) -> dict[str, Any]:
+        self._ensure_project(project_name)
+        workflow_run_id = _new_id("workflow")
+        now = _utc_now()
+        normalized_root = self._normalize_repo_relative_path(
+            authoritative_workspace_root,
+            field_name="authoritative_workspace_root",
+        )
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO workflow_runs (
+                    id, project_name, task_id, objective, scope_json, authoritative_workspace_root,
+                    current_stage, status, review_state, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    workflow_run_id,
+                    project_name,
+                    task_id,
+                    _require_non_empty_text("objective", objective),
+                    _json_dumps(scope or {}),
+                    normalized_root,
+                    _require_non_empty_text("current_stage", current_stage),
+                    _require_non_empty_text("status", status),
+                    _require_non_empty_text("review_state", review_state),
+                    now,
+                    now,
+                ),
+            )
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Failed to create workflow run: {workflow_run_id}")
+        return workflow_run
+
+    def get_stage_run(self, stage_run_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM stage_runs WHERE id = ?", (stage_run_id,)).fetchone()
+        return self._deserialize_stage_run(row) if row else None
+
+    def list_stage_runs(self, workflow_run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM stage_runs WHERE workflow_run_id = ? ORDER BY created_at ASC",
+                (workflow_run_id,),
+            ).fetchall()
+        return [self._deserialize_stage_run(row) for row in rows]
+
+    def create_stage_run(
+        self,
+        workflow_run_id: str,
+        *,
+        stage_name: str,
+        attempt_number: int = 1,
+        status: str = "pending",
+        task_id: str | None = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
+    ) -> dict[str, Any]:
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        stage_run_id = _new_id("stage")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO stage_runs (
+                    id, workflow_run_id, project_name, task_id, stage_name, attempt_number, status,
+                    started_at, completed_at, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    stage_run_id,
+                    workflow_run_id,
+                    workflow_run["project_name"],
+                    task_id if task_id is not None else workflow_run.get("task_id"),
+                    _require_non_empty_text("stage_name", stage_name),
+                    int(attempt_number),
+                    _require_non_empty_text("status", status),
+                    started_at,
+                    completed_at,
+                    now,
+                    now,
+                ),
+            )
+        stage_run = self.get_stage_run(stage_run_id)
+        if stage_run is None:
+            raise ValueError(f"Failed to create stage run: {stage_run_id}")
+        return stage_run
+
+    def create_workflow_artifact(
+        self,
+        project_name: str,
+        *,
+        workflow_run_id: str,
+        contract_name: str,
+        kind: str,
+        content: str,
+        proof_value: str,
+        stage_run_id: str | None = None,
+        task_id: str | None = None,
+        artifact_path: str | None = None,
+        produced_by: str | None = None,
+        source_packet_id: str | None = None,
+        input_artifact_paths: list[str] | None = None,
+    ) -> dict[str, Any]:
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        if workflow_run["project_name"] != project_name:
+            raise ValueError("workflow_run project_name does not match artifact project_name.")
+        if stage_run_id is not None:
+            stage_run = self.get_stage_run(stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found: {stage_run_id}")
+            if stage_run["workflow_run_id"] != workflow_run_id:
+                raise ValueError("stage_run_id must belong to the same workflow_run.")
+        metadata = self._artifact_metadata(artifact_path, content) if artifact_path else {}
+        normalized_artifact_path = (
+            self._normalize_repo_relative_path(artifact_path, field_name="artifact_path")
+            if artifact_path
+            else None
+        )
+        normalized_inputs = [
+            self._normalize_repo_relative_path(path, field_name=f"input_artifact_paths[{index}]")
+            for index, path in enumerate(input_artifact_paths or [])
+        ]
+        artifact_id = _new_id("wf_artifact")
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO workflow_artifacts (
+                    id, workflow_run_id, stage_run_id, project_name, task_id, contract_name, kind,
+                    content, proof_value, artifact_path, artifact_sha256, bytes_written, produced_by,
+                    source_packet_id, input_artifact_paths_json, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    artifact_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    project_name,
+                    task_id if task_id is not None else workflow_run.get("task_id"),
+                    _require_non_empty_text("contract_name", contract_name),
+                    _require_non_empty_text("kind", kind),
+                    _require_non_empty_text("content", content),
+                    _require_non_empty_text("proof_value", proof_value),
+                    normalized_artifact_path,
+                    metadata.get("artifact_sha256"),
+                    metadata.get("bytes_written") or len(content.encode("utf-8")),
+                    produced_by,
+                    source_packet_id,
+                    _json_dumps(normalized_inputs),
+                    _utc_now(),
+                ),
+            )
+        artifact = self.get_workflow_artifact(artifact_id)
+        if artifact is None:
+            raise ValueError(f"Failed to create workflow artifact: {artifact_id}")
+        return artifact
+
+    def get_workflow_artifact(self, artifact_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM workflow_artifacts WHERE id = ?", (artifact_id,)).fetchone()
+        return self._deserialize_workflow_artifact(row) if row else None
+
+    def list_workflow_artifacts(
+        self,
+        workflow_run_id: str,
+        *,
+        stage_run_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM workflow_artifacts WHERE workflow_run_id = ?"
+        params: list[Any] = [workflow_run_id]
+        if stage_run_id is not None:
+            query += " AND stage_run_id = ?"
+            params.append(stage_run_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_workflow_artifact(row) for row in rows]
+
+    def create_handoff(
+        self,
+        workflow_run_id: str,
+        *,
+        from_stage_name: str,
+        to_stage_name: str,
+        summary: str,
+        stage_run_id: str | None = None,
+        task_id: str | None = None,
+        upstream_artifact_ids: list[str] | None = None,
+        status: str = "recorded",
+    ) -> dict[str, Any]:
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        if stage_run_id is not None:
+            stage_run = self.get_stage_run(stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found: {stage_run_id}")
+            if stage_run["workflow_run_id"] != workflow_run_id:
+                raise ValueError("stage_run_id must belong to the same workflow_run.")
+        upstream_ids = _normalize_string_list(upstream_artifact_ids)
+        for artifact_id in upstream_ids:
+            if self.get_workflow_artifact(artifact_id) is None:
+                raise ValueError(f"Upstream artifact not found: {artifact_id}")
+        handoff_id = _new_id("handoff")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO handoffs (
+                    id, workflow_run_id, stage_run_id, project_name, task_id, from_stage_name, to_stage_name,
+                    summary, upstream_artifact_ids_json, status, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    handoff_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    workflow_run["project_name"],
+                    task_id if task_id is not None else workflow_run.get("task_id"),
+                    _require_non_empty_text("from_stage_name", from_stage_name),
+                    _require_non_empty_text("to_stage_name", to_stage_name),
+                    _require_non_empty_text("summary", summary),
+                    _json_dumps(upstream_ids),
+                    _require_non_empty_text("status", status),
+                    now,
+                    now,
+                ),
+            )
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise ValueError(f"Failed to create handoff: {handoff_id}")
+        return handoff
+
+    def get_handoff(self, handoff_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM handoffs WHERE id = ?", (handoff_id,)).fetchone()
+        return self._deserialize_handoff(row) if row else None
+
+    def list_handoffs(self, workflow_run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM handoffs WHERE workflow_run_id = ? ORDER BY created_at ASC",
+                (workflow_run_id,),
+            ).fetchall()
+        return [self._deserialize_handoff(row) for row in rows]
+
+    def create_blocker(
+        self,
+        workflow_run_id: str,
+        *,
+        blocker_kind: str,
+        summary: str,
+        stage_run_id: str | None = None,
+        task_id: str | None = None,
+        status: str = "open",
+        resolution_note: str | None = None,
+    ) -> dict[str, Any]:
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        if stage_run_id is not None:
+            stage_run = self.get_stage_run(stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found: {stage_run_id}")
+            if stage_run["workflow_run_id"] != workflow_run_id:
+                raise ValueError("stage_run_id must belong to the same workflow_run.")
+        blocker_id = _new_id("blocker")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO blockers (
+                    id, workflow_run_id, stage_run_id, project_name, task_id, blocker_kind, summary,
+                    status, resolution_note, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    blocker_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    workflow_run["project_name"],
+                    task_id if task_id is not None else workflow_run.get("task_id"),
+                    _require_non_empty_text("blocker_kind", blocker_kind),
+                    _require_non_empty_text("summary", summary),
+                    _require_non_empty_text("status", status),
+                    resolution_note,
+                    now,
+                    now,
+                ),
+            )
+        blocker = self.get_blocker(blocker_id)
+        if blocker is None:
+            raise ValueError(f"Failed to create blocker: {blocker_id}")
+        return blocker
+
+    def get_blocker(self, blocker_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM blockers WHERE id = ?", (blocker_id,)).fetchone()
+        return self._deserialize_blocker(row) if row else None
+
+    def list_blockers(self, workflow_run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM blockers WHERE workflow_run_id = ? ORDER BY created_at ASC",
+                (workflow_run_id,),
+            ).fetchall()
+        return [self._deserialize_blocker(row) for row in rows]
+
+    def create_question_or_assumption(
+        self,
+        workflow_run_id: str,
+        *,
+        record_type: str,
+        summary: str,
+        stage_run_id: str | None = None,
+        task_id: str | None = None,
+        why_it_matters: str | None = None,
+        impact_or_risk: str | None = None,
+        unresolved_implication: str | None = None,
+        status: str = "open",
+    ) -> dict[str, Any]:
+        normalized_type = _require_non_empty_text("record_type", record_type)
+        if normalized_type not in {"question", "assumption"}:
+            raise ValueError("record_type must be either 'question' or 'assumption'.")
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        if stage_run_id is not None:
+            stage_run = self.get_stage_run(stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found: {stage_run_id}")
+            if stage_run["workflow_run_id"] != workflow_run_id:
+                raise ValueError("stage_run_id must belong to the same workflow_run.")
+        record_id = _new_id("qa")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO question_or_assumptions (
+                    id, workflow_run_id, stage_run_id, project_name, task_id, record_type, summary,
+                    why_it_matters, impact_or_risk, unresolved_implication, status, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    workflow_run["project_name"],
+                    task_id if task_id is not None else workflow_run.get("task_id"),
+                    normalized_type,
+                    _require_non_empty_text("summary", summary),
+                    why_it_matters,
+                    impact_or_risk,
+                    unresolved_implication,
+                    _require_non_empty_text("status", status),
+                    now,
+                    now,
+                ),
+            )
+        record = self.get_question_or_assumption(record_id)
+        if record is None:
+            raise ValueError(f"Failed to create question_or_assumption: {record_id}")
+        return record
+
+    def get_question_or_assumption(self, record_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM question_or_assumptions WHERE id = ?",
+                (record_id,),
+            ).fetchone()
+        return self._deserialize_question_or_assumption(row) if row else None
+
+    def list_question_or_assumptions(
+        self,
+        workflow_run_id: str,
+        *,
+        record_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM question_or_assumptions WHERE workflow_run_id = ?"
+        params: list[Any] = [workflow_run_id]
+        if record_type:
+            query += " AND record_type = ?"
+            params.append(record_type)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_question_or_assumption(row) for row in rows]
+
+    def record_orchestration_trace(
+        self,
+        workflow_run_id: str,
+        *,
+        event_type: str,
+        stage_run_id: str | None = None,
+        task_id: str | None = None,
+        source: str | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        if stage_run_id is not None:
+            stage_run = self.get_stage_run(stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found: {stage_run_id}")
+            if stage_run["workflow_run_id"] != workflow_run_id:
+                raise ValueError("stage_run_id must belong to the same workflow_run.")
+        trace_id = _new_id("otrace")
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO orchestration_traces (
+                    id, workflow_run_id, stage_run_id, project_name, task_id, source, event_type, payload_json, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    trace_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    workflow_run["project_name"],
+                    task_id if task_id is not None else workflow_run.get("task_id"),
+                    source,
+                    _require_non_empty_text("event_type", event_type),
+                    _json_dumps(payload or {}),
+                    _utc_now(),
+                ),
+            )
+        trace = self.get_orchestration_trace(trace_id)
+        if trace is None:
+            raise ValueError(f"Failed to create orchestration_trace: {trace_id}")
+        return trace
+
+    def get_orchestration_trace(self, trace_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM orchestration_traces WHERE id = ?", (trace_id,)).fetchone()
+        return self._deserialize_orchestration_trace(row) if row else None
+
+    def list_orchestration_traces(
+        self,
+        workflow_run_id: str,
+        *,
+        stage_run_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM orchestration_traces WHERE workflow_run_id = ?"
+        params: list[Any] = [workflow_run_id]
+        if stage_run_id is not None:
+            query += " AND stage_run_id = ?"
+            params.append(stage_run_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_orchestration_trace(row) for row in rows]
+
+    def issue_control_execution_packet(
+        self,
+        project_name: str,
+        task_id: str,
+        *,
+        objective: str,
+        authoritative_workspace_root: str,
+        allowed_write_paths: list[str],
+        required_artifact_outputs: list[str],
+        required_validations: list[Any],
+        expected_return_bundle_contents: list[Any],
+        failure_reporting_expectations: list[Any],
+        workflow_run_id: str | None = None,
+        stage_run_id: str | None = None,
+        scratch_path: str | None = None,
+        forbidden_paths: list[str] | None = None,
+        forbidden_actions: list[Any] | None = None,
+        issued_by: str | None = None,
+        provenance_note: str | None = None,
+        packet_id: str | None = None,
+    ) -> dict[str, Any]:
+        normalized_packet_id = packet_id or _new_id("packet")
+        normalized_task_id = _require_non_empty_text("task_id", task_id)
+        normalized_objective = _require_non_empty_text("objective", objective)
+        normalized_root = self._normalize_repo_relative_path(
+            authoritative_workspace_root,
+            field_name="authoritative_workspace_root",
+        )
+        allowed_paths = self._normalize_repo_relative_paths(
+            "allowed_write_paths",
+            _require_list("allowed_write_paths", allowed_write_paths),
+        )
+        required_output_values = _require_list("required_artifact_outputs", required_artifact_outputs)
+        required_outputs = (
+            self._normalize_repo_relative_paths("required_artifact_outputs", required_output_values)
+            if required_output_values
+            else []
+        )
+        validation_items = _require_list("required_validations", required_validations)
+        expected_bundle_items = _require_list(
+            "expected_return_bundle_contents",
+            expected_return_bundle_contents,
+        )
+        failure_items = _require_list(
+            "failure_reporting_expectations",
+            failure_reporting_expectations,
+        )
+        normalized_forbidden_paths = [
+            self._normalize_repo_relative_path(path, field_name=f"forbidden_paths[{index}]")
+            for index, path in enumerate(forbidden_paths or [])
+        ]
+        normalized_scratch_path = (
+            self._normalize_repo_relative_path(scratch_path, field_name="scratch_path")
+            if scratch_path
+            else None
+        )
+        if workflow_run_id is not None:
+            workflow_run = self.get_workflow_run(workflow_run_id)
+            if workflow_run is None:
+                raise ValueError(f"Workflow run not found: {workflow_run_id}")
+            if workflow_run["project_name"] != project_name:
+                raise ValueError("workflow_run project_name does not match packet project_name.")
+            if workflow_run.get("task_id") and workflow_run["task_id"] != normalized_task_id:
+                raise ValueError("workflow_run task_id does not match packet task_id.")
+        if stage_run_id is not None:
+            stage_run = self.get_stage_run(stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found: {stage_run_id}")
+            if stage_run["project_name"] != project_name:
+                raise ValueError("stage_run project_name does not match packet project_name.")
+            if stage_run.get("task_id") and stage_run["task_id"] != normalized_task_id:
+                raise ValueError("stage_run task_id does not match packet task_id.")
+            stage_workflow_run = self.get_workflow_run(stage_run["workflow_run_id"])
+            if stage_workflow_run is None:
+                raise ValueError(f"Workflow run not found for stage_run_id: {stage_run_id}")
+            if stage_workflow_run["project_name"] != project_name:
+                raise ValueError("stage_run workflow project_name does not match packet project_name.")
+            if stage_workflow_run.get("task_id") and stage_workflow_run["task_id"] != normalized_task_id:
+                raise ValueError("stage_run workflow task_id does not match packet task_id.")
+            if workflow_run_id is not None and stage_run["workflow_run_id"] != workflow_run_id:
+                raise ValueError("stage_run_id must belong to the same workflow_run.")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO control_execution_packets (
+                    packet_id, project_name, task_id, workflow_run_id, stage_run_id, objective,
+                    authoritative_workspace_root, allowed_write_paths_json, scratch_path,
+                    forbidden_paths_json, forbidden_actions_json, required_artifact_outputs_json,
+                    required_validations_json, expected_return_bundle_contents_json,
+                    failure_reporting_expectations_json, packet_status, issued_by, provenance_note,
+                    created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    normalized_packet_id,
+                    project_name,
+                    normalized_task_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    normalized_objective,
+                    normalized_root,
+                    _json_dumps(allowed_paths),
+                    normalized_scratch_path,
+                    _json_dumps(normalized_forbidden_paths),
+                    _json_dumps(list(forbidden_actions or [])),
+                    _json_dumps(required_outputs),
+                    _json_dumps(validation_items),
+                    _json_dumps(expected_bundle_items),
+                    _json_dumps(failure_items),
+                    "issued",
+                    issued_by,
+                    provenance_note,
+                    now,
+                    now,
+                ),
+            )
+        packet = self.get_control_execution_packet(normalized_packet_id)
+        if packet is None:
+            raise ValueError(f"Failed to create control execution packet: {normalized_packet_id}")
+        return packet
+
+    def get_control_execution_packet(self, packet_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM control_execution_packets WHERE packet_id = ?",
+                (packet_id,),
+            ).fetchone()
+        return self._deserialize_control_execution_packet(row) if row else None
+
+    def list_control_execution_packets(
+        self,
+        *,
+        project_name: str | None = None,
+        task_id: str | None = None,
+        workflow_run_id: str | None = None,
+        stage_run_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM control_execution_packets WHERE 1 = 1"
+        params: list[Any] = []
+        if project_name:
+            query += " AND project_name = ?"
+            params.append(project_name)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if workflow_run_id:
+            query += " AND workflow_run_id = ?"
+            params.append(workflow_run_id)
+        if stage_run_id:
+            query += " AND stage_run_id = ?"
+            params.append(stage_run_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_control_execution_packet(row) for row in rows]
+
+    def ingest_execution_bundle(
+        self,
+        packet_id: str,
+        *,
+        produced_artifact_ids: list[str],
+        diff_refs: list[Any],
+        commands_run: list[Any],
+        test_results: list[Any],
+        self_report_summary: str,
+        open_risks: list[Any],
+        evidence_receipts: list[Any],
+        blocker_ids: list[str] | None = None,
+        question_ids: list[str] | None = None,
+        assumption_ids: list[str] | None = None,
+        bundle_id: str | None = None,
+    ) -> dict[str, Any]:
+        packet = self.get_control_execution_packet(packet_id)
+        if packet is None:
+            raise ValueError(f"Control execution packet not found: {packet_id}")
+        artifact_ids = _normalize_string_list(_require_list("produced_artifact_ids", produced_artifact_ids))
+        diff_items = _require_list("diff_refs", diff_refs)
+        command_items = _require_list("commands_run", commands_run)
+        test_items = _require_list("test_results", test_results)
+        blocker_id_values = _normalize_string_list(blocker_ids)
+        question_id_values = _normalize_string_list(question_ids)
+        assumption_id_values = _normalize_string_list(assumption_ids)
+        risk_items = _require_list("open_risks", open_risks)
+        receipt_items = _require_non_empty_list("evidence_receipts", evidence_receipts)
+        normalized_summary = _require_non_empty_text("self_report_summary", self_report_summary)
+        if packet["required_artifact_outputs"] and not artifact_ids:
+            raise ValueError("produced_artifact_ids must not be empty when the packet requires artifact outputs.")
+        for artifact_id in artifact_ids:
+            artifact = self.get_workflow_artifact(artifact_id)
+            if artifact is None:
+                raise ValueError(f"Produced artifact not found: {artifact_id}")
+            self._validate_packet_record_context(packet, record=artifact, record_kind="artifact")
+        for blocker_id in blocker_id_values:
+            blocker = self.get_blocker(blocker_id)
+            if blocker is None:
+                raise ValueError(f"Blocker not found: {blocker_id}")
+            self._validate_packet_record_context(packet, record=blocker, record_kind="blocker")
+        for question_id in question_id_values:
+            record = self.get_question_or_assumption(question_id)
+            if record is None:
+                raise ValueError(f"Question record not found: {question_id}")
+            if record["record_type"] != "question":
+                raise ValueError(f"question_ids must reference question records: {question_id}")
+            self._validate_packet_record_context(packet, record=record, record_kind="question")
+        for assumption_id in assumption_id_values:
+            record = self.get_question_or_assumption(assumption_id)
+            if record is None:
+                raise ValueError(f"Assumption record not found: {assumption_id}")
+            if record["record_type"] != "assumption":
+                raise ValueError(f"assumption_ids must reference assumption records: {assumption_id}")
+            self._validate_packet_record_context(packet, record=record, record_kind="assumption")
+        normalized_bundle_id = bundle_id or _new_id("bundle")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO execution_bundles (
+                    bundle_id, packet_id, project_name, task_id, workflow_run_id, stage_run_id,
+                    produced_artifact_ids_json, diff_refs_json, commands_run_json, test_results_json,
+                    blocker_ids_json, question_ids_json, assumption_ids_json, self_report_summary,
+                    open_risks_json, evidence_receipts_json, acceptance_state, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    normalized_bundle_id,
+                    packet_id,
+                    packet["project_name"],
+                    packet["task_id"],
+                    packet.get("workflow_run_id"),
+                    packet.get("stage_run_id"),
+                    _json_dumps(artifact_ids),
+                    _json_dumps(diff_items),
+                    _json_dumps(command_items),
+                    _json_dumps(test_items),
+                    _json_dumps(blocker_id_values),
+                    _json_dumps(question_id_values),
+                    _json_dumps(assumption_id_values),
+                    normalized_summary,
+                    _json_dumps(risk_items),
+                    _json_dumps(receipt_items),
+                    "pending_review",
+                    now,
+                    now,
+                ),
+            )
+        bundle = self.get_execution_bundle(normalized_bundle_id)
+        if bundle is None:
+            raise ValueError(f"Failed to ingest execution bundle: {normalized_bundle_id}")
+        return bundle
+
+    def get_execution_bundle(self, bundle_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM execution_bundles WHERE bundle_id = ?", (bundle_id,)).fetchone()
+        return self._deserialize_execution_bundle(row) if row else None
+
+    def list_execution_bundles(
+        self,
+        *,
+        packet_id: str | None = None,
+        workflow_run_id: str | None = None,
+        task_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM execution_bundles WHERE 1 = 1"
+        params: list[Any] = []
+        if packet_id:
+            query += " AND packet_id = ?"
+            params.append(packet_id)
+        if workflow_run_id:
+            query += " AND workflow_run_id = ?"
+            params.append(workflow_run_id)
+        if task_id:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_execution_bundle(row) for row in rows]
 
     def _project_context(self, project_name: str | None) -> dict[str, Any] | None:
         if not project_name:
@@ -5370,6 +6417,68 @@ class SessionStore:
         artifact = dict(row)
         artifact["input_artifact_paths"] = _json_loads(artifact.get("input_artifact_paths_json"), default=[])
         return artifact
+
+    def _deserialize_workflow_run(self, row: sqlite3.Row) -> dict[str, Any]:
+        workflow_run = dict(row)
+        workflow_run["scope"] = _json_loads(workflow_run.get("scope_json"), default={})
+        return workflow_run
+
+    def _deserialize_stage_run(self, row: sqlite3.Row) -> dict[str, Any]:
+        return dict(row)
+
+    def _deserialize_workflow_artifact(self, row: sqlite3.Row) -> dict[str, Any]:
+        artifact = dict(row)
+        artifact["input_artifact_paths"] = _json_loads(artifact.get("input_artifact_paths_json"), default=[])
+        return artifact
+
+    def _deserialize_handoff(self, row: sqlite3.Row) -> dict[str, Any]:
+        handoff = dict(row)
+        handoff["upstream_artifact_ids"] = _json_loads(handoff.get("upstream_artifact_ids_json"), default=[])
+        return handoff
+
+    def _deserialize_blocker(self, row: sqlite3.Row) -> dict[str, Any]:
+        return dict(row)
+
+    def _deserialize_question_or_assumption(self, row: sqlite3.Row) -> dict[str, Any]:
+        return dict(row)
+
+    def _deserialize_orchestration_trace(self, row: sqlite3.Row) -> dict[str, Any]:
+        trace = dict(row)
+        trace["payload"] = _json_loads(trace.get("payload_json"), default={})
+        return trace
+
+    def _deserialize_control_execution_packet(self, row: sqlite3.Row) -> dict[str, Any]:
+        packet = dict(row)
+        packet["allowed_write_paths"] = _json_loads(packet.get("allowed_write_paths_json"), default=[])
+        packet["forbidden_paths"] = _json_loads(packet.get("forbidden_paths_json"), default=[])
+        packet["forbidden_actions"] = _json_loads(packet.get("forbidden_actions_json"), default=[])
+        packet["required_artifact_outputs"] = _json_loads(
+            packet.get("required_artifact_outputs_json"),
+            default=[],
+        )
+        packet["required_validations"] = _json_loads(packet.get("required_validations_json"), default=[])
+        packet["expected_return_bundle_contents"] = _json_loads(
+            packet.get("expected_return_bundle_contents_json"),
+            default=[],
+        )
+        packet["failure_reporting_expectations"] = _json_loads(
+            packet.get("failure_reporting_expectations_json"),
+            default=[],
+        )
+        return packet
+
+    def _deserialize_execution_bundle(self, row: sqlite3.Row) -> dict[str, Any]:
+        bundle = dict(row)
+        bundle["produced_artifact_ids"] = _json_loads(bundle.get("produced_artifact_ids_json"), default=[])
+        bundle["diff_refs"] = _json_loads(bundle.get("diff_refs_json"), default=[])
+        bundle["commands_run"] = _json_loads(bundle.get("commands_run_json"), default=[])
+        bundle["test_results"] = _json_loads(bundle.get("test_results_json"), default=[])
+        bundle["blocker_ids"] = _json_loads(bundle.get("blocker_ids_json"), default=[])
+        bundle["question_ids"] = _json_loads(bundle.get("question_ids_json"), default=[])
+        bundle["assumption_ids"] = _json_loads(bundle.get("assumption_ids_json"), default=[])
+        bundle["open_risks"] = _json_loads(bundle.get("open_risks_json"), default=[])
+        bundle["evidence_receipts"] = _json_loads(bundle.get("evidence_receipts_json"), default=[])
+        return bundle
 
     def _deserialize_visual_artifact(self, row: sqlite3.Row) -> dict[str, Any]:
         artifact = dict(row)

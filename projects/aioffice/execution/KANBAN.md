@@ -41,7 +41,21 @@ Bootstrap status:
 - entry_goal: AIOffice has accepted workflow contracts through the first architect-stop integrity-trial specification and can now define the outer control-kernel interfaces that constrain reasoning and execution.
 - exit_goal: Controlled chat, execution packet, execution bundle, promotion policy, control-kernel entity model, and manual airlock trial procedure are defined clearly enough to guide implementation without granting authority to Codex or projections.
 - owner_role: Project Orchestrator
-- status: in_progress
+- status: completed
+
+### M4 - Minimum Control Kernel Implementation
+- milestone_order: 4
+- entry_goal: AIOffice has accepted governance and protocol definitions through the manual airlock trial procedure and can now implement the first sanctioned control-kernel state path.
+- exit_goal: persisted control-kernel entities, packet and bundle persistence, first-slice fail-closed transition checks, and a read-only inspection path exist well enough to support one supervised closed-loop rehearsal without granting authority to Codex or projections.
+- owner_role: Project Orchestrator
+- status: completed
+
+### M5 - Operational Hardening And Supervised Expansion
+- milestone_order: 5
+- entry_goal: AIOffice has a completed minimum control-kernel slice and one supervised rehearsal, and can now harden operational boundaries while expanding supervised evidence.
+- exit_goal: store bootstrap side effects are isolated, end-to-end operator invocation is proven, controlled apply/promotion is implemented and rehearsed, broader supervised rehearsal evidence exists, and readiness for semi-autonomous bounded operation can be reviewed explicitly.
+- owner_role: Project Orchestrator
+- status: planned
 
 ## Completed
 
@@ -451,8 +465,6 @@ Bootstrap status:
   - AIO-017
 - status: completed
 
-## In Review
-
 ### Define manual packet-out and bundle-back trial procedure
 - id: AIO-020
 - item_type: task
@@ -473,7 +485,247 @@ Bootstrap status:
   - AIO-017
   - AIO-018
   - AIO-019
-- status: in_review
+- status: completed
+
+### Implement persisted control-kernel entities and sanctioned store helpers
+- id: AIO-023
+- item_type: task
+- title: Implement persisted control-kernel entities and sanctioned store helpers
+- details: implement the first persisted representations and store helpers for workflow_run, stage_run, artifact, handoff, blocker, question_or_assumption, and orchestration_trace through sanctioned code paths
+- objective: move the accepted control-kernel model from conceptual governance into authoritative persisted state
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M4 - Minimum Control Kernel Implementation
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - sanctioned persisted representations exist for the accepted control-kernel entities
+  - create/read helpers exist through sanctioned store paths
+  - idempotent behavior is explicit where required
+  - no executor or projection surface gains authority
+  - focused tests exist
+- dependencies: []
+- status: completed
+
+### Implement persisted packet issuance and bundle ingestion paths
+- id: AIO-024
+- item_type: task
+- title: Implement persisted packet issuance and bundle ingestion paths
+- details: implement the first sanctioned persistence path for execution packets and returned bundles using the accepted packet and bundle contracts
+- objective: turn packet-out and bundle-back from governance-only contracts into persisted control-kernel state
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M4 - Minimum Control Kernel Implementation
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - packet issuance can be recorded through sanctioned code
+  - bundle ingestion can be recorded through sanctioned code
+  - required packet and bundle fields are checked fail-closed
+  - bundle ingestion does not self-accept work
+  - focused tests exist
+- dependencies:
+  - AIO-023
+- status: completed
+
+### Implement read-only inspection path for workflow, packet, and bundle state
+- id: AIO-025
+- item_type: task
+- title: Implement read-only inspection path for workflow, packet, and bundle state
+- details: implement the first read-only inspection surface for persisted workflow, stage, packet, bundle, and evidence state without introducing a writable UI authority surface
+- objective: make control-kernel state inspectable without relying on narration
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M4 - Minimum Control Kernel Implementation
+- expected_artifact_path: scripts/operator_api.py
+- acceptance:
+  - persisted control-kernel state is inspectable through a read-only path
+  - projection is clearly derived from sanctioned state
+  - no writable authority surface is introduced by this task
+  - focused tests or verification steps exist
+- dependencies:
+  - AIO-023
+  - AIO-024
+- status: completed
+
+### Implement fail-closed first-slice transition checks
+- id: AIO-026
+- item_type: task
+- title: Implement fail-closed first-slice transition checks
+- details: implement the first machine-evaluable checks for intake, pm, context_audit, and architect progression using the accepted stage, workflow, handoff, PM, and gate policies
+- objective: move first-slice progression from governance-only definition into fail-closed state checks
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M4 - Minimum Control Kernel Implementation
+- expected_artifact_path: state_machine.py
+- acceptance:
+  - first-slice progression checks exist for start and completion conditions
+  - missing artifacts, missing handoffs, or missing PM branch outputs fail closed
+  - downstream progression cannot be implied by narration
+  - focused tests exist
+- dependencies:
+  - AIO-023
+  - AIO-024
+- status: completed
+
+### Run one supervised closed-loop rehearsal against a bounded task
+- id: AIO-027
+- item_type: task
+- title: Run one supervised closed-loop rehearsal against a bounded task
+- details: execute one supervised implementation-facing rehearsal using persisted packet, bundle, inspection, and first-slice control checks against a bounded low-risk task
+- objective: validate that the first implemented control-kernel slice behaves as intended under supervision
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M4 - Minimum Control Kernel Implementation
+- expected_artifact_path: projects/aioffice/artifacts/M4_FIRST_REHEARSAL_REPORT.md
+- acceptance:
+  - one bounded rehearsal is executed under supervision
+  - packet issuance, bundle return, review, and state inspection are exercised
+  - observed failures or gaps are recorded explicitly
+  - no unattended autonomy is implied by this task
+- dependencies:
+  - AIO-024
+  - AIO-025
+  - AIO-026
+- status: completed
+
+### Record M4 implementation review and residual blockers
+- id: AIO-028
+- item_type: task
+- title: Record M4 implementation review and residual blockers
+- details: summarize what the implemented M4 slice proves, what remains unproven, and what must still exist before unattended or overnight operation is considered
+- objective: produce an explicit go/no-go review for moving beyond supervised control-kernel rehearsal
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M4 - Minimum Control Kernel Implementation
+- expected_artifact_path: projects/aioffice/governance/M4_IMPLEMENTATION_REVIEW.md
+- acceptance:
+  - proven capabilities are listed explicitly
+  - unproven capabilities are listed explicitly
+  - residual blockers to unattended operation are explicit
+  - no false claim of autonomy readiness is made
+- dependencies:
+  - AIO-027
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+### Isolate store bootstrap side effects for bounded rehearsal environments
+- id: AIO-029
+- item_type: task
+- title: Isolate store bootstrap side effects for bounded rehearsal environments
+- details: remove or contain unrelated side-file creation when using isolated rehearsal or temporary store roots so bounded trials do not create irrelevant project residue
+- objective: make rehearsal environments clean and predictable
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - isolated rehearsal setup no longer creates unrelated project side files
+  - the change is narrow and test-backed
+  - no authority model is weakened
+- dependencies: []
+- status: in_progress
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Prove end-to-end operator CLI invocation against sanctioned persisted state
+- id: AIO-030
+- item_type: task
+- title: Prove end-to-end operator CLI invocation against sanctioned persisted state
+- details: exercise the operator CLI path end-to-end against the sanctioned persisted state model rather than only helper-level access
+- objective: prove the actual operator-facing control path, not just internal helper behavior
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: scripts/operator_api.py
+- acceptance:
+  - end-to-end operator invocation is exercised under test or controlled rehearsal
+  - sanctioned persisted state is the source of truth
+  - no writable authority surface is introduced
+- dependencies:
+  - AIO-029
+- status: backlog
+
+### Implement controlled apply/promotion execution path
+- id: AIO-031
+- item_type: task
+- title: Implement controlled apply/promotion execution path
+- details: implement the first sanctioned execution path for apply and promotion decisions so non-authoritative outputs can move toward authoritative state only through controlled code paths
+- objective: turn apply/promotion from governance-only policy into implemented controlled behavior
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - apply and promotion are implemented as controlled decisions
+  - provenance and destination-path requirements are enforced
+  - no executor self-promotion path exists
+  - focused tests exist
+- dependencies:
+  - AIO-029
+- status: backlog
+
+### Rehearse apply/promotion under supervision and record evidence
+- id: AIO-032
+- item_type: task
+- title: Rehearse apply/promotion under supervision and record evidence
+- details: run one supervised rehearsal that exercises the new apply/promotion path without implying unattended operation
+- objective: prove apply/promotion behavior in practice
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: projects/aioffice/artifacts/M5_APPLY_PROMOTION_REHEARSAL.md
+- acceptance:
+  - one supervised rehearsal is executed
+  - evidence is recorded factually
+  - no overclaim of autonomy is made
+- dependencies:
+  - AIO-031
+- status: backlog
+
+### Run expanded supervised multi-run rehearsal coverage
+- id: AIO-033
+- item_type: task
+- title: Run expanded supervised multi-run rehearsal coverage
+- details: run broader supervised rehearsal coverage across more than one bounded task/run so multi-run behavior can be reviewed explicitly
+- objective: prove broader supervised behavior before any autonomy claim
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: projects/aioffice/artifacts/M5_MULTI_RUN_REHEARSAL_REPORT.md
+- acceptance:
+  - more than one bounded rehearsal run is exercised
+  - results are recorded factually
+  - observed failures or instability remain visible
+- dependencies:
+  - AIO-030
+  - AIO-032
+- status: backlog
+
+### Record M5 readiness review for semi-autonomous bounded operation
+- id: AIO-034
+- item_type: task
+- title: Record M5 readiness review for semi-autonomous bounded operation
+- details: review what M5 proved, what remains blocked, and whether the system is ready for a bounded supervised semi-autonomous cycle
+- objective: produce an explicit go/no-go review for moving toward bounded semi-autonomous operation
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: projects/aioffice/governance/M5_READINESS_REVIEW.md
+- acceptance:
+  - proven and unproven capabilities are explicit
+  - residual blockers are explicit
+  - no false claim of overnight autonomy readiness is made
+- dependencies:
+  - AIO-033
+- status: backlog
 
 ## TODO
 - decide whether and when to mirror these tasks into the canonical SQLite task store

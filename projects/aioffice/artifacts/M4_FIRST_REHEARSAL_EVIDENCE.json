@@ -1,0 +1,350 @@
+{
+  "rehearsal_task": "Prepare an architect-stage decision for a one-paragraph authoritative-root reminder note.",
+  "workspace_root": "C:\\Users\\rodne\\OneDrive\\Desktop\\_AIStudio_POC\\projects\\aioffice\\artifacts\\m4_rehearsal_workspace",
+  "workflow_run": {
+    "id": "workflow_10021285208c",
+    "project_name": "aioffice",
+    "task_id": "AIO-027",
+    "objective": "Prepare an architect-stage decision for a one-paragraph authoritative-root reminder note.",
+    "scope_json": "{\"non_trivial\": true, \"rehearsal\": \"M4 supervised closed-loop\", \"stop_after\": \"architect\"}",
+    "authoritative_workspace_root": "projects/aioffice",
+    "current_stage": "architect",
+    "status": "active",
+    "review_state": "pending",
+    "created_at": "2026-04-14T09:40:27+00:00",
+    "updated_at": "2026-04-14T09:40:27+00:00",
+    "scope": {
+      "non_trivial": true,
+      "rehearsal": "M4 supervised closed-loop",
+      "stop_after": "architect"
+    }
+  },
+  "stage_runs": {
+    "intake": {
+      "id": "stage_73a25dc91a77",
+      "workflow_run_id": "workflow_10021285208c",
+      "project_name": "aioffice",
+      "task_id": "AIO-027",
+      "stage_name": "intake",
+      "attempt_number": 1,
+      "status": "completed",
+      "started_at": null,
+      "completed_at": null,
+      "created_at": "2026-04-14T09:40:27+00:00",
+      "updated_at": "2026-04-14T09:40:27+00:00"
+    },
+    "pm": {
+      "id": "stage_e5442d89ad73",
+      "workflow_run_id": "workflow_10021285208c",
+      "project_name": "aioffice",
+      "task_id": "AIO-027",
+      "stage_name": "pm",
+      "attempt_number": 1,
+      "status": "completed",
+      "started_at": null,
+      "completed_at": null,
+      "created_at": "2026-04-14T09:40:27+00:00",
+      "updated_at": "2026-04-14T09:40:27+00:00"
+    },
+    "context_audit": {
+      "id": "stage_2642cfb065ec",
+      "workflow_run_id": "workflow_10021285208c",
+      "project_name": "aioffice",
+      "task_id": "AIO-027",
+      "stage_name": "context_audit",
+      "attempt_number": 1,
+      "status": "completed",
+      "started_at": null,
+      "completed_at": null,
+      "created_at": "2026-04-14T09:40:27+00:00",
+      "updated_at": "2026-04-14T09:40:27+00:00"
+    },
+    "architect": {
+      "id": "stage_ddb9ad3533b2",
+      "workflow_run_id": "workflow_10021285208c",
+      "project_name": "aioffice",
+      "task_id": "AIO-027",
+      "stage_name": "architect",
+      "attempt_number": 1,
+      "status": "in_progress",
+      "started_at": null,
+      "completed_at": null,
+      "created_at": "2026-04-14T09:40:27+00:00",
+      "updated_at": "2026-04-14T09:40:27+00:00"
+    }
+  },
+  "gate_checks": {
+    "intake_complete": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "intake",
+      "transition": "complete",
+      "stage_run_id": "stage_73a25dc91a77",
+      "non_trivial": true,
+      "checks": [
+        "intake_request_v1"
+      ],
+      "failures": []
+    },
+    "pm_start": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "pm",
+      "transition": "start",
+      "stage_run_id": "stage_e5442d89ad73",
+      "non_trivial": true,
+      "checks": [
+        "intake_request_v1",
+        "handoff:intake->pm"
+      ],
+      "failures": []
+    },
+    "pm_complete": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "pm",
+      "transition": "complete",
+      "stage_run_id": "stage_e5442d89ad73",
+      "non_trivial": true,
+      "checks": [
+        "pm_plan_v1",
+        "pm_assumption_register_v1",
+        "pm_clarification_questions_v1"
+      ],
+      "failures": []
+    },
+    "context_audit_start": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "context_audit",
+      "transition": "start",
+      "stage_run_id": "stage_2642cfb065ec",
+      "non_trivial": true,
+      "checks": [
+        "pm_plan_v1",
+        "pm_assumption_register_v1",
+        "pm_clarification_questions_v1",
+        "handoff:pm->context_audit"
+      ],
+      "failures": []
+    },
+    "context_audit_complete": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "context_audit",
+      "transition": "complete",
+      "stage_run_id": "stage_2642cfb065ec",
+      "non_trivial": true,
+      "checks": [
+        "context_audit_report_v1"
+      ],
+      "failures": []
+    },
+    "architect_start_controlled_failure": "architect start requires handoff context_audit->architect for attempt 1. architect start requires context_audit_report_v1.",
+    "architect_start": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "architect",
+      "transition": "start",
+      "stage_run_id": "stage_ddb9ad3533b2",
+      "non_trivial": true,
+      "checks": [
+        "pm_plan_v1",
+        "pm_assumption_register_v1",
+        "pm_clarification_questions_v1",
+        "context_audit_report_v1",
+        "handoff:context_audit->architect"
+      ],
+      "failures": []
+    },
+    "architect_complete": {
+      "allowed": true,
+      "workflow_run_id": "workflow_10021285208c",
+      "stage_name": "architect",
+      "transition": "complete",
+      "stage_run_id": "stage_ddb9ad3533b2",
+      "non_trivial": true,
+      "checks": [
+        "architecture_decision_v1"
+      ],
+      "failures": []
+    }
+  },
+  "packet": {
+    "packet_id": "packet_4aff81cd6cde",
+    "project_name": "aioffice",
+    "task_id": "AIO-027",
+    "workflow_run_id": "workflow_10021285208c",
+    "stage_run_id": "stage_ddb9ad3533b2",
+    "objective": "Create the architect-stage reminder note artifact and return a bounded evidence bundle.",
+    "authoritative_workspace_root": "projects/aioffice",
+    "allowed_write_paths_json": "[\"projects/aioffice/artifacts/rehearsal_authoritative_root_note.md\"]",
+    "scratch_path": "projects/aioffice/artifacts/m4_rehearsal_workspace/tmp",
+    "forbidden_paths_json": "[\"projects/aioffice/governance\", \"scripts\", \"app\"]",
+    "forbidden_actions_json": "[\"self_accept\", \"self_promote\", \"publish\"]",
+    "required_artifact_outputs_json": "[\"projects/aioffice/artifacts/rehearsal_authoritative_root_note.md\"]",
+    "required_validations_json": "[\"operator_api._control_kernel_details returns packet/bundle state\", \"first-slice gate checks stay fail-closed\"]",
+    "expected_return_bundle_contents_json": "[\"produced artifacts\", \"evidence receipts\", \"open risks\"]",
+    "failure_reporting_expectations_json": "[\"report blockers\", \"report questions\", \"report assumptions\"]",
+    "packet_status": "issued",
+    "issued_by": "Project Orchestrator",
+    "provenance_note": "Supervised M4 first rehearsal packet",
+    "created_at": "2026-04-14T09:40:27+00:00",
+    "updated_at": "2026-04-14T09:40:27+00:00",
+    "allowed_write_paths": [
+      "projects/aioffice/artifacts/rehearsal_authoritative_root_note.md"
+    ],
+    "forbidden_paths": [
+      "projects/aioffice/governance",
+      "scripts",
+      "app"
+    ],
+    "forbidden_actions": [
+      "self_accept",
+      "self_promote",
+      "publish"
+    ],
+    "required_artifact_outputs": [
+      "projects/aioffice/artifacts/rehearsal_authoritative_root_note.md"
+    ],
+    "required_validations": [
+      "operator_api._control_kernel_details returns packet/bundle state",
+      "first-slice gate checks stay fail-closed"
+    ],
+    "expected_return_bundle_contents": [
+      "produced artifacts",
+      "evidence receipts",
+      "open risks"
+    ],
+    "failure_reporting_expectations": [
+      "report blockers",
+      "report questions",
+      "report assumptions"
+    ]
+  },
+  "bundle": {
+    "bundle_id": "bundle_355f9a95a5da",
+    "packet_id": "packet_4aff81cd6cde",
+    "project_name": "aioffice",
+    "task_id": "AIO-027",
+    "workflow_run_id": "workflow_10021285208c",
+    "stage_run_id": "stage_ddb9ad3533b2",
+    "produced_artifact_ids_json": "[\"wf_artifact_92d4c52e03c2\"]",
+    "diff_refs_json": "[\"projects/aioffice/artifacts/rehearsal_authoritative_root_note.md\"]",
+    "commands_run_json": "[\"manual artifact write\", \"operator_api._control_kernel_details\", \"state_machine.ensure_first_slice_stage_*\"]",
+    "test_results_json": "[{\"check\": \"architect start fails before context audit\", \"status\": \"passed\"}, {\"check\": \"architect completion succeeds after artifact creation\", \"status\": \"passed\"}]",
+    "blocker_ids_json": "[\"blocker_da5c1ce0ed16\"]",
+    "question_ids_json": "[\"qa_1af274c24171\"]",
+    "assumption_ids_json": "[\"qa_edf81279a4ca\"]",
+    "self_report_summary": "Returned one architect-stage artifact and evidence bundle under explicit review control.",
+    "open_risks_json": "[\"Full operator CLI invocation and apply/promotion remain unproven.\"]",
+    "evidence_receipts_json": "[{\"kind\": \"file_write\", \"path\": \"projects/aioffice/artifacts/rehearsal_authoritative_root_note.md\"}, {\"kind\": \"inspection\", \"tool\": \"operator_api._control_kernel_details\"}, {\"kind\": \"gate_check\", \"tool\": \"state_machine.ensure_first_slice_stage_start\"}]",
+    "acceptance_state": "pending_review",
+    "created_at": "2026-04-14T09:40:27+00:00",
+    "updated_at": "2026-04-14T09:40:27+00:00",
+    "produced_artifact_ids": [
+      "wf_artifact_92d4c52e03c2"
+    ],
+    "diff_refs": [
+      "projects/aioffice/artifacts/rehearsal_authoritative_root_note.md"
+    ],
+    "commands_run": [
+      "manual artifact write",
+      "operator_api._control_kernel_details",
+      "state_machine.ensure_first_slice_stage_*"
+    ],
+    "test_results": [
+      {
+        "check": "architect start fails before context audit",
+        "status": "passed"
+      },
+      {
+        "check": "architect completion succeeds after artifact creation",
+        "status": "passed"
+      }
+    ],
+    "blocker_ids": [
+      "blocker_da5c1ce0ed16"
+    ],
+    "question_ids": [
+      "qa_1af274c24171"
+    ],
+    "assumption_ids": [
+      "qa_edf81279a4ca"
+    ],
+    "open_risks": [
+      "Full operator CLI invocation and apply/promotion remain unproven."
+    ],
+    "evidence_receipts": [
+      {
+        "kind": "file_write",
+        "path": "projects/aioffice/artifacts/rehearsal_authoritative_root_note.md"
+      },
+      {
+        "kind": "inspection",
+        "tool": "operator_api._control_kernel_details"
+      },
+      {
+        "kind": "gate_check",
+        "tool": "state_machine.ensure_first_slice_stage_start"
+      }
+    ]
+  },
+  "inspection_summary": {
+    "workflow_run_id": "workflow_10021285208c",
+    "stage_run_count": 4,
+    "artifact_contracts": [
+      "intake_request_v1",
+      "pm_plan_v1",
+      "pm_assumption_register_v1",
+      "context_audit_report_v1",
+      "architecture_decision_v1"
+    ],
+    "handoff_count": 3,
+    "blocker_count": 1,
+    "question_or_assumption_count": 2,
+    "trace_count": 3,
+    "packet_id": "packet_4aff81cd6cde",
+    "bundle_id": "bundle_355f9a95a5da"
+  },
+  "review_checkpoints": [
+    {
+      "name": "controlled_fail_closed_probe",
+      "passed": true,
+      "detail": "architect start requires handoff context_audit->architect for attempt 1. architect start requires context_audit_report_v1."
+    },
+    {
+      "name": "bundle_pending_review",
+      "passed": true,
+      "detail": "pending_review"
+    },
+    {
+      "name": "inspection_contains_packet_and_bundle",
+      "passed": true,
+      "detail": {
+        "packet_id": "packet_4aff81cd6cde",
+        "bundle_id": "bundle_355f9a95a5da"
+      }
+    },
+    {
+      "name": "architect_completion_allowed_after_artifact",
+      "passed": true,
+      "detail": {
+        "allowed": true,
+        "workflow_run_id": "workflow_10021285208c",
+        "stage_name": "architect",
+        "transition": "complete",
+        "stage_run_id": "stage_ddb9ad3533b2",
+        "non_trivial": true,
+        "checks": [
+          "architecture_decision_v1"
+        ],
+        "failures": []
+      }
+    }
+  ],
+  "supporting_artifacts": {
+    "note_path": "C:\\Users\\rodne\\OneDrive\\Desktop\\_AIStudio_POC\\projects\\aioffice\\artifacts\\m4_rehearsal_workspace\\projects\\aioffice\\artifacts\\rehearsal_authoritative_root_note.md",
+    "database_path": "C:\\Users\\rodne\\OneDrive\\Desktop\\_AIStudio_POC\\projects\\aioffice\\artifacts\\m4_rehearsal_workspace\\sessions\\studio.db"
+  }
+}

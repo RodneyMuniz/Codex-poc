@@ -1,0 +1,10 @@
+{
+  "provider": "supervised_operator_cli",
+  "model": "architect_stop_rehearsal",
+  "provider_request_id": "prov_aio029_codex_2026_04_14",
+  "execution_path": "operator_api.aioffice-supervised-architect-rehearsal",
+  "workspace_root": "C:\\Users\\rodne\\OneDrive\\Desktop\\_AIStudio_POC\\projects\\aioffice\\artifacts\\m5_supervised_operator_cli_rehearsal_codex_validation\\workspace",
+  "captured_at": "2026-04-14T10:49:52+00:00",
+  "operator": "Project Orchestrator",
+  "stop_after": "architect"
+}
