@@ -855,20 +855,6 @@ Bootstrap status:
   - AIO-038
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define narrow operator-facing bundle decision surface and fail-closed rules
 - id: AIO-040
 - item_type: task
@@ -886,7 +872,21 @@ _No items_
   - the surface is grounded in the current `sessions/store.py` and `scripts/operator_api.py` reality
 - dependencies:
   - AIO-039
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Implement narrow operator CLI wrapper over the sanctioned bundle decision path
 - id: AIO-041
