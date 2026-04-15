@@ -1096,20 +1096,6 @@ Ledger status:
   - AIO-048
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define admin-only product-change and self-modification governance boundary
 - id: AIO-050
 - item_type: task
@@ -1126,7 +1112,21 @@ _No items_
   - the boundary remains narrow and does not imply UI or later-stage workflow expansion
 - dependencies:
   - AIO-049
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Define automated snapshot/version/restore/rollback contract and rehearsal plan
 - id: AIO-051

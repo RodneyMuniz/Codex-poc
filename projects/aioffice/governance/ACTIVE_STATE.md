@@ -5,8 +5,9 @@
 - project root: `C:\Users\rodne\OneDrive\Desktop\_AIStudio_POC\projects\aioffice`
 
 ## Authoritative Review Anchor
-- authoritative working branch: `feature/aioffice-m6-narrow-proof`
-- authoritative accepted baseline tag: `aioffice-m5-closeout-2026-04-15`
+- authoritative working branch: `feature/aioffice-m10-change-governance-hardening`
+- authoritative milestone checkpoint tag: `aioffice-m9-closeout-2026-04-16`
+- authoritative milestone snapshot branch: `snapshot/aioffice-m9-closeout-2026-04-16`
 
 ## Current Accepted Posture
 - `M1` through `M9` are complete.
@@ -50,9 +51,8 @@
 - no post-`M10` milestone is ratified yet.
 
 ## Current Active M10 Tasks In Order
-1. `AIO-050` - define the admin-only product-change and self-modification governance boundary
-2. `AIO-051` - define the automated snapshot/version/restore/rollback contract and rehearsal plan
-3. `AIO-052` - define the feature-isolation and code-review contract for Codex-delivered changes
+1. `AIO-051` - define the automated snapshot/version/restore/rollback contract and rehearsal plan
+2. `AIO-052` - define the feature-isolation and code-review contract for Codex-delivered changes
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -68,6 +68,7 @@
 - `projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md`
 - `projects/aioffice/governance/M8_OPERATOR_DECISION_INPUT_REVIEW.md`
 - `projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md`
+- `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
 - `projects/aioffice/governance/SYSTEM_REALITY_MAP.md`
 - `projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md`
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`
