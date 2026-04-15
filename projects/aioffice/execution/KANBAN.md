@@ -769,6 +769,27 @@ Bootstrap status:
   - AIO-035A
 - status: completed
 
+### Run bounded same-workspace repeated-run or shared-store contention rehearsal
+- id: AIO-037
+- item_type: task
+- title: Run bounded same-workspace repeated-run or shared-store contention rehearsal
+- details: run a narrowly scoped supervised rehearsal that deliberately reuses the same workspace or sanctioned store root so repeated-run, state-collision, residue, or contention behavior can be inspected explicitly
+- objective: determine whether the current sanctioned path remains stable when isolation is reduced in a controlled, reviewable way
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M6 - Post-M5 Narrow Proof Slice
+- expected_artifact_path: projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md
+- acceptance:
+  - a bounded repeated-run or shared-store rehearsal is executed under supervision
+  - collisions, leakage, residue, or contention observations remain visible
+  - authority boundaries remain unchanged
+  - no later-stage, unattended, or overnight claim is made
+- dependencies:
+  - AIO-030
+  - AIO-034
+  - AIO-035A
+- status: completed
+
 ## In Review
 
 _No items_
@@ -800,27 +821,6 @@ _No items_
   - no later-stage workflow, autonomy, or UAT readiness claim is added
 - dependencies:
   - AIO-034
-- status: backlog
-
-### Run bounded same-workspace repeated-run or shared-store contention rehearsal
-- id: AIO-037
-- item_type: task
-- title: Run bounded same-workspace repeated-run or shared-store contention rehearsal
-- details: run a narrowly scoped supervised rehearsal that deliberately reuses the same workspace or sanctioned store root so repeated-run, state-collision, residue, or contention behavior can be inspected explicitly
-- objective: determine whether the current sanctioned path remains stable when isolation is reduced in a controlled, reviewable way
-- owner_role: Project Orchestrator
-- assigned_role: QA
-- milestone: M6 - Post-M5 Narrow Proof Slice
-- expected_artifact_path: projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md
-- acceptance:
-  - a bounded repeated-run or shared-store rehearsal is executed under supervision
-  - collisions, leakage, residue, or contention observations remain visible
-  - authority boundaries remain unchanged
-  - no later-stage, unattended, or overnight claim is made
-- dependencies:
-  - AIO-030
-  - AIO-034
-  - AIO-035A
 - status: backlog
 
 ### Record narrow post-M5 proof review for apply and shared-store behavior
