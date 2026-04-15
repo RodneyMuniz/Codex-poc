@@ -6,8 +6,8 @@
 
 ## Authoritative Review Anchor
 - authoritative working branch: `feature/aioffice-m10-change-governance-hardening`
-- authoritative milestone checkpoint tag: `aioffice-m9-closeout-2026-04-16`
-- authoritative milestone snapshot branch: `snapshot/aioffice-m9-closeout-2026-04-16`
+- authoritative milestone checkpoint tag: `aioffice-m10-closeout-2026-04-16`
+- authoritative milestone snapshot branch: `snapshot/aioffice-m10-closeout-2026-04-16`
 
 ## Current Accepted Posture
 - `M1` through `M10` are complete.

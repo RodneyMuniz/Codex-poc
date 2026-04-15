@@ -78,3 +78,16 @@
   - this is a narrow proof-auditability step inside `M6`, not a separate infrastructure initiative
   - the task does not change the accepted readiness posture and does not imply later-stage workflow proof, autonomy readiness, or real multi-agent maturity
   - grounding later `M6` artifacts on pushed branch, tag, and file evidence makes future proof review more conservative and reviewable
+
+### AIO-D-010
+- date: 2026-04-16
+- status: reviewed
+- decision: after `AIO-052` closed `M10`, the authoritative review anchor is re-anchored from the `M9` closeout refs to dedicated `M10` closeout refs:
+  - checkpoint tag: `aioffice-m10-closeout-2026-04-16`
+  - snapshot branch: `snapshot/aioffice-m10-closeout-2026-04-16`
+  - working branch remains: `feature/aioffice-m10-change-governance-hardening`
+- rationale:
+  - `KANBAN.md` and `ACTIVE_STATE.md` now both record `M10` as complete, so the externally reviewable checkpoint/snapshot anchor should match that accepted closeout boundary
+  - this is checkpoint and review-anchor hygiene only
+  - the historical `M9` tag and `M9` snapshot branch remain preserved as prior accepted anchors and are not rewritten, moved, or deleted
+  - this decision does not imply any readiness change, workflow-proof expansion, UI expansion, autonomy expansion, or later-stage workflow claim

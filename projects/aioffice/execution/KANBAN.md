@@ -1151,6 +1151,27 @@ Ledger status:
   - AIO-049
 - status: completed
 
+### Re-anchor the authoritative M10 closeout checkpoint tag and snapshot branch
+- id: AIO-053
+- item_type: task
+- title: Re-anchor the authoritative M10 closeout checkpoint tag and snapshot branch
+- details: perform one narrow M10 closeout hygiene task so the externally reviewable checkpoint and snapshot anchors match the already-accepted M10 completion state without changing readiness, workflow proof, or post-M10 planning
+- objective: make the accepted review anchor consistent with the committed M10 closeout truth while preserving the M9 anchors as historical references
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M10 - Change Governance, Recovery, And Maintainability Hardening
+- expected_artifact_path: projects/aioffice/governance/ACTIVE_STATE.md
+- acceptance:
+  - `ACTIVE_STATE.md` points to dedicated `M10` closeout checkpoint and snapshot refs
+  - `DECISION_LOG.md` records the re-anchoring as checkpoint hygiene only
+  - `KANBAN.md` records `AIO-053` as completed without ratifying `M11`
+  - the final closeout commit, new tag, and new snapshot branch all resolve to the same commit
+- dependencies:
+  - AIO-050
+  - AIO-051
+  - AIO-052
+- status: completed
+
 ## In Review
 
 _No items_
