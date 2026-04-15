@@ -10,6 +10,7 @@
 
 ## Current Accepted Posture
 - `M1` through `M9` are complete.
+- `M10` is the active milestone and remains a narrow change-governance, recovery, and maintainability hardening slice.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -45,10 +46,13 @@
   - UAT readiness
 - `M9` completed as a narrow current-state / planning-surface reconciliation slice.
 - `M9` did not change control behavior, later-stage workflow proof, or readiness posture.
-- no post-`M9` milestone is ratified yet.
+- `M10` does not imply control-behavior changes, later-stage workflow proof, UI expansion, or readiness upgrades.
+- no post-`M10` milestone is ratified yet.
 
-## Current Active Post-M9 Tasks In Order
-_No post-`M9` milestone or task sequence is ratified yet._
+## Current Active M10 Tasks In Order
+1. `AIO-050` - define the admin-only product-change and self-modification governance boundary
+2. `AIO-051` - define the automated snapshot/version/restore/rollback contract and rehearsal plan
+3. `AIO-052` - define the feature-isolation and code-review contract for Codex-delivered changes
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -63,6 +67,7 @@ _No post-`M9` milestone or task sequence is ratified yet._
 - `projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md`
 - `projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md`
 - `projects/aioffice/governance/M8_OPERATOR_DECISION_INPUT_REVIEW.md`
+- `projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/SYSTEM_REALITY_MAP.md`
 - `projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md`
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`

@@ -93,6 +93,13 @@ Ledger status:
 - owner_role: Project Orchestrator
 - status: completed
 
+### M10 - Change Governance, Recovery, And Maintainability Hardening
+- milestone_order: 10
+- entry_goal: `M9` has closed with reconciled planning surfaces, and the next work should harden change governance, recovery discipline, and maintainability contracts before any UI or art-pipeline expansion is considered.
+- exit_goal: an admin-only product/self-change governance boundary, an automated snapshot/version/restore/rollback contract with rehearsal plan, and a feature-isolation/code-review contract are defined clearly enough to guide later implementation without changing readiness or widening workflow proof.
+- owner_role: Project Orchestrator
+- status: in_progress
+
 ## Completed
 
 ### Write AIOffice charter, doctrine, non-goals, and success definition
@@ -1070,6 +1077,25 @@ Ledger status:
   - AIO-047
 - status: completed
 
+### Record post-M9 control-surface priorities review and ratify the next conservative slice
+- id: AIO-049
+- item_type: task
+- title: Record post-M9 control-surface priorities review and ratify the next conservative slice
+- details: produce one explicit post-`M9` review artifact grounded only in committed evidence and the newly raised operator concerns, then ratify exactly one next conservative slice focused on control-surface hardening before UI expansion
+- objective: keep the proof boundary explicit after `M9` and choose the next conservative control-surface hardening slice before any UI or art-pipeline work begins
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M10 - Change Governance, Recovery, And Maintainability Hardening
+- expected_artifact_path: projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md
+- acceptance:
+  - the review uses committed evidence plus the operator concerns raised for this review
+  - the need for admin-only self-change governance, recovery discipline, maintainability isolation, and eventual canonical state is assessed explicitly
+  - UI and art-pipeline timing recommendations are explicit
+  - exactly one next conservative slice is ratified
+- dependencies:
+  - AIO-048
+- status: completed
+
 ## In Review
 
 _No items_
@@ -1084,9 +1110,62 @@ _No items_
 
 ## Backlog
 
-_No items_
+### Define admin-only product-change and self-modification governance boundary
+- id: AIO-050
+- item_type: task
+- title: Define admin-only product-change and self-modification governance boundary
+- details: define the narrow governance boundary for which AIOffice product and self-changing actions are admin-only, how they are proposed and approved, and how they stay distinct from ordinary execution-bundle decisions
+- objective: prevent future writable surfaces from collapsing routine operator decisions and product-changing authority into the same lane
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M10 - Change Governance, Recovery, And Maintainability Hardening
+- expected_artifact_path: projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md
+- acceptance:
+  - admin-only product and self-change actions are explicit
+  - approval lanes and audit expectations are explicit
+  - the boundary remains narrow and does not imply UI or later-stage workflow expansion
+- dependencies:
+  - AIO-049
+- status: backlog
+
+### Define automated snapshot/version/restore/rollback contract and rehearsal plan
+- id: AIO-051
+- item_type: task
+- title: Define automated snapshot/version/restore/rollback contract and rehearsal plan
+- details: define a narrow AIOffice contract for snapshots, version boundaries, restore authority, rollback scope, and the bounded rehearsal plan required before broader writable or parallel surfaces are considered
+- objective: reduce recovery ambiguity before future UI or broader control-surface work increases change blast radius
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M10 - Change Governance, Recovery, And Maintainability Hardening
+- expected_artifact_path: projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md
+- acceptance:
+  - snapshot and restore triggers are explicit
+  - restore and rollback authority boundaries are explicit
+  - a bounded rehearsal plan is defined
+  - no readiness or later-stage workflow claim is added
+- dependencies:
+  - AIO-049
+- status: backlog
+
+### Define feature-isolation and code-review contract for Codex-delivered changes
+- id: AIO-052
+- item_type: task
+- title: Define feature-isolation and code-review contract for Codex-delivered changes
+- details: define the maintainability contract for future Codex-delivered changes touching shared AIOffice control surfaces, including feature isolation, write-scope discipline, review expectations, and cross-project regression prevention
+- objective: reduce maintainability and review risk before future control, UI, or integration work touches mixed shared files again
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M10 - Change Governance, Recovery, And Maintainability Hardening
+- expected_artifact_path: projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md
+- acceptance:
+  - isolation and review expectations are explicit
+  - shared-file risk handling is explicit
+  - the contract stays narrow and does not imply new implementation behavior by itself
+- dependencies:
+  - AIO-049
+- status: backlog
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- no post-`M9` milestone is ratified yet
+- no post-`M10` milestone is ratified yet
