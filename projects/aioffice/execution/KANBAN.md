@@ -71,6 +71,13 @@ Bootstrap status:
 - owner_role: Project Orchestrator
 - status: completed
 
+### M8 - Post-M7 Operator Decision Input Ergonomics Hardening
+- milestone_order: 8
+- entry_goal: `M7` has closed with an explicit review, and the next work should reduce remaining manual operator glue on the already-real `bundle-decision` surface, especially shell-safe explicit input handling, without changing readiness claims or widening workflow proof.
+- exit_goal: a shell-safe operator decision input contract is defined, implemented, and rehearsed on the existing `bundle-decision` surface without weakening explicit destination-mapping control or implying later-stage workflow or readiness upgrades.
+- owner_role: Project Orchestrator
+- status: in_progress
+
 ## Completed
 
 ### Write AIOffice charter, doctrine, non-goals, and success definition
@@ -932,6 +939,25 @@ Bootstrap status:
   - AIO-041
 - status: completed
 
+### Record post-M7 proof review and ratify the next conservative slice
+- id: AIO-043
+- item_type: task
+- title: Record post-M7 proof review and ratify the next conservative slice
+- details: produce one explicit post-`M7` review artifact grounded only in committed evidence, state what `M7` truly proved, what remains manual or unproven, and ratify exactly one next conservative slice without inflating readiness or broadening workflow proof
+- objective: keep the proof boundary explicit after `M7` and seed only one evidence-backed next slice
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M7 - Post-M6 Operator Decision Surface Hardening
+- expected_artifact_path: projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - what `AIO-040`, `AIO-041`, and `AIO-042` proved is explicit
+  - remaining manual glue, stale-document conflicts, and residual risks are explicit
+  - exactly one next conservative slice is ratified, if supported by the evidence
+- dependencies:
+  - AIO-042
+- status: completed
+
 ## In Review
 
 _No items_
@@ -946,7 +972,62 @@ _No items_
 
 ## Backlog
 
-_No items_
+### Define shell-safe operator decision input contract over the existing bundle-decision surface
+- id: AIO-044
+- item_type: task
+- title: Define shell-safe operator decision input contract over the existing bundle-decision surface
+- details: define one narrow shell-safe operator input contract for `bundle-decision` so explicit destination mappings remain required and fail-closed while operator entry is less brittle on the currently exercised shell path
+- objective: reduce operator input fragility on the already-proven decision surface without widening workflow scope
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M8 - Post-M7 Operator Decision Input Ergonomics Hardening
+- expected_artifact_path: projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md
+- acceptance:
+  - one shell-safe input contract is defined narrowly over the existing `bundle-decision` surface
+  - explicit destination mappings remain required
+  - fail-closed boundaries remain explicit
+  - no later-stage workflow or readiness claim is added
+- dependencies:
+  - AIO-043
+- status: backlog
+
+### Implement shell-safe operator decision input path and focused verification
+- id: AIO-045
+- item_type: task
+- title: Implement shell-safe operator decision input path and focused verification
+- details: implement one narrow shell-safe input path for explicit `destination_mappings` on the existing `bundle-decision` surface and add focused verification without changing the sanctioned store behavior
+- objective: make the already-real decision surface less brittle for supervised operator use
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M8 - Post-M7 Operator Decision Input Ergonomics Hardening
+- expected_artifact_path: scripts/operator_api.py
+- acceptance:
+  - one shell-safe input path exists for explicit destination mappings
+  - the wrapper remains bundle-scoped and fail-closed
+  - focused verification covers the new input path
+  - no readiness upgrade or workflow expansion is implied
+- dependencies:
+  - AIO-044
+- status: backlog
+
+### Rehearse the shell-safe operator decision input path under supervision and record evidence
+- id: AIO-046
+- item_type: task
+- title: Rehearse the shell-safe operator decision input path under supervision and record evidence
+- details: run one bounded supervised rehearsal of the shell-safe operator decision input path and record what manual glue was reduced and what limits remain
+- objective: prove the narrowed ergonomics hardening slice in practice without widening workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M8 - Post-M7 Operator Decision Input Ergonomics Hardening
+- expected_artifact_path: projects/aioffice/artifacts/M8_OPERATOR_DECISION_INPUT_REHEARSAL.md
+- acceptance:
+  - one bounded supervised rehearsal is executed through the shell-safe input path
+  - evidence is recorded factually
+  - remaining limits are explicit
+  - no concurrency, later-stage, or readiness overclaim is made
+- dependencies:
+  - AIO-045
+- status: backlog
 
 ## TODO
 - decide whether and when to mirror these tasks into the canonical SQLite task store

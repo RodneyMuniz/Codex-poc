@@ -33,10 +33,13 @@
   - later-stage workflow
   - real multi-agent maturity
   - UAT readiness
-- No post-`M7` milestone is ratified in this file yet.
+- `M8` is the active milestone and remains a narrow operator decision input/ergonomics hardening slice.
+- `M8` does not imply later-stage workflow proof, autonomy readiness, or UAT readiness.
 
-## Current Active M7 Tasks In Order
-- none; `M7` closed under `AIO-042`
+## Current Active M8 Tasks In Order
+1. `AIO-044` - define shell-safe operator decision input contract over the existing bundle-decision surface
+2. `AIO-045` - implement shell-safe operator decision input path and focused verification
+3. `AIO-046` - rehearse the shell-safe operator decision input path under supervision and record evidence
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -47,9 +50,12 @@
 - `projects/aioffice/governance/STAGE_GOVERNANCE.md`
 - `projects/aioffice/governance/ACTIVE_STATE.md`
 - `projects/aioffice/governance/M6_NARROW_PROOF_REVIEW.md`
+- `projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md`
+- `projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md`
 - `projects/aioffice/governance/SYSTEM_REALITY_MAP.md`
 - `projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md`
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`
+- `projects/aioffice/artifacts/M7_OPERATOR_DECISION_SURFACE_REHEARSAL.md`
 
 ## Review Surface Statement
 GitHub is the external review surface for audit anchoring of the accepted AIOffice state. The local repository remains the implementation workspace and source of in-progress changes until those changes are deliberately staged, committed, and pushed.
