@@ -1114,20 +1114,6 @@ Ledger status:
   - AIO-049
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define automated snapshot/version/restore/rollback contract and rehearsal plan
 - id: AIO-051
 - item_type: task
@@ -1145,7 +1131,21 @@ _No items_
   - no readiness or later-stage workflow claim is added
 - dependencies:
   - AIO-049
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Define feature-isolation and code-review contract for Codex-delivered changes
 - id: AIO-052
