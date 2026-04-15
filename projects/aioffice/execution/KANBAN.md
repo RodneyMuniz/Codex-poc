@@ -874,6 +874,26 @@ Bootstrap status:
   - AIO-039
 - status: completed
 
+### Triage and clear pre-existing operator_api residue before AIO-041
+- id: AIO-040A
+- item_type: task
+- title: Triage and clear pre-existing operator_api residue before AIO-041
+- details: inspect the pre-existing local residue in `scripts/operator_api.py` that blocked `AIO-041`, capture the raw patch for audit, classify the residue, restore the file to committed `HEAD`, and record the cleanup explicitly without silently absorbing that residue into later implementation work
+- objective: preserve auditability and restore a clean lawful starting point for `AIO-041`
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M7 - Post-M6 Operator Decision Surface Hardening
+- expected_artifact_path: projects/aioffice/artifacts/M7_OPERATOR_API_RESIDUE_TRIAGE.md
+- acceptance:
+  - the pre-existing local diff is preserved in `projects/aioffice/artifacts/M7_OPERATOR_API_RESIDUE.patch`
+  - the residue is classified factually in `projects/aioffice/artifacts/M7_OPERATOR_API_RESIDUE_TRIAGE.md`
+  - `scripts/operator_api.py` is restored to committed `HEAD` state
+  - `AIO-041` and `AIO-042` remain uncompleted
+  - repo hygiene is clean again after this bounded cleanup task is committed and pushed
+- dependencies:
+  - AIO-040
+- status: completed
+
 ## In Review
 
 _No items_
