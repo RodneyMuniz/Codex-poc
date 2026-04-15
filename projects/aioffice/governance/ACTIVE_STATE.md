@@ -9,7 +9,7 @@
 - authoritative accepted baseline tag: `aioffice-m5-closeout-2026-04-15`
 
 ## Current Accepted Posture
-- `M1` through `M6` are complete.
+- `M1` through `M7` are complete.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -23,11 +23,20 @@
   - later-stage workflow
   - real multi-agent maturity
   - UAT readiness
-- `M7` is the active milestone and remains a narrow operator decision-surface hardening slice.
-- `M7` does not imply later-stage workflow proof, autonomy readiness, or UAT readiness.
+- `M7` proved:
+  - system reality is mapped in committed governance
+  - the narrow operator decision surface is defined
+  - the operator-facing `bundle-decision` wrapper exists with focused verification
+  - one bounded supervised operator-facing decision-surface rehearsal was executed against persisted state
+- `M7` did not prove:
+  - concurrent contention handling
+  - later-stage workflow
+  - real multi-agent maturity
+  - UAT readiness
+- No post-`M7` milestone is ratified in this file yet.
 
 ## Current Active M7 Tasks In Order
-1. `AIO-042` - rehearse the operator-facing decision surface under supervision and record evidence
+- none; `M7` closed under `AIO-042`
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

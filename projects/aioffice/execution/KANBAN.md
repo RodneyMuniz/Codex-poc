@@ -69,7 +69,7 @@ Bootstrap status:
 - entry_goal: `M6` has closed with an explicit narrow proof review and a current system-reality map, and the next work should reduce manual operator glue on the already-real control surfaces without widening workflow proof.
 - exit_goal: a narrow operator-facing bundle decision surface is defined, implemented over sanctioned persisted state, and rehearsed under supervision without implying later-stage workflow or readiness upgrades.
 - owner_role: Project Orchestrator
-- status: in_progress
+- status: completed
 
 ## Completed
 
@@ -913,20 +913,6 @@ Bootstrap status:
   - AIO-040
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Rehearse the operator-facing decision surface under supervision and record evidence
 - id: AIO-042
 - item_type: task
@@ -944,7 +930,23 @@ _No items_
   - no concurrency, later-stage, or readiness overclaim is made
 - dependencies:
   - AIO-041
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+_No items_
 
 ## TODO
 - decide whether and when to mirror these tasks into the canonical SQLite task store
