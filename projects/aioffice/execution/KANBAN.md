@@ -894,20 +894,6 @@ Bootstrap status:
   - AIO-040
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement narrow operator CLI wrapper over the sanctioned bundle decision path
 - id: AIO-041
 - item_type: task
@@ -925,7 +911,21 @@ _No items_
   - focused verification exists
 - dependencies:
   - AIO-040
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Rehearse the operator-facing decision surface under supervision and record evidence
 - id: AIO-042

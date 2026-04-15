@@ -138,6 +138,95 @@ def _build_control_kernel_fixture(tmp_path: Path) -> dict[str, object]:
     }
 
 
+def _build_bundle_decision_fixture(tmp_path: Path) -> dict[str, object]:
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    store = SessionStore(repo_root)
+    workflow = store.create_workflow_run(
+        "aioffice",
+        task_id="AIO-041",
+        objective="Prepare a bounded pending-review bundle for operator bundle decision.",
+        authoritative_workspace_root="projects/aioffice",
+        current_stage="architect",
+    )
+    stage = store.create_stage_run(
+        workflow["id"],
+        stage_name="architect",
+        status="in_progress",
+    )
+    source_artifact_path = (
+        "projects/aioffice/artifacts/m7_operator_bundle_decision/workflow_review/architect/architecture_decision_v1.md"
+    )
+    source_artifact_file = (
+        repo_root
+        / "projects"
+        / "aioffice"
+        / "artifacts"
+        / "m7_operator_bundle_decision"
+        / "workflow_review"
+        / "architect"
+        / "architecture_decision_v1.md"
+    )
+    source_artifact_file.parent.mkdir(parents=True, exist_ok=True)
+    source_artifact_file.write_text("# Architecture Decision\n\nApply this reviewed output.\n", encoding="utf-8")
+    artifact = store.create_workflow_artifact(
+        "aioffice",
+        workflow_run_id=workflow["id"],
+        stage_run_id=stage["id"],
+        task_id="AIO-041",
+        contract_name="architecture_decision_v1",
+        kind="document",
+        content=source_artifact_file.read_text(encoding="utf-8"),
+        proof_value="architecture_output",
+        artifact_path=source_artifact_path,
+        produced_by="Architect",
+    )
+    packet = store.issue_control_execution_packet(
+        "aioffice",
+        "AIO-041",
+        objective="Issue one explicit approved bundle decision through the sanctioned operator API wrapper.",
+        authoritative_workspace_root="projects/aioffice",
+        allowed_write_paths=[source_artifact_path],
+        scratch_path="tmp/aioffice/operator-bundle-decision",
+        forbidden_paths=["projects/aioffice/governance", "projects/aioffice/execution/protected"],
+        forbidden_actions=["self_accept", "self_promote"],
+        required_artifact_outputs=[source_artifact_path],
+        required_validations=["pytest tests/test_operator_api.py -k bundle_decision"],
+        expected_return_bundle_contents=["produced artifacts", "evidence receipts"],
+        failure_reporting_expectations=["report blockers", "report open risks"],
+        workflow_run_id=workflow["id"],
+        stage_run_id=stage["id"],
+        issued_by="Project Orchestrator",
+        provenance_note="AIO-041 bounded operator bundle decision packet",
+    )
+    bundle = store.ingest_execution_bundle(
+        packet["packet_id"],
+        produced_artifact_ids=[artifact["id"]],
+        diff_refs=[source_artifact_path],
+        commands_run=["pytest tests/test_operator_api.py -k bundle_decision"],
+        test_results=[{"command": "pytest", "status": "passed"}],
+        self_report_summary="Pending review bundle is ready for one operator bundle decision.",
+        open_risks=["AIO-042 rehearsal remains out of scope."],
+        evidence_receipts=[{"kind": "provider_metadata", "provider": "manual_harness", "status": "captured"}],
+    )
+    destination_path = "projects/aioffice/execution/approved/operator_bundle_decision.md"
+    destination_file = (
+        repo_root / "projects" / "aioffice" / "execution" / "approved" / "operator_bundle_decision.md"
+    )
+    return {
+        "repo_root": repo_root,
+        "store": store,
+        "workflow": workflow,
+        "stage": stage,
+        "artifact": artifact,
+        "packet": packet,
+        "bundle": bundle,
+        "source_artifact_file": source_artifact_file,
+        "source_artifact_path": source_artifact_path,
+        "destination_path": destination_path,
+        "destination_file": destination_file,
+    }
+
+
 def test_operator_api_preview_routes_through_ingress_first(monkeypatch, capsys):
     captured: dict[str, object] = {}
 
@@ -643,6 +732,210 @@ def test_operator_api_control_kernel_details_reads_without_mutation(monkeypatch,
 
     assert payload["control_execution_packet"]["packet_id"] == fixture["packet"]["packet_id"]
     assert payload["packet_execution_bundles"][0]["bundle_id"] == fixture["bundle"]["bundle_id"]
+
+
+def test_operator_api_bundle_decision_executes_controlled_apply(monkeypatch, capsys, tmp_path):
+    fixture = _build_bundle_decision_fixture(tmp_path)
+    captured: dict[str, object] = {"call_count": 0}
+
+    class _DecisionStoreProxy:
+        def __init__(self, store):
+            self._store = store
+
+        def __getattr__(self, name: str):
+            return getattr(self._store, name)
+
+        def execute_apply_promotion_decision(
+            self,
+            bundle_id: str,
+            *,
+            approved_decision: dict[str, object],
+            destination_mappings: list[dict[str, object]],
+        ) -> dict[str, object]:
+            captured["call_count"] = int(captured["call_count"]) + 1
+            captured["bundle_id"] = bundle_id
+            captured["approved_decision"] = dict(approved_decision)
+            captured["destination_mappings"] = [dict(item) for item in destination_mappings]
+            return self._store.execute_apply_promotion_decision(
+                bundle_id,
+                approved_decision=approved_decision,
+                destination_mappings=destination_mappings,
+            )
+
+    class _DummyOrchestrator:
+        store = _DecisionStoreProxy(fixture["store"])
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(operator_api, "_routing_catalog", lambda: {"decision_surface": True})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "bundle-decision",
+            "--bundle-id",
+            fixture["bundle"]["bundle_id"],
+            "--action",
+            "apply",
+            "--approved-by",
+            "Project Orchestrator",
+            "--destination-mappings",
+            json.dumps(
+                [
+                    {
+                        "source_artifact_id": fixture["artifact"]["id"],
+                        "destination_path": fixture["destination_path"],
+                    }
+                ]
+            ),
+            "--decision-note",
+            "Approved bounded apply into the authoritative workspace.",
+        ],
+    )
+
+    operator_api.main()
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["command"] == "bundle-decision"
+    assert payload["bundle_id"] == fixture["bundle"]["bundle_id"]
+    assert captured["call_count"] == 1
+    assert captured["bundle_id"] == fixture["bundle"]["bundle_id"]
+    assert captured["approved_decision"] == {
+        "decision": "approved",
+        "action": "apply",
+        "approved_by": "Project Orchestrator",
+        "decision_note": "Approved bounded apply into the authoritative workspace.",
+    }
+    assert captured["destination_mappings"] == [
+        {
+            "source_artifact_id": fixture["artifact"]["id"],
+            "destination_path": fixture["destination_path"],
+        }
+    ]
+    assert payload["inspection_before"]["bundle_acceptance_state"] == "pending_review"
+    assert payload["inspection_after"]["bundle_acceptance_state"] == "applied"
+    assert payload["updated_bundle"]["acceptance_state"] == "applied"
+    assert "apply_promotion_decision" in payload["inspection_after"]["evidence_receipt_kinds"]
+    assert fixture["destination_file"].read_text(encoding="utf-8") == fixture["source_artifact_file"].read_text(
+        encoding="utf-8"
+    )
+    assert fixture["store"].get_execution_bundle(fixture["bundle"]["bundle_id"])["acceptance_state"] == "applied"
+    assert payload["routing_catalog"] == {"decision_surface": True}
+
+
+def test_operator_api_bundle_decision_rejects_blank_approved_by(monkeypatch, capsys, tmp_path):
+    fixture = _build_bundle_decision_fixture(tmp_path)
+    captured: dict[str, object] = {"call_count": 0}
+
+    class _DecisionStoreProxy:
+        def __init__(self, store):
+            self._store = store
+
+        def __getattr__(self, name: str):
+            return getattr(self._store, name)
+
+        def execute_apply_promotion_decision(self, *args, **kwargs):
+            captured["call_count"] = int(captured["call_count"]) + 1
+            return self._store.execute_apply_promotion_decision(*args, **kwargs)
+
+    class _DummyOrchestrator:
+        store = _DecisionStoreProxy(fixture["store"])
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "bundle-decision",
+            "--bundle-id",
+            fixture["bundle"]["bundle_id"],
+            "--action",
+            "apply",
+            "--approved-by",
+            "   ",
+            "--destination-mappings",
+            json.dumps(
+                [
+                    {
+                        "source_artifact_id": fixture["artifact"]["id"],
+                        "destination_path": fixture["destination_path"],
+                    }
+                ]
+            ),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "approved_by is required" in payload["error"]
+    assert captured["call_count"] == 0
+    assert fixture["store"].get_execution_bundle(fixture["bundle"]["bundle_id"])["acceptance_state"] == "pending_review"
+    assert not fixture["destination_file"].exists()
+
+
+def test_operator_api_bundle_decision_rejects_destination_outside_authoritative_workspace(
+    monkeypatch,
+    capsys,
+    tmp_path,
+):
+    fixture = _build_bundle_decision_fixture(tmp_path)
+    captured: dict[str, object] = {"call_count": 0}
+    outside_destination = fixture["repo_root"] / "sessions" / "not_allowed.md"
+
+    class _DecisionStoreProxy:
+        def __init__(self, store):
+            self._store = store
+
+        def __getattr__(self, name: str):
+            return getattr(self._store, name)
+
+        def execute_apply_promotion_decision(self, *args, **kwargs):
+            captured["call_count"] = int(captured["call_count"]) + 1
+            return self._store.execute_apply_promotion_decision(*args, **kwargs)
+
+    class _DummyOrchestrator:
+        store = _DecisionStoreProxy(fixture["store"])
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "bundle-decision",
+            "--bundle-id",
+            fixture["bundle"]["bundle_id"],
+            "--action",
+            "apply",
+            "--approved-by",
+            "Project Orchestrator",
+            "--destination-mappings",
+            json.dumps(
+                [
+                    {
+                        "source_artifact_id": fixture["artifact"]["id"],
+                        "destination_path": "sessions/not_allowed.md",
+                    }
+                ]
+            ),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "authoritative_workspace_root" in payload["error"]
+    assert captured["call_count"] == 1
+    assert fixture["store"].get_execution_bundle(fixture["bundle"]["bundle_id"])["acceptance_state"] == "pending_review"
+    assert not outside_destination.exists()
 
 
 def test_operator_api_aioffice_supervised_architect_rehearsal_succeeds(monkeypatch, capsys, tmp_path):

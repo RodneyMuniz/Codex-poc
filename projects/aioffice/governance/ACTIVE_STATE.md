@@ -27,8 +27,7 @@
 - `M7` does not imply later-stage workflow proof, autonomy readiness, or UAT readiness.
 
 ## Current Active M7 Tasks In Order
-1. `AIO-041` - implement narrow operator CLI wrapper over the sanctioned bundle decision path
-2. `AIO-042` - rehearse the operator-facing decision surface under supervision and record evidence
+1. `AIO-042` - rehearse the operator-facing decision surface under supervision and record evidence
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

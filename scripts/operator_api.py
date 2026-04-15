@@ -251,8 +251,115 @@ def _inspection_store_for_control_kernel(repo_root: Path, workspace_root: str | 
     if not database_path.exists():
         raise ValueError(
             "control-kernel-details workspace must already contain a sanctioned persisted store at sessions/studio.db."
-        )
+    )
     return SessionStore(inspection_workspace_root, bootstrap_legacy_defaults=False), inspection_workspace_root
+
+
+def _require_cli_non_empty_text(field_name: str, value: str | None) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise ValueError(f"{field_name} is required.")
+    return text
+
+
+def _normalize_bundle_decision_action(action: str | None) -> str:
+    normalized = _require_cli_non_empty_text("action", action)
+    if normalized not in {"apply", "promote"}:
+        raise ValueError("action must be either 'apply' or 'promote'.")
+    return normalized
+
+
+def _parse_destination_mappings_argument(raw_value: str | None) -> list[dict[str, Any]]:
+    normalized = _require_cli_non_empty_text("destination_mappings", raw_value)
+    try:
+        decoded = json.loads(normalized)
+    except json.JSONDecodeError as exc:
+        raise ValueError("destination_mappings must be valid JSON.") from exc
+    if not isinstance(decoded, list):
+        raise ValueError("destination_mappings must decode to a JSON array.")
+    if not decoded:
+        raise ValueError("destination_mappings must not be empty.")
+    return decoded
+
+
+def _bundle_decision_snapshot(inspection: dict[str, Any]) -> dict[str, Any]:
+    workflow_run = inspection.get("workflow_run") or {}
+    stage_run = inspection.get("stage_run") or {}
+    packet = inspection.get("control_execution_packet") or {}
+    bundle = inspection.get("execution_bundle") or {}
+    return {
+        "workflow_run_id": workflow_run.get("id"),
+        "stage_run_id": stage_run.get("id"),
+        "packet_id": packet.get("packet_id"),
+        "bundle_id": bundle.get("bundle_id"),
+        "task_id": packet.get("task_id"),
+        "bundle_acceptance_state": bundle.get("acceptance_state"),
+        "authoritative_workspace_root": packet.get("authoritative_workspace_root"),
+        "produced_artifact_ids": bundle.get("produced_artifact_ids", []),
+        "evidence_receipt_kinds": [
+            receipt.get("kind")
+            for receipt in bundle.get("evidence_receipts", [])
+            if isinstance(receipt, dict)
+        ],
+    }
+
+
+def _execute_control_kernel_bundle_decision(
+    repo_root: Path,
+    *,
+    bundle_id: str,
+    action: str,
+    approved_by: str,
+    destination_mappings: str,
+    decision_note: str | None = None,
+    workspace_root: str | None = None,
+) -> dict[str, Any]:
+    normalized_bundle_id = _require_cli_non_empty_text("bundle_id", bundle_id)
+    normalized_action = _normalize_bundle_decision_action(action)
+    normalized_approved_by = _require_cli_non_empty_text("approved_by", approved_by)
+    normalized_destination_mappings = _parse_destination_mappings_argument(destination_mappings)
+
+    normalized_decision_note = None
+    if decision_note is not None:
+        normalized_decision_note = str(decision_note).strip()
+        if not normalized_decision_note:
+            raise ValueError("decision_note must not be blank.")
+
+    decision_store, inspection_workspace_root = _inspection_store_for_control_kernel(repo_root, workspace_root)
+    inspection_before = _control_kernel_details(
+        decision_store,
+        bundle_id=normalized_bundle_id,
+    )
+    approved_decision = {
+        "decision": "approved",
+        "action": normalized_action,
+        "approved_by": normalized_approved_by,
+    }
+    if normalized_decision_note is not None:
+        approved_decision["decision_note"] = normalized_decision_note
+
+    updated_bundle = decision_store.execute_apply_promotion_decision(
+        normalized_bundle_id,
+        approved_decision=approved_decision,
+        destination_mappings=normalized_destination_mappings,
+    )
+    inspection_after = _control_kernel_details(
+        decision_store,
+        bundle_id=normalized_bundle_id,
+    )
+
+    payload: dict[str, Any] = {
+        "command": "bundle-decision",
+        "bundle_id": normalized_bundle_id,
+        "approved_decision": approved_decision,
+        "destination_mappings": normalized_destination_mappings,
+        "updated_bundle": updated_bundle,
+        "inspection_before": _bundle_decision_snapshot(inspection_before),
+        "inspection_after": _bundle_decision_snapshot(inspection_after),
+    }
+    if inspection_workspace_root is not None:
+        payload["inspection_workspace_root"] = str(inspection_workspace_root)
+    return payload
 
 
 def _utc_now() -> str:
@@ -959,6 +1066,14 @@ def main() -> None:
     control_kernel_details.add_argument("--bundle-id", default=None)
     control_kernel_details.add_argument("--workspace-root", default=None)
 
+    bundle_decision = subparsers.add_parser("bundle-decision")
+    bundle_decision.add_argument("--bundle-id", required=True)
+    bundle_decision.add_argument("--action", required=True)
+    bundle_decision.add_argument("--approved-by", required=True)
+    bundle_decision.add_argument("--destination-mappings", required=True)
+    bundle_decision.add_argument("--decision-note", default=None)
+    bundle_decision.add_argument("--workspace-root", default=None)
+
     aioffice_rehearsal = subparsers.add_parser("aioffice-supervised-architect-rehearsal")
     aioffice_rehearsal.add_argument("--task-id", default="AIO-029")
     aioffice_rehearsal.add_argument("--operator", required=True)
@@ -1037,6 +1152,17 @@ def main() -> None:
             )
             if inspection_workspace_root is not None:
                 payload["inspection_workspace_root"] = str(inspection_workspace_root)
+            payload["routing_catalog"] = _routing_catalog()
+        elif args.command == "bundle-decision":
+            payload = _execute_control_kernel_bundle_decision(
+                ROOT,
+                bundle_id=args.bundle_id,
+                action=args.action,
+                approved_by=args.approved_by,
+                destination_mappings=args.destination_mappings,
+                decision_note=args.decision_note,
+                workspace_root=args.workspace_root,
+            )
             payload["routing_catalog"] = _routing_catalog()
         elif args.command == "aioffice-supervised-architect-rehearsal":
             payload = _run_aioffice_supervised_architect_rehearsal(
