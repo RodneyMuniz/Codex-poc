@@ -43,10 +43,11 @@
   - later-stage workflow
   - real multi-agent maturity
   - UAT readiness
-- no post-`M8` milestone is ratified yet.
+- `M9` is the active milestone and remains a narrow current-state / planning-surface reconciliation slice.
+- `M9` does not imply control-behavior changes, later-stage workflow proof, or readiness upgrades.
 
-## Current Post-M8 Planning State
-- no post-`M8` milestone is ratified yet.
+## Current Active M9 Tasks In Order
+1. `AIO-048` - reconcile stale current-state and planning-surface wording to post-`M8` truth
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -60,6 +61,7 @@
 - `projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md`
 - `projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md`
 - `projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md`
+- `projects/aioffice/governance/M8_OPERATOR_DECISION_INPUT_REVIEW.md`
 - `projects/aioffice/governance/SYSTEM_REALITY_MAP.md`
 - `projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md`
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`

@@ -78,6 +78,13 @@ Bootstrap status:
 - owner_role: Project Orchestrator
 - status: completed
 
+### M9 - Post-M8 Current-State And Planning-Surface Reconciliation
+- milestone_order: 9
+- entry_goal: `M8` has closed with an explicit review, and the next work should reconcile stale current-state and planning-surface wording to accepted post-`M8` truth without changing control behavior or readiness claims.
+- exit_goal: the stale current-state, workflow, project-brain, and ledger-header surfaces identified in committed governance are reconciled to post-`M8` truth, reducing audit friction without widening workflow proof.
+- owner_role: Project Orchestrator
+- status: in_progress
+
 ## Completed
 
 ### Write AIOffice charter, doctrine, non-goals, and success definition
@@ -977,20 +984,6 @@ Bootstrap status:
   - AIO-043
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement shell-safe operator decision input path and focused verification
 - id: AIO-045
 - item_type: task
@@ -1028,6 +1021,58 @@ _No items_
 - dependencies:
   - AIO-045
 - status: completed
+
+### Record post-M8 proof review, reconcile board/state inconsistencies, and ratify the next conservative slice
+- id: AIO-047
+- item_type: task
+- title: Record post-M8 proof review, reconcile board/state inconsistencies, and ratify the next conservative slice
+- details: produce one explicit post-`M8` review artifact grounded only in committed evidence, state what `M8` truly proved, reconcile the committed board/state inconsistency where completed `AIO-045` and `AIO-046` still sat under `Backlog`, and ratify exactly one next conservative slice without inflating readiness or broadening workflow proof
+- objective: keep the proof boundary explicit after `M8` and re-align the authoritative planning surface before the next slice begins
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M9 - Post-M8 Current-State And Planning-Surface Reconciliation
+- expected_artifact_path: projects/aioffice/governance/M8_OPERATOR_DECISION_INPUT_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - what `AIO-044`, `AIO-045`, and `AIO-046` proved is explicit
+  - board/state reconciliation decisions are explicit
+  - exactly one next conservative slice is ratified, if supported by the evidence
+- dependencies:
+  - AIO-046
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Reconcile stale current-state and planning-surface wording to post-M8 truth
+- id: AIO-048
+- item_type: task
+- title: Reconcile stale current-state and planning-surface wording to post-M8 truth
+- details: reconcile the stale current-state and planning-surface documents already identified in committed governance so project status, workflow wording, project-brain guidance, and ledger header wording no longer conflict with accepted post-`M8` truth
+- objective: reduce audit friction and operator ambiguity without changing control behavior or readiness claims
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M9 - Post-M8 Current-State And Planning-Surface Reconciliation
+- expected_artifact_path: projects/aioffice/governance/PROJECT.md
+- acceptance:
+  - `PROJECT.md`, `WORKFLOW_VISION.md`, and `PROJECT_BRAIN.md` are reconciled to post-`M8` truth where they are currently stale
+  - stale `KANBAN.md` header wording is reconciled to the current non-bootstrap state
+  - no readiness or workflow-proof inflation is introduced
+  - any remaining unresolved conflict is left explicit rather than implied closed
+- dependencies:
+  - AIO-047
+- status: backlog
 
 ## TODO
 - decide whether and when to mirror these tasks into the canonical SQLite task store
