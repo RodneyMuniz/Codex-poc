@@ -47,6 +47,8 @@
 - Rationale: the separate `apply` branch and same-workspace/shared-store behavior are directly named in the accepted `M5` readiness review as missing proof within the current boundary. Closing those gaps is a safer prerequisite than expanding into `design`, `build_or_write`, `qa`, or `publish`.
 
 ## 6. Proposed Next Tasks
+- `AIO-035A`:
+  - establish a GitHub-visible remote review anchor for the current accepted state so later `M6` proof work can be audited against pushed branch, tag, and grounding-file evidence rather than local-only state
 - `AIO-036`:
   - rehearse the sanctioned `apply` branch under supervision and record factual evidence
 - `AIO-037`:
@@ -55,6 +57,7 @@
   - record a narrow review of what the new slice proved, what remains unproven, and whether the readiness posture changed
 
 ## 7. Why These Tasks Come Before Broader Autonomy Or Later-Stage Expansion
+- `AIO-035A` creates a conservative external review anchor for the accepted baseline before additional `M6` proof evidence is generated.
 - They exercise already implemented sanctioned paths instead of mixing proof with new workflow construction.
 - They directly target the highest-signal gaps named in the accepted `M5` readiness review.
 - They keep the system fail-closed by strengthening the current boundary before widening it.
@@ -67,5 +70,5 @@
 - Failure analysis would become harder because new later-stage behavior and unresolved current-path behavior would be entangled.
 
 ## 9. Immediate Operator Decision Needed
-- Approve whether the next operational slice should stay narrow and begin with `AIO-036` through `AIO-038` under a planned `M6` proof milestone.
-- If approved, the first execution step should be moving `AIO-036` into `ready` without treating that as proof of later-stage workflow or improved semi-autonomous readiness.
+- Approve whether the next operational slice should stay narrow and begin with `AIO-035A` through `AIO-038` under the planned `M6` proof milestone.
+- If approved, the first execution step should be moving `AIO-035A` into `ready` without treating that as proof of later-stage workflow or improved semi-autonomous readiness.

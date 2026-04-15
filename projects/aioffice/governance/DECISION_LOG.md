@@ -68,3 +68,13 @@
   - the accepted readiness posture remains `ready only for narrow supervised bounded operation`, not ready for a bounded supervised semi-autonomous cycle
   - proving unresolved behavior inside the already implemented boundary is safer and more reviewable than widening the workflow claim into later stages at the same time
   - this ratifies `M6` as a planned narrow proof slice, not as proof that later-stage workflow, unattended operation, or broader semi-autonomous readiness has been achieved
+
+### AIO-D-009
+- date: 2026-04-15
+- status: reviewed
+- decision: before additional `M6` proof rehearsals, AIOffice will establish a narrow GitHub-visible remote review anchor for the current accepted state using the current working branch, the accepted post-`M5` baseline tag, and a project-local `governance/ACTIVE_STATE.md` file. GitHub is the external review surface for audit; the local repository remains the implementation workspace.
+- rationale:
+  - current `M6` proof work benefits from an external review anchor that is stronger than local-only state when later audit or review is needed
+  - this is a narrow proof-auditability step inside `M6`, not a separate infrastructure initiative
+  - the task does not change the accepted readiness posture and does not imply later-stage workflow proof, autonomy readiness, or real multi-agent maturity
+  - grounding later `M6` artifacts on pushed branch, tag, and file evidence makes future proof review more conservative and reviewable

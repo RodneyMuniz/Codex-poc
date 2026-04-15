@@ -762,6 +762,25 @@ _No items_
 
 ## Backlog
 
+### Establish remote review surface for AIOffice
+- id: AIO-035A
+- item_type: task
+- title: Establish remote review surface for AIOffice
+- details: create a controlled GitHub-visible review anchor for the current accepted AIOffice state so future `M6` proof work and audit can be grounded on pushed branch, tag, and file evidence rather than local-only state
+- objective: strengthen narrow supervised proof credibility and auditability without changing the accepted readiness posture or widening workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: Project Orchestrator
+- milestone: M6 - Post-M5 Narrow Proof Slice
+- expected_artifact_path: projects/aioffice/governance/ACTIVE_STATE.md
+- acceptance:
+  - the current authoritative working branch and accepted baseline tag are recorded in `projects/aioffice/governance/ACTIVE_STATE.md`
+  - GitHub-visible branch, tag, and grounding-file review anchors are established for audit
+  - the current accepted posture and active `M6` tasks are restated without changing readiness claims
+  - no later-stage workflow, autonomy, or UAT readiness claim is added
+- dependencies:
+  - AIO-034
+- status: backlog
+
 ### Rehearse separate apply branch under supervision and record evidence
 - id: AIO-036
 - item_type: task
@@ -780,6 +799,7 @@ _No items_
 - dependencies:
   - AIO-031
   - AIO-034
+  - AIO-035A
 - status: backlog
 
 ### Run bounded same-workspace repeated-run or shared-store contention rehearsal
@@ -800,6 +820,7 @@ _No items_
 - dependencies:
   - AIO-030
   - AIO-034
+  - AIO-035A
 - status: backlog
 
 ### Record narrow post-M5 proof review for apply and shared-store behavior
