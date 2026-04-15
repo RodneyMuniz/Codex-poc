@@ -146,12 +146,36 @@ The first success bar is integrity, not throughput. AIOffice succeeds early if i
 - the original AIOffice `M1` through `M10` roadmap remains the strategic backbone for sequencing
 - the current accepted local `execution/KANBAN.md` is the authoritative source for milestone and task status truth
 - current accepted posture is:
-  - `M1` through `M4`: complete
-  - `M5`: partially complete
-  - completed current `M5` work: `AIO-029`, `AIO-030`, `AIO-031`
-  - remaining current `M5` work: `AIO-032`, `AIO-033`, `AIO-034`
+  - `M1` through `M9`: complete
+  - no post-`M9` milestone is ratified yet
+  - current readiness posture is:
+    - `ready only for narrow supervised bounded operation`
+    - not ready for a bounded supervised semi-autonomous cycle
+  - current live workflow proof stops at `architect`
+  - `M6` proved:
+    - a GitHub-visible remote review surface exists
+    - one supervised sanctioned `apply`-path run exists
+    - sequential same-workspace and same-store reuse preserved control-plane identity and receipt scoping on the exercised path
+    - reusing the same authoritative destination path is last-write-wins on the live destination file
+  - `M7` proved:
+    - system reality is mapped in committed governance
+    - the narrow operator decision surface is defined
+    - the operator-facing `bundle-decision` wrapper exists with focused verification
+    - one bounded supervised operator-facing decision-surface rehearsal was executed against persisted state
+  - `M8` proved:
+    - the shell-safe operator decision input contract is defined
+    - the operator-facing `bundle-decision` wrapper supports `--destination-mappings-file` with focused verification
+    - one bounded supervised rehearsal of the file-based operator decision input path was executed against persisted state
+    - the file-based path reduced shell and JSON transport brittleness on the exercised operator path
+  - `M6` through `M8` did not prove:
+    - concurrent contention handling
+    - later-stage workflow
+    - real multi-agent maturity
+    - UAT readiness
 - accepted divergence from the original roadmap is explicit:
   - original `M3` operator-design work was deferred rather than silently removed
-  - control-kernel, persistence, inspection, and supervised-control work were pulled forward into current `M3` through `M5`
-- original `M6` through `M10` remain preserved with refinements rather than replaced in this charter
+  - control-kernel, persistence, inspection, and supervised-control work were pulled forward into accepted `M3` through `M5`
+  - accepted execution through `M9` outranks older roadmap wording for present-tense status claims
+- original `M6` through `M10` remain preserved as strategic roadmap references rather than being silently discarded
+- no post-`M9` milestone is ratified by this charter
 - constitutional product ideas may refine future milestone intent, but they do not become backlog commitments until explicitly accepted into `execution/KANBAN.md`

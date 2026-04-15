@@ -85,8 +85,8 @@ A valid `stage_run` conceptually carries:
 | --- | --- | --- |
 | Controlled workflow state | Proven for the implemented control-kernel slice through sanctioned persisted state and read-only inspection. | This is not proof that the full conceptual workflow engine exists end-to-end. |
 | First-slice stage progression | Proven for `intake`, `pm`, `context_audit`, and `architect` as the current fail-closed workflow slice. | Current workflow proof stops at `architect`; later stages remain planned unless evidence proves otherwise. |
-| Operator invocation | Proven as an operator-facing sanctioned path under current accepted `M5` execution truth. | This does not prove later-stage workflow completion or unattended operation. |
-| Apply / promotion control path | Implemented as a sanctioned path under current accepted `M5` execution truth. | Supervised rehearsal evidence for apply/promotion remains outstanding until current `AIO-032` is completed. |
+| Operator invocation | Proven as an operator-facing sanctioned path over sanctioned persisted state, read-only inspection, and narrow decision surfaces exercised under current accepted `M7` and `M8` execution truth. | This does not prove later-stage workflow completion, automatic bundle discovery, or unattended operation. |
+| Apply / promotion control path | Proven on the sanctioned store path and on the exercised operator-facing decision surfaces under current accepted `M6` through `M8` execution truth. | This is proof of narrow supervised exercised paths only; it does not prove concurrent contention safety, later-stage workflow, or unattended operation. |
 | Design, build, QA, and publish flow | Canonical and planned. | They may be described conceptually, but they must not be claimed as proven live workflow stages without new evidence. |
 | Semi-autonomous or unattended operation | Planned for explicit later review only. | Not proven. No claim of unattended readiness is authorized here. |
 
@@ -160,7 +160,7 @@ The following remain intentionally incomplete or unproven in the current baselin
 - no broadly proven readiness-detection engine yet
 - no proven later-stage live workflow beyond `architect`
 - no proof here of a full end-to-end stage engine across the whole conceptual loop
-- no claim here that apply/promotion rehearsal evidence already exists
+- apply/promotion rehearsal evidence exists only for the narrow supervised paths recorded in committed `M6` through `M8` evidence; broader workflow claims remain unauthorized
 - no claim here of unattended, overnight, or self-directing operation
 
 This document still governs now because later code, tests, rehearsals, and reviews must derive workflow behavior from these fail-closed expectations.

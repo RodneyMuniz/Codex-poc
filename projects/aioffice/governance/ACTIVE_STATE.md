@@ -9,7 +9,7 @@
 - authoritative accepted baseline tag: `aioffice-m5-closeout-2026-04-15`
 
 ## Current Accepted Posture
-- `M1` through `M8` are complete.
+- `M1` through `M9` are complete.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -43,11 +43,12 @@
   - later-stage workflow
   - real multi-agent maturity
   - UAT readiness
-- `M9` is the active milestone and remains a narrow current-state / planning-surface reconciliation slice.
-- `M9` does not imply control-behavior changes, later-stage workflow proof, or readiness upgrades.
+- `M9` completed as a narrow current-state / planning-surface reconciliation slice.
+- `M9` did not change control behavior, later-stage workflow proof, or readiness posture.
+- no post-`M9` milestone is ratified yet.
 
-## Current Active M9 Tasks In Order
-1. `AIO-048` - reconcile stale current-state and planning-surface wording to post-`M8` truth
+## Current Active Post-M9 Tasks In Order
+_No post-`M9` milestone or task sequence is ratified yet._
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

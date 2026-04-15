@@ -1,16 +1,15 @@
-# AIOffice Kanban Bootstrap
+# AIOffice Operational Ledger
 
-Bootstrap status:
-- manual founding backlog seed
-- governance-first planning surface
-- not yet mirrored into canonical task rows
-- canonical task import deferred while durable `dependencies` cannot be preserved in the current schema
+Ledger status:
+- accepted authoritative AIOffice milestone and task ledger
+- governance-first current-state planning surface
+- canonical task import remains deferred while durable `dependencies` cannot be preserved safely in the current schema
 
-## Backlog Source Of Truth
-- AIOffice task tracking currently lives in this project-local `KANBAN.md`.
+## Operational Source Of Truth
+- AIOffice operational task tracking currently lives in this project-local `KANBAN.md`.
 - AIO tasks are not yet mirrored into the app/canonical task board.
-- Until canonical task import safely preserves required durable fields, this file is the AIOffice backlog source of truth.
-- App surfaces for AIO are projections only and must not be treated as authoritative backlog state.
+- Until canonical task import safely preserves required durable fields, this file is the AIOffice milestone and task source of truth.
+- App surfaces for AIO are projections only and must not be treated as authoritative task or milestone state.
 
 ## Board Lifecycle
 - `backlog`
@@ -19,6 +18,15 @@ Bootstrap status:
 - `in_review`
 - `completed`
 - `blocked` and `deferred` remain secondary states
+
+## Board Invariants
+- `status` is the canonical task-state signal for every `AIO-*` task row.
+- Physical section placement is derived from canonical `status` and must match it.
+- Any mismatch between a task row's `status` and its section placement is a ledger defect.
+- Each `AIO-*` task row must appear exactly once in this file.
+- `## Completed` may contain only task rows whose canonical `status` is `completed`.
+- `## Ready`, `## In Progress`, and `## In Review` may contain only task rows whose canonical `status` matches the section name.
+- `## Backlog` may contain only task rows whose canonical `status` is `backlog`.
 
 ## Milestone Ledger
 
@@ -83,7 +91,7 @@ Bootstrap status:
 - entry_goal: `M8` has closed with an explicit review, and the next work should reconcile stale current-state and planning-surface wording to accepted post-`M8` truth without changing control behavior or readiness claims.
 - exit_goal: the stale current-state, workflow, project-brain, and ledger-header surfaces identified in committed governance are reconciled to post-`M8` truth, reducing audit friction without widening workflow proof.
 - owner_role: Project Orchestrator
-- status: in_progress
+- status: completed
 
 ## Completed
 
@@ -1041,6 +1049,27 @@ Bootstrap status:
   - AIO-046
 - status: completed
 
+### Reconcile stale current-state and planning-surface wording to post-M8 truth
+- id: AIO-048
+- item_type: task
+- title: Reconcile stale current-state and planning-surface wording to post-M8 truth
+- details: reconcile the stale current-state and planning-surface documents already identified in committed governance so project status, workflow wording, project-brain guidance, and ledger header wording no longer conflict with accepted post-`M8` truth
+- objective: reduce audit friction and operator ambiguity without changing control behavior or readiness claims
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M9 - Post-M8 Current-State And Planning-Surface Reconciliation
+- expected_artifact_path: projects/aioffice/governance/PROJECT.md
+- acceptance:
+  - `PROJECT.md`, `WORKFLOW_VISION.md`, and `PROJECT_BRAIN.md` are reconciled to post-`M8` truth where they are currently stale
+  - stale `KANBAN.md` header wording is reconciled to the current non-bootstrap state
+  - `KANBAN.md` makes section placement subordinate to canonical `status` and preserves one-row-per-task discipline
+  - `ACTIVE_STATE.md` reflects post-`M8` truth and post-`M9` state without readiness inflation
+  - no readiness or workflow-proof inflation is introduced
+  - any remaining unresolved conflict is left explicit rather than implied closed
+- dependencies:
+  - AIO-047
+- status: completed
+
 ## In Review
 
 _No items_
@@ -1055,27 +1084,9 @@ _No items_
 
 ## Backlog
 
-### Reconcile stale current-state and planning-surface wording to post-M8 truth
-- id: AIO-048
-- item_type: task
-- title: Reconcile stale current-state and planning-surface wording to post-M8 truth
-- details: reconcile the stale current-state and planning-surface documents already identified in committed governance so project status, workflow wording, project-brain guidance, and ledger header wording no longer conflict with accepted post-`M8` truth
-- objective: reduce audit friction and operator ambiguity without changing control behavior or readiness claims
-- owner_role: Project Orchestrator
-- assigned_role: Architect
-- milestone: M9 - Post-M8 Current-State And Planning-Surface Reconciliation
-- expected_artifact_path: projects/aioffice/governance/PROJECT.md
-- acceptance:
-  - `PROJECT.md`, `WORKFLOW_VISION.md`, and `PROJECT_BRAIN.md` are reconciled to post-`M8` truth where they are currently stale
-  - stale `KANBAN.md` header wording is reconciled to the current non-bootstrap state
-  - no readiness or workflow-proof inflation is introduced
-  - any remaining unresolved conflict is left explicit rather than implied closed
-- dependencies:
-  - AIO-047
-- status: backlog
+_No items_
 
-## TODO
+## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
-- replace bootstrap acceptance wording with ratified governance language
-- add later milestones only after M1 artifacts are approved
 - record any blocker or deferred states explicitly instead of inventing silent transitions
+- no post-`M9` milestone is ratified yet
