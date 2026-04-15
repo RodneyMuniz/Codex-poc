@@ -1,9 +1,9 @@
 # AIOffice Stage Governance
 
 Status:
-- drafted under AIO-009 for operator review
-- governing workflow-stage contract draft for AIOffice
-- defines canonical stage intent and expectations without claiming runtime enforcement already exists
+- accepted stage-governance baseline under completed `AIO-009`
+- governing workflow-stage contract for AIOffice
+- preserves the canonical stage set while distinguishing the narrower currently proven implementation scope
 
 ## 1. Purpose And Scope
 
@@ -11,7 +11,7 @@ Stage governance exists to protect orchestration integrity. AIOffice does not tr
 
 Stage names are not evidence. A stage is not complete because a model says it is complete, because a role label was used, or because a summary sounds plausible. A stage may be treated as satisfied only when the required artifact and handoff expectations for that stage have been met through a controlled acceptance path.
 
-Final output without required stage artifacts and handoffs is workflow failure. This document defines the canonical stage contract that later code, gates, and inspection surfaces must enforce.
+Final output without required stage artifacts and handoffs is workflow failure. Ambiguous state is blocked state by default. When evidence is missing, conflicting, or unclear, the system must fail closed rather than infer a convenient interpretation.
 
 ## 2. Canonical Stage Order
 
@@ -27,11 +27,16 @@ The canonical ordered workflow stages for AIOffice are:
 8. `publish`
 
 Rules:
-- This order is canonical for AIOffice workflow interpretation.
-- Later stages do not self-authorize.
-- A downstream stage may not treat itself as valid merely because upstream work was implied in chat.
-- Stage skipping is a workflow failure unless a future policy explicitly defines a valid exception.
-- A later stage may remain out of scope for a given trial, but it may not be claimed as satisfied unless its own stage expectations are met.
+- this order is canonical for AIOffice workflow interpretation
+- later stages do not self-authorize
+- a downstream stage may not treat itself as valid merely because upstream work was implied in chat
+- stage skipping is a workflow failure unless a future policy explicitly defines a valid exception
+- a later stage may remain out of scope for a given trial, but it may not be claimed as satisfied unless its own stage expectations are met
+
+Current proof boundary:
+- the currently proven implementation scope is narrower than the full conceptual stage set
+- current live workflow proof is limited to the first slice through `architect`
+- `design`, `build_or_write`, `qa`, and `publish` remain canonical stages, but they are not yet proven as live workflow stages in current evidence
 
 ## 3. Stage Purpose Summary
 
@@ -48,139 +53,143 @@ Rules:
 
 ## 4. Stage Entry Expectations
 
-These are governance-level prerequisites. They define what must exist conceptually before a stage may begin. They do not claim that enforcement code already exists.
+These are governance-level prerequisites. They define what must exist conceptually before a stage may begin. They do not claim that the full enforcement engine already exists.
 
 ### `intake`
-- An operator-directed work request exists.
-- The work is identifiable enough to be recorded against a governed backlog item or equivalent bounded instruction.
+- an operator-directed work request exists
+- the work is identifiable enough to be recorded against a governed backlog item or equivalent bounded instruction
 
 ### `pm`
-- `intake` has produced a request artifact or equivalent intake record.
-- The requested work is bounded enough for planning, clarification, or assumption handling.
+- `intake` has produced a request artifact or equivalent intake record
+- the requested work is bounded enough for planning, clarification, or assumption handling
 
 ### `context_audit`
-- `pm` has produced a planning artifact, clarification artifact, assumption artifact, or equivalent PM output.
-- There is enough scope definition to identify what context must be audited.
+- `pm` has produced a planning artifact, clarification artifact, assumption artifact, or equivalent PM output
+- there is enough scope definition to identify what context must be audited
 
 ### `architect`
-- `pm` output exists.
-- `context_audit` output exists.
-- The work is ready for structural decision-making rather than further intake narration.
+- `pm` output exists
+- `context_audit` output exists
+- the work is ready for structural decision-making rather than further intake narration
 
 ### `design`
-- `architect` output exists.
-- The approved architecture is specific enough to guide implementation planning.
+- `architect` output exists
+- the approved architecture is specific enough to guide implementation planning
 
 ### `build_or_write`
-- `architect` output exists.
-- Any required `design` output exists when design is part of the chosen path.
-- The intended write/build scope is bounded enough to execute without inventing upstream truth.
+- `architect` output exists
+- any required `design` output exists when design is part of the chosen path
+- the intended write/build scope is bounded enough to execute without inventing upstream truth
 
 ### `qa`
-- `build_or_write` output exists.
-- The produced output is reviewable against explicit acceptance or verification expectations.
+- `build_or_write` output exists
+- the produced output is reviewable against explicit acceptance or verification expectations
 
 ### `publish`
-- `qa` output exists.
-- The output proposed for promotion has a reviewable verification record.
+- `qa` output exists
+- the output proposed for promotion has a reviewable verification record
 
 Dependency summary:
-- `pm` follows `intake`.
-- `context_audit` follows `pm`.
-- `architect` follows `pm` and `context_audit`.
-- `design` and `build_or_write` follow `architect`.
-- `qa` follows `build_or_write`.
-- `publish` follows `qa`.
+- `pm` follows `intake`
+- `context_audit` follows `pm`
+- `architect` follows `pm` and `context_audit`
+- `design` and `build_or_write` follow `architect`
+- `qa` follows `build_or_write`
+- `publish` follows `qa`
+
+Entry rule:
+- if prerequisite truth is ambiguous, conflicting, or unsupported, the next stage does not start
 
 ## 5. Stage Exit Expectations
 
 A stage is complete only when its conceptual proof exists in durable form. Exit expectations are defined in artifact and handoff terms, not in persona-performance terms.
 
 ### `intake`
-- The request is captured in a durable artifact.
-- Scope boundaries and visible constraints are recorded clearly enough for PM follow-up.
-- The next stage does not need to infer the original ask from chat alone.
+- the request is captured in a durable artifact
+- scope boundaries and visible constraints are recorded clearly enough for PM follow-up
+- the next stage does not need to infer the original ask from chat alone
 
 ### `pm`
-- A planning output exists in durable form.
-- Clarification questions or explicit assumptions exist where ambiguity remains.
-- Downstream stages can see what was decided, what remains open, and what is provisional.
+- a planning output exists in durable form
+- clarification questions or explicit assumptions exist where ambiguity remains
+- downstream stages can see what was decided, what remains open, and what is provisional
 
 ### `context_audit`
-- A context audit artifact records the relevant environment findings.
-- Material constraints, evidence sources, and observed gaps are visible.
-- Downstream design work does not need to trust unsupported environment claims.
+- a context audit artifact records the relevant environment findings
+- material constraints, evidence sources, and observed gaps are visible
+- downstream design work does not need to trust unsupported environment claims
 
 ### `architect`
-- A durable architecture decision artifact exists.
-- Structural approach, major tradeoffs, and declared constraints are explicit.
-- Downstream implementation work can reference a stable design basis instead of inferring one.
+- a durable architecture decision artifact exists
+- structural approach, major tradeoffs, and declared constraints are explicit
+- downstream implementation work can reference a stable design basis instead of inferring one
 
 ### `design`
-- A durable design artifact exists for the approved architecture.
-- The implementation shape, packetization, or content plan is explicit enough for bounded execution.
-- The next stage does not need to invent missing design decisions silently.
+- a durable design artifact exists for the approved architecture
+- the implementation shape, packetization, or content plan is explicit enough for bounded execution
+- the next stage does not need to invent missing design decisions silently
 
 ### `build_or_write`
-- A durable implementation or content artifact exists.
-- The produced output is bounded to the approved scope and path.
-- The next stage can inspect what was produced without relying on execution narration.
+- a durable implementation or content artifact exists
+- the produced output is bounded to the approved scope and path
+- the next stage can inspect what was produced without relying on execution narration
 
 ### `qa`
-- A durable QA artifact exists.
-- Verification results, failures, or limits are explicit.
-- Publish decisions can reference observed proof rather than completion claims.
+- a durable QA artifact exists
+- verification results, failures, or limits are explicit
+- publish decisions can reference observed proof rather than completion claims
 
 ### `publish`
-- A durable publish package or equivalent promotion artifact exists.
-- What is being promoted, from which verified source, and by which path is explicit.
-- Final delivery is tied to preserved provenance and verification context.
+- a durable publish package or equivalent promotion artifact exists
+- what is being promoted, from which verified source, and by which path is explicit
+- final delivery is tied to preserved provenance and verification context
 
 ## 6. Ownership Model
 
 Ownership is defined at the contract level. It is not proof that separate human or model entities performed the work.
 
 ### Operator
-- Gives direction, scope, priorities, and acceptance intent.
-- May approve, reject, defer, or redirect work.
-- Does not replace required artifacts with conversational preference alone.
+- gives direction, scope, priorities, and acceptance intent
+- may approve, reject, defer, or redirect work
+- does not replace required artifacts with conversational preference alone
 
 ### Control Kernel
-- Owns workflow state, stage sufficiency rules, acceptance logic, and controlled mutation paths.
-- Determines whether a stage may be treated as satisfied.
-- Must fail closed when required evidence is missing.
+- owns workflow state, stage sufficiency rules, acceptance logic, and controlled mutation paths
+- determines whether a stage may be treated as satisfied
+- must fail closed when required evidence is missing
 
 ### Reasoning / Orchestration Model
-- May propose plans, identify gaps, question assumptions, and review artifacts.
-- May assist with stage outputs when explicitly tasked.
-- Does not become authoritative merely by using stage labels or persuasive narration.
+- may propose plans, identify gaps, question assumptions, and review artifacts
+- may assist with stage outputs when explicitly tasked
+- does not become authoritative merely by using stage labels or persuasive narration
 
 ### Codex Executor
-- May produce bounded stage artifacts, diffs, and reports within assigned scope.
-- Does not determine stage sufficiency.
-- Does not decide acceptance, promotion, or canonical workflow truth.
+- may produce bounded stage artifacts, diffs, and reports within assigned scope
+- does not determine stage sufficiency
+- does not decide acceptance, promotion, or canonical workflow truth
 
 ### Stage Contract Owners
-- Are responsible for the contract expectations of a stage.
-- Own the definition of what that stage must prove.
-- Do not prove stage satisfaction merely by title or role label.
+- are responsible for the contract expectations of a stage
+- own the definition of what that stage must prove
+- do not prove stage satisfaction merely by title or role label
 
 Rules:
-- Role labels do not prove separate execution.
-- Codex may produce bounded stage artifacts.
-- Codex does not determine stage sufficiency.
-- Only controlled acceptance paths may treat a stage as satisfied.
+- role labels do not prove separate execution
+- Codex may produce bounded stage artifacts
+- Codex does not determine stage sufficiency
+- only controlled acceptance paths may treat a stage as satisfied
+- execution profiles, higher-spend modes, or richer model lanes may not weaken stage governance
 
 ## 7. Handoff Expectations
 
 Handoffs are required workflow connectors between stages.
 
 Rules:
-- Downstream work must reference upstream artifacts.
-- A handoff summarizes upstream state, open issues, and next-stage expectations.
-- A handoff does not replace the upstream artifact that proves the stage output.
-- Missing handoff is a governance failure even if some document exists.
-- A downstream artifact that cannot identify its upstream basis is not trustworthy stage progression.
+- downstream work must reference upstream artifacts
+- a handoff summarizes upstream state, open issues, and next-stage expectations
+- a handoff does not replace the upstream artifact that proves the stage output
+- missing handoff is a governance failure even if some document exists
+- a downstream artifact that cannot identify its upstream basis is not trustworthy stage progression
 
 ## 8. Artifact Expectations By Stage
 
@@ -209,17 +218,30 @@ Blocked or escalation conditions include:
 - unresolved question
 - unresolved blocker
 - ambiguous scope
+- ambiguous state
+- conflicting sources of truth
 - failed verification
 - insufficient upstream output
-- conflicting sources of truth
 - missing acceptance context for the current stage
 
 Rules:
-- Blocked state is meaningful workflow state, not mere inconvenience.
-- A blocked stage must not self-resolve by assumption collapse.
-- Escalation is required when ambiguity, missing proof, or conflicting evidence prevents trustworthy continuation.
+- blocked state is meaningful workflow state, not mere inconvenience
+- ambiguous state fails closed by default
+- a blocked stage must not self-resolve by assumption collapse
+- when evidence conflicts, the system must escalate instead of choosing the most optimistic interpretation
+- escalation is required when ambiguity, missing proof, or conflicting evidence prevents trustworthy continuation
 
-## 10. Forward-Compatible Enforcement Notes
+## 10. Governance Invariance Across Execution Modes
+
+Governance does not become weaker because a run is more expensive, faster, or using a different execution profile.
+
+Rules:
+- execution profiles may change cost, speed, or model selection, but not stage order
+- execution profiles may not waive required artifacts, handoffs, approvals, or proof thresholds
+- higher-spend modes may not justify skipping blocked-state handling
+- convenience is not a valid reason to weaken fail-closed governance
+
+## 11. Forward-Compatible Enforcement Notes
 
 This document defines governance now and identifies what later code should enforce.
 
@@ -230,35 +252,9 @@ Future enforcement targets:
 - handoff enforcement
 - inspection surface
 
-Not yet implemented:
-- persistent stage-run records
-- automated stage gate evaluation
-- automated artifact sufficiency checks
-- automated handoff validation
-- authoritative workflow inspection UI or equivalent control-plane surface
-
-## 11. Minimal Examples
-
-### Good Partial Workflow Example
-
-A golden-task trial enters `intake`, `pm`, `context_audit`, and `architect` only.
-
-- `intake` produces an intake request artifact that records the bounded ask and constraints.
-- `pm` produces a PM plan plus an assumption register.
-- `context_audit` produces a context audit report tied to the code and environment reviewed.
-- `architect` produces an architecture decision artifact that references both upstream artifacts.
-- A handoff records that the trial stops after `architect`.
-
-This is valid because each completed stage has distinct durable output and the workflow stop point is explicit.
-
-### Invalid Example: `build_or_write` Starts Without Architecture
-
-`pm` produces a plan, then an executor starts writing code and claims architecture was obvious.
-
-This is invalid because `build_or_write` does not outrank `architect`. The missing architecture artifact and missing handoff mean the workflow has skipped a required stage without approved policy.
-
-### Invalid Example: `publish` Claimed Without QA Artifact
-
-A build artifact exists, and a summary says the output is ready to ship, but no QA report exists.
-
-This is invalid because `publish` cannot be treated as satisfied without the QA-stage proof that verifies what is being promoted.
+Not yet fully proven or implemented:
+- later-stage live workflow beyond `architect`
+- automated stage gate evaluation across the full canonical stage set
+- automated artifact sufficiency checks across all later stages
+- automated handoff validation across the whole workflow
+- authoritative workflow inspection UI or equivalent control-plane surface beyond the current narrower proof slice

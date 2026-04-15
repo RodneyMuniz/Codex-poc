@@ -546,6 +546,70 @@ def test_operator_api_control_kernel_details_rejects_unknown_bundle_lookup(monke
     assert "Execution bundle not found: bundle_missing" in payload["error"]
 
 
+def test_operator_api_control_kernel_details_rejects_duplicate_workspace_root(monkeypatch, capsys, tmp_path):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path / "authoritative")
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+    monkeypatch.setattr(operator_api, "ROOT", repo_root)
+    monkeypatch.setattr(operator_api, "_routing_catalog", lambda: {})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "control-kernel-details",
+            "--workspace-root",
+            str(duplicate_root),
+            "--bundle-id",
+            "bundle_test",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "WorkspaceRootAuthorityError"
+    assert "non-authoritative duplicate workspace root" in payload["error"]
+
+
+def test_operator_api_control_kernel_details_rejects_missing_workspace_store(monkeypatch, capsys, tmp_path):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path / "authoritative")
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    inspection_workspace = repo_root / "projects" / "aioffice" / "artifacts" / "fresh_inspection_workspace"
+    inspection_workspace.mkdir(parents=True)
+    database_path = inspection_workspace / "sessions" / "studio.db"
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+    monkeypatch.setattr(operator_api, "ROOT", repo_root)
+    monkeypatch.setattr(operator_api, "_routing_catalog", lambda: {})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "control-kernel-details",
+            "--workspace-root",
+            str(inspection_workspace),
+            "--bundle-id",
+            "bundle_test",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "must already contain a sanctioned persisted store at sessions/studio.db" in payload["error"]
+    assert not database_path.exists()
+
+
 def test_operator_api_control_kernel_details_reads_without_mutation(monkeypatch, capsys, tmp_path):
     fixture = _build_control_kernel_fixture(tmp_path)
 
@@ -615,8 +679,109 @@ def test_operator_api_aioffice_supervised_architect_rehearsal_succeeds(monkeypat
     contracts = {item["contract_name"] for item in payload["produced_artifacts"]}
     assert {"architecture_decision_v1", "provider_external_proof_v1", "architect_reconciliation_v1"} <= contracts
     rehearsal_root = Path(payload["workspace_root"])
-    assert not (rehearsal_root / "projects" / "tactics-game" / "execution" / "KANBAN.md").exists()
-    assert not (rehearsal_root / "memory" / "framework_health.json").exists()
+    workflow_id = payload["workflow_run"]["id"]
+    expected_files = {
+        "sessions/studio.db",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/intake/intake_request_v1.md",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/pm/pm_plan_v1.md",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/pm/pm_assumption_register_v1.md",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/context_audit/context_audit_report_v1.md",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/architect/architecture_decision_v1.md",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/architect/provider_external_proof_v1.json",
+        f"projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/{workflow_id}/architect/architect_reconciliation_v1.json",
+    }
+    actual_files = {
+        str(path.relative_to(rehearsal_root)).replace("\\", "/")
+        for path in rehearsal_root.rglob("*")
+        if path.is_file()
+    }
+    assert actual_files == expected_files
+    assert "projects/tactics-game/execution/KANBAN.md" not in actual_files
+    assert "memory/framework_health.json" not in actual_files
+    assert "memory/session_summaries.json" not in actual_files
+
+
+def test_operator_api_aio030_supervised_rehearsal_round_trips_persisted_state_via_cli(
+    monkeypatch,
+    capsys,
+    tmp_path,
+):
+    repo_root = _prepare_authoritative_operator_repo(tmp_path)
+    duplicate_root = tmp_path / "duplicate"
+    duplicate_root.mkdir(parents=True)
+    monkeypatch.setenv("AISTUDIO_AUTHORITATIVE_ROOT", str(repo_root))
+    monkeypatch.setenv("AISTUDIO_NON_AUTHORITATIVE_DUPLICATE_ROOT", str(duplicate_root))
+    monkeypatch.setattr(operator_api, "ROOT", repo_root)
+    monkeypatch.setattr(operator_api, "_routing_catalog", lambda: {})
+
+    rehearsal_root = "projects/aioffice/artifacts/m5_aio030_operator_cli_test/workspace"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "aioffice-supervised-architect-rehearsal",
+            "--task-id",
+            "AIO-030",
+            "--confirm-supervised",
+            "--operator",
+            "Project Orchestrator",
+            "--provider-request-id",
+            "prov_test_030",
+            "--reconciliation-evidence-source",
+            "operator_cli_test",
+            "--rehearsal-root",
+            rehearsal_root,
+            "--rehearsal-task",
+            "Prove one supervised AIO-030 operator CLI architect-stop invocation against sanctioned persisted state.",
+        ],
+    )
+
+    operator_api.main()
+    rehearsal_payload = json.loads(capsys.readouterr().out)
+
+    architect_stage = rehearsal_payload["stage_runs"]["architect"]
+    assert rehearsal_payload["command"] == "aioffice-supervised-architect-rehearsal"
+    assert rehearsal_payload["task_id"] == "AIO-030"
+    assert rehearsal_payload["workflow_run"]["task_id"] == "AIO-030"
+    assert rehearsal_payload["packet"]["workflow_run_id"] == rehearsal_payload["workflow_run"]["id"]
+    assert rehearsal_payload["packet"]["stage_run_id"] == architect_stage["id"]
+    assert rehearsal_payload["packet"]["provenance_note"] == "AIO-030 supervised operator CLI architect rehearsal"
+    assert rehearsal_payload["bundle"]["packet_id"] == rehearsal_payload["packet"]["packet_id"]
+    assert rehearsal_payload["bundle"]["acceptance_state"] == "pending_review"
+    assert '--task-id "AIO-030"' in rehearsal_payload["bundle"]["commands_run"][0]
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "control-kernel-details",
+            "--workspace-root",
+            rehearsal_root,
+            "--workflow-run-id",
+            rehearsal_payload["workflow_run"]["id"],
+            "--stage-run-id",
+            architect_stage["id"],
+            "--packet-id",
+            rehearsal_payload["packet"]["packet_id"],
+            "--bundle-id",
+            rehearsal_payload["bundle"]["bundle_id"],
+        ],
+    )
+
+    operator_api.main()
+    inspection_payload = json.loads(capsys.readouterr().out)
+
+    assert inspection_payload["inspection_workspace_root"] == str((repo_root / rehearsal_root).resolve())
+    assert inspection_payload["workflow_run"]["id"] == rehearsal_payload["workflow_run"]["id"]
+    assert inspection_payload["workflow_run"]["task_id"] == "AIO-030"
+    assert inspection_payload["stage_run"]["id"] == architect_stage["id"]
+    assert inspection_payload["control_execution_packet"]["packet_id"] == rehearsal_payload["packet"]["packet_id"]
+    assert inspection_payload["execution_bundle"]["bundle_id"] == rehearsal_payload["bundle"]["bundle_id"]
+    assert inspection_payload["execution_bundle"]["acceptance_state"] == "pending_review"
+    contracts = {item["contract_name"] for item in inspection_payload["workflow_artifacts"]}
+    assert {"architecture_decision_v1", "provider_external_proof_v1", "architect_reconciliation_v1"} <= contracts
 
 
 def test_operator_api_aioffice_supervised_architect_rehearsal_rejects_wrong_workspace(monkeypatch, tmp_path):

@@ -14,6 +14,82 @@ def _prepare_repo(tmp_path):
     return tmp_path
 
 
+def _prepare_pending_review_apply_bundle(tmp_path):
+    repo_root = _prepare_repo(tmp_path)
+    store = SessionStore(repo_root)
+
+    workflow = store.create_workflow_run(
+        "aioffice",
+        task_id="AIO-031",
+        objective="Prepare a bounded pending-review bundle for controlled promotion.",
+        authoritative_workspace_root="projects/aioffice",
+        current_stage="architect",
+    )
+    stage = store.create_stage_run(
+        workflow["id"],
+        stage_name="architect",
+        status="in_progress",
+    )
+
+    source_artifact_path = (
+        "projects/aioffice/artifacts/m5_apply_promotion/workflow_review/architect/architecture_decision_v1.md"
+    )
+    source_artifact_file = repo_root / "projects" / "aioffice" / "artifacts" / "m5_apply_promotion" / "workflow_review" / "architect" / "architecture_decision_v1.md"
+    source_artifact_file.parent.mkdir(parents=True, exist_ok=True)
+    source_artifact_file.write_text("# Architecture Decision\n\nPromote this reviewed output.\n", encoding="utf-8")
+
+    artifact = store.create_workflow_artifact(
+        "aioffice",
+        workflow_run_id=workflow["id"],
+        stage_run_id=stage["id"],
+        task_id="AIO-031",
+        contract_name="architecture_decision_v1",
+        kind="document",
+        content=source_artifact_file.read_text(encoding="utf-8"),
+        proof_value="architecture_output",
+        artifact_path=source_artifact_path,
+        produced_by="Architect",
+    )
+    packet = store.issue_control_execution_packet(
+        "aioffice",
+        "AIO-031",
+        objective="Apply or promote reviewed bundle outputs through a controlled store path.",
+        authoritative_workspace_root="projects/aioffice",
+        allowed_write_paths=[source_artifact_path],
+        required_artifact_outputs=[source_artifact_path],
+        required_validations=["pytest tests/test_control_kernel_store.py"],
+        expected_return_bundle_contents=["produced artifacts", "evidence receipts"],
+        failure_reporting_expectations=["report blockers", "report assumptions", "report proof gaps"],
+        workflow_run_id=workflow["id"],
+        stage_run_id=stage["id"],
+        issued_by="Project Orchestrator",
+        forbidden_paths=["projects/aioffice/governance", "projects/aioffice/execution/protected"],
+        forbidden_actions=["self_accept", "self_promote"],
+        provenance_note="AIO-031 bounded apply/promotion packet",
+    )
+    bundle = store.ingest_execution_bundle(
+        packet["packet_id"],
+        produced_artifact_ids=[artifact["id"]],
+        diff_refs=[source_artifact_path],
+        commands_run=["pytest tests/test_control_kernel_store.py"],
+        test_results=[{"command": "pytest", "status": "passed"}],
+        self_report_summary="Pending review bundle is ready for controlled promotion.",
+        open_risks=["AIO-032 rehearsal remains out of scope."],
+        evidence_receipts=[{"kind": "provider_metadata", "provider": "manual_harness", "status": "captured"}],
+    )
+    return {
+        "repo_root": repo_root,
+        "store": store,
+        "workflow": workflow,
+        "stage": stage,
+        "artifact": artifact,
+        "packet": packet,
+        "bundle": bundle,
+        "source_artifact_file": source_artifact_file,
+        "source_artifact_path": source_artifact_path,
+    }
+
+
 def test_store_persists_control_kernel_entities_without_canonical_task_rows(tmp_path):
     repo_root = _prepare_repo(tmp_path)
     store = SessionStore(repo_root)
@@ -90,10 +166,9 @@ def test_store_persists_control_kernel_entities_without_canonical_task_rows(tmp_
     assert trace["payload"]["allowed_write_paths"] == ["sessions/store.py"]
 
 
-def test_store_can_skip_legacy_bootstrap_side_effects_for_isolated_rehearsal_roots(tmp_path):
-    repo_root = tmp_path
-    (repo_root / "sessions").mkdir(parents=True)
-    store = SessionStore(repo_root, bootstrap_legacy_defaults=False)
+def test_store_defaults_skip_legacy_bootstrap_side_effects_for_isolated_rehearsal_roots(tmp_path):
+    repo_root = tmp_path / "projects" / "aioffice" / "artifacts" / "m5_isolated_rehearsal" / "workspace"
+    store = SessionStore(repo_root)
     workflow = store.create_workflow_run(
         "aioffice",
         task_id="AIO-029",
@@ -101,12 +176,24 @@ def test_store_can_skip_legacy_bootstrap_side_effects_for_isolated_rehearsal_roo
         authoritative_workspace_root="projects/aioffice",
         current_stage="architect",
     )
+    files = sorted(str(path.relative_to(repo_root)).replace("\\", "/") for path in repo_root.rglob("*") if path.is_file())
 
     assert workflow["project_name"] == "aioffice"
     assert (repo_root / "projects" / "aioffice").exists()
     assert not (repo_root / "projects" / "tactics-game" / "execution" / "KANBAN.md").exists()
     assert not (repo_root / "memory" / "framework_health.json").exists()
     assert not (repo_root / "memory" / "session_summaries.json").exists()
+    assert files == ["sessions/studio.db"]
+
+
+def test_store_can_explicitly_restore_legacy_bootstrap_side_effects_for_isolated_rehearsal_roots(tmp_path):
+    repo_root = tmp_path / "projects" / "aioffice" / "artifacts" / "m5_isolated_rehearsal" / "workspace"
+
+    SessionStore(repo_root, bootstrap_legacy_defaults=True)
+
+    assert (repo_root / "projects" / "tactics-game" / "execution" / "KANBAN.md").exists()
+    assert (repo_root / "memory" / "framework_health.json").exists()
+    assert (repo_root / "memory" / "session_summaries.json").exists()
 
 
 def test_store_issues_control_packets_and_ingests_bundles_without_self_acceptance(tmp_path):
@@ -569,3 +656,207 @@ def test_store_rejects_packet_when_stage_run_context_is_inconsistent(tmp_path):
         assert "stage_run_id" in str(exc) or "stage_run workflow" in str(exc)
     else:
         raise AssertionError("Expected issue_control_execution_packet to reject inconsistent stage_run/workflow_run context.")
+
+
+def test_store_can_execute_controlled_apply_promotion_with_explicit_approved_decision(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    repo_root = context["repo_root"]
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+    destination_path = "projects/aioffice/execution/approved/architecture_decision_v1.md"
+    destination_file = repo_root / "projects" / "aioffice" / "execution" / "approved" / "architecture_decision_v1.md"
+
+    updated_bundle = store.execute_apply_promotion_decision(
+        bundle["bundle_id"],
+        approved_decision={
+            "decision": "approved",
+            "action": "promote",
+            "approved_by": "Project Orchestrator",
+            "decision_note": "Approved bounded promotion into the authoritative workspace.",
+        },
+        destination_mappings=[
+            {
+                "source_artifact_id": artifact["id"],
+                "destination_path": destination_path,
+            }
+        ],
+    )
+
+    assert bundle["acceptance_state"] == "pending_review"
+    assert updated_bundle["acceptance_state"] == "promoted"
+    assert destination_file.read_text(encoding="utf-8") == context["source_artifact_file"].read_text(encoding="utf-8")
+    assert len(updated_bundle["evidence_receipts"]) == len(bundle["evidence_receipts"]) + 2
+    assert updated_bundle["evidence_receipts"][-2]["kind"] == "apply_promotion_decision"
+    assert updated_bundle["evidence_receipts"][-2]["action"] == "promote"
+    assert updated_bundle["evidence_receipts"][-1]["kind"] == "authoritative_destination_write"
+    assert updated_bundle["evidence_receipts"][-1]["source_artifact_id"] == artifact["id"]
+    assert updated_bundle["evidence_receipts"][-1]["destination_path"] == destination_path
+
+
+def test_store_rejects_apply_promotion_without_explicit_approved_decision(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    repo_root = context["repo_root"]
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+    destination_file = repo_root / "projects" / "aioffice" / "execution" / "approved" / "architecture_decision_v1.md"
+
+    try:
+        store.execute_apply_promotion_decision(
+            bundle["bundle_id"],
+            approved_decision={
+                "decision": "pending",
+                "action": "promote",
+                "approved_by": "Project Orchestrator",
+            },
+            destination_mappings=[
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": "projects/aioffice/execution/approved/architecture_decision_v1.md",
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert "explicit approved decision" in str(exc)
+    else:
+        raise AssertionError("Expected apply/promotion to reject non-approved decision input.")
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
+    assert not destination_file.exists()
+
+
+def test_store_rejects_apply_promotion_destination_outside_authoritative_workspace(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    repo_root = context["repo_root"]
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+    destination_file = repo_root / "sessions" / "not_allowed.md"
+
+    try:
+        store.execute_apply_promotion_decision(
+            bundle["bundle_id"],
+            approved_decision={
+                "decision": "approved",
+                "action": "apply",
+                "approved_by": "Project Orchestrator",
+            },
+            destination_mappings=[
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": "sessions/not_allowed.md",
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert "authoritative_workspace_root" in str(exc)
+    else:
+        raise AssertionError("Expected apply/promotion to reject destinations outside the authoritative workspace root.")
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
+    assert not destination_file.exists()
+
+
+def test_store_rejects_apply_promotion_into_governance_or_forbidden_paths(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    repo_root = context["repo_root"]
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+
+    for destination_path, expected_fragment in (
+        ("projects/aioffice/governance/approved_decision.md", "governance"),
+        ("projects/aioffice/execution/protected/restricted.md", "packet-forbidden"),
+    ):
+        try:
+            store.execute_apply_promotion_decision(
+                bundle["bundle_id"],
+                approved_decision={
+                    "decision": "approved",
+                    "action": "apply",
+                    "approved_by": "Project Orchestrator",
+                },
+                destination_mappings=[
+                    {
+                        "source_artifact_id": artifact["id"],
+                        "destination_path": destination_path,
+                    }
+                ],
+            )
+        except ValueError as exc:
+            assert expected_fragment in str(exc)
+        else:
+            raise AssertionError("Expected apply/promotion to reject governance-controlled destination paths.")
+        assert not (repo_root / destination_path).exists()
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
+
+
+def test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+
+    for destination_mappings, expected_fragment in (
+        ([], "destination_mappings"),
+        (
+            [
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": "projects/aioffice/execution/approved/architecture_decision_v1.md",
+                },
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": "projects/aioffice/execution/approved/architecture_decision_v2.md",
+                },
+            ],
+            "duplicate source_artifact_id",
+        ),
+    ):
+        try:
+            store.execute_apply_promotion_decision(
+                bundle["bundle_id"],
+                approved_decision={
+                    "decision": "approved",
+                    "action": "promote",
+                    "approved_by": "Project Orchestrator",
+                },
+                destination_mappings=destination_mappings,
+            )
+        except ValueError as exc:
+            assert expected_fragment in str(exc)
+        else:
+            raise AssertionError("Expected apply/promotion to reject missing or ambiguous destination mappings.")
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
+
+
+def test_store_rejects_apply_promotion_self_promotion_paths(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+
+    try:
+        store.execute_apply_promotion_decision(
+            bundle["bundle_id"],
+            approved_decision={
+                "decision": "approved",
+                "action": "promote",
+                "approved_by": "Project Orchestrator",
+            },
+            destination_mappings=[
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": context["source_artifact_path"],
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert "source artifact path" in str(exc)
+    else:
+        raise AssertionError("Expected apply/promotion to reject self-promotion destination paths.")
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"

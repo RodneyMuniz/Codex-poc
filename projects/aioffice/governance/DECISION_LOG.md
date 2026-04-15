@@ -1,7 +1,4 @@
-# AIOffice Decision Log Stub
-
-Bootstrap status:
-- seeded with founding decisions only
+# AIOffice Decision Log
 
 ## Decisions
 
@@ -41,8 +38,33 @@ Bootstrap status:
 - decision: the observed defect was that bundled `KANBAN.md` normalization recorded end states that bypassed the declared lifecycle transitions. AIOffice will treat `KANBAN.md` as authoritative current-state ledger truth and allow condensed end-of-bundle state recording only for operator-authorized bounded bundles with explicit scope, dependency handling, reviewable execution order, required artifacts, and preserved provenance.
 - rationale: this policy keeps current backlog truth aligned with accepted board law without inventing a second authoritative surface. It is acceptable in the current model because `KANBAN.md` is a current-state ledger, not a sanctioned event-history log. What remains deferred is a future canonical state or event model that can preserve both authoritative snapshot truth and first-class transition history without requiring condensed recording exceptions.
 
-## TODO
-- convert seeded bootstrap decisions into reviewed entries
-- add owners, reviewers, and supersession rules
-- record later donor-import decisions here
-- define when a draft decision becomes binding
+### AIO-D-007
+- date: 2026-04-15
+- status: reviewed
+- decision: the AIOffice documentation baseline is re-ratified as follows:
+  - current status truth comes from the local `execution/KANBAN.md`
+  - the original `M1` through `M10` roadmap remains the strategic backbone unless accepted execution has already diverged
+  - the updated AIOffice product spec is accepted as the constitutional product baseline and is promoted through `governance/VISION.md`
+  - original `M3` operator-design work is explicitly deferred rather than silently collapsed
+  - control-kernel, protocol, persistence, inspection, and supervised-control work are accepted as having been pulled forward into current `M3` through `M5`
+  - original `M6` through `M10` are preserved with refinements rather than replaced
+  - current accepted execution truth is `M1` through `M4` complete and `M5` partial, with `AIO-029`, `AIO-030`, and `AIO-031` complete and `AIO-032`, `AIO-033`, and `AIO-034` remaining
+- rationale:
+  - the local KANBAN now carries the accepted operational truth and must outrank stale roadmap wording for status claims
+  - the strategic backbone still matters because re-baselining is a reconciliation pass, not permission to invent a new roadmap
+  - the constitutional product baseline needs a stable home that is separate from run logs and backlog movement
+  - approved divergence must be explicit so later readers do not confuse deferral with deletion or mistake pulled-forward control work for original sequencing
+- thin-control-kernel ADR treatment:
+  - the thin-control-kernel framing is absorbed into this re-baseline across `PROJECT.md`, `VISION.md`, and this decision entry
+  - this entry does not claim that a separate standalone ADR artifact has been completed
+  - if a dedicated ADR is still desired later, it remains outstanding and must be tracked explicitly rather than implied here
+
+### AIO-D-008
+- date: 2026-04-15
+- status: reviewed
+- decision: after `M5` closeout, the next operational slice is ratified as a narrow post-`M5` proof slice focused on supervised proof of the separate `apply` branch and bounded proof of same-workspace repeated-run or shared-store contention behavior. Later-stage workflow expansion remains deferred as an operational next step until those current-boundary gaps are reviewed explicitly.
+- rationale:
+  - the accepted `M5` readiness review identified the separate `apply` branch and same-workspace or shared-store behavior as explicit missing proof inside the current sanctioned boundary
+  - the accepted readiness posture remains `ready only for narrow supervised bounded operation`, not ready for a bounded supervised semi-autonomous cycle
+  - proving unresolved behavior inside the already implemented boundary is safer and more reviewable than widening the workflow claim into later stages at the same time
+  - this ratifies `M6` as a planned narrow proof slice, not as proof that later-stage workflow, unattended operation, or broader semi-autonomous readiness has been achieved

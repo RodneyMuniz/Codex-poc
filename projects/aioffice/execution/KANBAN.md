@@ -55,7 +55,14 @@ Bootstrap status:
 - entry_goal: AIOffice has a completed minimum control-kernel slice and one supervised rehearsal, and can now harden operational boundaries while expanding supervised evidence.
 - exit_goal: store bootstrap side effects are isolated, end-to-end operator invocation is proven, controlled apply/promotion is implemented and rehearsed, broader supervised rehearsal evidence exists, and readiness for semi-autonomous bounded operation can be reviewed explicitly.
 - owner_role: Project Orchestrator
-- status: planned
+- status: completed
+
+### M6 - Post-M5 Narrow Proof Slice
+- milestone_order: 6
+- entry_goal: `M5` has closed with an explicit fail-closed readiness review, and the next work should reduce current-boundary uncertainty without broadening into later-stage workflow proof.
+- exit_goal: the separate `apply` branch is rehearsed under supervision, same-workspace repeated-run or shared-store contention behavior is reviewed explicitly under bounded evidence, and the resulting proof boundary is re-stated without implying later-stage or unattended readiness.
+- owner_role: Project Orchestrator
+- status: backlog
 
 ## Completed
 
@@ -606,12 +613,6 @@ Bootstrap status:
   - AIO-027
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
 ### Isolate store bootstrap side effects for bounded rehearsal environments
 - id: AIO-029
 - item_type: task
@@ -627,13 +628,7 @@ _No items_
   - the change is narrow and test-backed
   - no authority model is weakened
 - dependencies: []
-- status: in_progress
-
-## Ready
-
-_No items_
-
-## Backlog
+- status: completed
 
 ### Prove end-to-end operator CLI invocation against sanctioned persisted state
 - id: AIO-030
@@ -651,7 +646,7 @@ _No items_
   - no writable authority surface is introduced
 - dependencies:
   - AIO-029
-- status: backlog
+- status: completed
 
 ### Implement controlled apply/promotion execution path
 - id: AIO-031
@@ -670,7 +665,7 @@ _No items_
   - focused tests exist
 - dependencies:
   - AIO-029
-- status: backlog
+- status: completed
 
 ### Rehearse apply/promotion under supervision and record evidence
 - id: AIO-032
@@ -688,7 +683,7 @@ _No items_
   - no overclaim of autonomy is made
 - dependencies:
   - AIO-031
-- status: backlog
+- status: completed
 
 ### Run expanded supervised multi-run rehearsal coverage
 - id: AIO-033
@@ -707,7 +702,7 @@ _No items_
 - dependencies:
   - AIO-030
   - AIO-032
-- status: backlog
+- status: completed
 
 ### Record M5 readiness review for semi-autonomous bounded operation
 - id: AIO-034
@@ -725,6 +720,106 @@ _No items_
   - no false claim of overnight autonomy readiness is made
 - dependencies:
   - AIO-033
+- status: completed
+
+### [Bug] Isolated rehearsal workspace still creates unrelated side files after AIO-029
+- id: AIO-035
+- item_type: bug
+- title: [Bug] Isolated rehearsal workspace still creates unrelated side files after AIO-029
+- details: `AIO-032` observed isolated-workspace residue that conflicts with the accepted `AIO-029` hardening outcome, including unrelated memory bootstrap files and a non-AIOffice project `KANBAN.md` inside the rehearsal workspace.
+- objective: record and remediate the regression so broader supervised rehearsal evidence does not accumulate avoidable unrelated residue.
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M5 - Operational Hardening And Supervised Expansion
+- expected_artifact_path: sessions/store.py
+- repro_steps:
+  - create an isolated rehearsal workspace under `projects/aioffice/artifacts/`
+  - instantiate the sanctioned store path and run a bounded supervised rehearsal as recorded in `projects/aioffice/artifacts/M5_APPLY_PROMOTION_REHEARSAL.md`
+  - inspect the isolated workspace file tree after the run
+  - observe `memory/framework_health.json`, `memory/session_summaries.json`, and `projects/tactics-game/execution/KANBAN.md`
+- expected_behavior: isolated rehearsal setup should not create unrelated project side files or unrelated bootstrap residue outside the bounded rehearsal outputs needed for that workspace.
+- observed_behavior: the isolated rehearsal workspace accumulated unrelated memory files and a non-AIOffice project ledger file despite `AIO-029` acceptance stating that isolated rehearsal setup no longer creates unrelated project side files.
+- impact: this contradicts the accepted `AIO-029` hardening outcome and adds avoidable residue to future supervised rehearsal environments, though it does not by itself invalidate `AIO-032`.
+- acceptance:
+  - the regression is recorded factually
+  - the conflict with `AIO-029` acceptance is explicit
+  - remediation scope remains narrow and hardening-focused
+  - no autonomy or later-stage workflow claim is implied
+- dependencies: []
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Rehearse separate apply branch under supervision and record evidence
+- id: AIO-036
+- item_type: task
+- title: Rehearse separate apply branch under supervision and record evidence
+- details: run one bounded supervised rehearsal that exercises the sanctioned `apply` branch explicitly so current readiness does not rely only on `promote`-branch proof
+- objective: prove the separate `apply` decision path in practice without expanding the workflow boundary
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M6 - Post-M5 Narrow Proof Slice
+- expected_artifact_path: projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md
+- acceptance:
+  - one supervised rehearsal of the sanctioned `apply` branch is executed
+  - evidence is recorded factually
+  - resulting state and limits are explicit
+  - no later-stage, unattended, or overnight claim is made
+- dependencies:
+  - AIO-031
+  - AIO-034
+- status: backlog
+
+### Run bounded same-workspace repeated-run or shared-store contention rehearsal
+- id: AIO-037
+- item_type: task
+- title: Run bounded same-workspace repeated-run or shared-store contention rehearsal
+- details: run a narrowly scoped supervised rehearsal that deliberately reuses the same workspace or sanctioned store root so repeated-run, state-collision, residue, or contention behavior can be inspected explicitly
+- objective: determine whether the current sanctioned path remains stable when isolation is reduced in a controlled, reviewable way
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M6 - Post-M5 Narrow Proof Slice
+- expected_artifact_path: projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md
+- acceptance:
+  - a bounded repeated-run or shared-store rehearsal is executed under supervision
+  - collisions, leakage, residue, or contention observations remain visible
+  - authority boundaries remain unchanged
+  - no later-stage, unattended, or overnight claim is made
+- dependencies:
+  - AIO-030
+  - AIO-034
+- status: backlog
+
+### Record narrow post-M5 proof review for apply and shared-store behavior
+- id: AIO-038
+- item_type: task
+- title: Record narrow post-M5 proof review for apply and shared-store behavior
+- details: review what the next narrow post-M5 slice proved, what remains unproven, and whether current readiness posture changed after `apply`-branch and same-workspace/shared-store evidence is gathered
+- objective: keep the proof boundary explicit before any later-stage workflow expansion is considered
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M6 - Post-M5 Narrow Proof Slice
+- expected_artifact_path: projects/aioffice/governance/M6_NARROW_PROOF_REVIEW.md
+- acceptance:
+  - proven and unproven capabilities are explicit
+  - readiness posture delta, if any, is explicit
+  - residual risks remain visible
+  - no later-stage, unattended, or overnight claim is made
+- dependencies:
+  - AIO-036
+  - AIO-037
 - status: backlog
 
 ## TODO

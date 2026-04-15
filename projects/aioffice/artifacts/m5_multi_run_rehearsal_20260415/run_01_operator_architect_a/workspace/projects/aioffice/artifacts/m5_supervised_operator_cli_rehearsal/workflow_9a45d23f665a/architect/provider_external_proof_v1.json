@@ -1,0 +1,10 @@
+{
+  "provider": "supervised_operator_cli",
+  "model": "architect_stop_rehearsal",
+  "provider_request_id": "prov_aio033_run1",
+  "execution_path": "operator_api.aioffice-supervised-architect-rehearsal",
+  "workspace_root": "C:\\Users\\rodne\\OneDrive\\Desktop\\_AIStudio_POC\\projects\\aioffice\\artifacts\\m5_multi_run_rehearsal_20260415\\run_01_operator_architect_a\\workspace",
+  "captured_at": "2026-04-15T05:01:05+00:00",
+  "operator": "Project Orchestrator",
+  "stop_after": "architect"
+}

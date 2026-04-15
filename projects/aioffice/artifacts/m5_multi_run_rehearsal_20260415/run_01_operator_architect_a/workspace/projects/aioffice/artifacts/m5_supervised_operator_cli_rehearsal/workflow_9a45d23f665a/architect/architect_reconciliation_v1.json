@@ -1,0 +1,77 @@
+{
+  "execution_claims": {
+    "workflow_run_id": "workflow_9a45d23f665a",
+    "packet_id": "packet_c0a927fa2a4f",
+    "bundle_id": "bundle_e6f53f4e14fd",
+    "objective": "Produce the architect-stage decision, provider proof artifact, and bounded evidence bundle.",
+    "self_report_summary": "Supervised operator CLI architect rehearsal completed with pending_review bundle state.",
+    "commands_run": [
+      "python.exe scripts/operator_api.py aioffice-supervised-architect-rehearsal --task-id \"AIO-033\" --confirm-supervised --operator \"Project Orchestrator\" --provider-request-id \"prov_aio033_run1\" --reconciliation-evidence-source \"aio033_multi_run\""
+    ],
+    "stop_after": "architect"
+  },
+  "stage_artifacts": [
+    {
+      "artifact_id": "wf_artifact_e25e4d341064",
+      "contract_name": "architecture_decision_v1",
+      "stage_run_id": "stage_aead36f84b75",
+      "artifact_path": "projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/workflow_9a45d23f665a/architect/architecture_decision_v1.md",
+      "proof_value": "architecture_output"
+    },
+    {
+      "artifact_id": "wf_artifact_20c1c9b980a1",
+      "contract_name": "provider_external_proof_v1",
+      "stage_run_id": "stage_aead36f84b75",
+      "artifact_path": "projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/workflow_9a45d23f665a/architect/provider_external_proof_v1.json",
+      "proof_value": "external_proof"
+    }
+  ],
+  "provider_external_proof": {
+    "provider_receipt": {
+      "kind": "provider_metadata",
+      "provider": "supervised_operator_cli",
+      "model": "architect_stop_rehearsal",
+      "provider_request_id": "prov_aio033_run1",
+      "execution_path": "operator_api.aioffice-supervised-architect-rehearsal",
+      "captured_at": "2026-04-15T05:01:05+00:00"
+    },
+    "evidence_receipts": [
+      {
+        "kind": "provider_metadata",
+        "provider": "supervised_operator_cli",
+        "model": "architect_stop_rehearsal",
+        "provider_request_id": "prov_aio033_run1",
+        "execution_path": "operator_api.aioffice-supervised-architect-rehearsal",
+        "captured_at": "2026-04-15T05:01:05+00:00"
+      },
+      {
+        "kind": "external_file_observation",
+        "artifact_path": "projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/workflow_9a45d23f665a/architect/architecture_decision_v1.md",
+        "artifact_sha256": "aa1ca0acc5b65be7404451c8ed612995f071ef467dd0f099550d11bde6e0d235",
+        "bytes_written": 522,
+        "modified_at": "2026-04-15T05:01:05+00:00"
+      },
+      {
+        "kind": "external_file_observation",
+        "artifact_path": "projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/workflow_9a45d23f665a/architect/provider_external_proof_v1.json",
+        "artifact_sha256": "9bd2e64537b9a6f530b17635824d90cf860f10d484130b43b241ed117cdb2b17",
+        "bytes_written": 505,
+        "modified_at": "2026-04-15T05:01:05+00:00"
+      }
+    ],
+    "inspection_bundle_state": "pending_review",
+    "reconciliation_evidence_source": "aio033_multi_run"
+  },
+  "reconciliation_result": {
+    "status": "reconciled",
+    "matched_required_outputs": true,
+    "architect_stage_complete": true,
+    "bundle_pending_review": true,
+    "provider_external_proof_present": true,
+    "continued_beyond_architect": false,
+    "observed_output_paths": [
+      "projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/workflow_9a45d23f665a/architect/architecture_decision_v1.md",
+      "projects/aioffice/artifacts/m5_supervised_operator_cli_rehearsal/workflow_9a45d23f665a/architect/provider_external_proof_v1.json"
+    ]
+  }
+}

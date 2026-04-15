@@ -1,9 +1,9 @@
 # AIOffice Founding Charter
 
 Charter status:
-- drafted under AIO-001 for operator review
-- intended to replace the bootstrap stub
-- not a later-task kickoff
+- accepted founding charter under completed `AIO-001`
+- replaces the bootstrap stub as the project charter baseline
+- re-baselined against the accepted local KANBAN state and constitutional product baseline
 
 ## 1. Project Identity
 - name: AIOffice
@@ -15,6 +15,18 @@ Charter status:
   - ProjectKanban is a donor and reference system, not the architectural authority for AIOffice.
   - AIOffice may reuse selected enforcement, inspection, and store patterns from ProjectKanban.
   - AIOffice does not inherit the old runtime role model as proof of orchestration integrity.
+
+## 1A. Document Hierarchy
+- `VISION.md` is the constitutional product baseline for AIOffice product framing and intended operator experience.
+- `execution/KANBAN.md` is the authoritative operational backlog and milestone-status truth.
+- `execution/PROJECT_BRAIN.md` is the accepted current-state snapshot and fresh-summon bootstrap.
+- `DECISION_LOG.md` records ratified divergence, re-baseline, and baseline-governance decisions.
+
+Interpretation rules:
+- for status claims, `execution/KANBAN.md` outranks older roadmap wording
+- for product framing, `VISION.md` is preferred over draft or bootstrap phrasing
+- for approved divergence, `DECISION_LOG.md` records what changed and why
+- no document above silently creates backlog commitments without explicit acceptance into `execution/KANBAN.md`
 
 ## 2. Problem Statement
 ProjectKanban was useful as a proving ground for store patterns, inspection surfaces, and trust concepts, but it was insufficient as proof of orchestration integrity. It could demonstrate structured behavior and richer visibility while still allowing too much ambiguity between narrated workflow and enforced workflow.
@@ -130,12 +142,16 @@ The first success bar is integrity, not throughput. AIOffice succeeds early if i
 - inspection surfaces are only as trustworthy as the sanctioned code that feeds them
 - if Codex or any other executor gains direct canonical write power outside sanctioned paths, the architecture regresses immediately
 
-## 11. Immediate Next Milestones
-- `M1 - AIOffice Founding And Governance Reset`
-  Ratify the founding charter, donor policy, workspace boundaries, and core governance set.
-- `M2 - Workflow Contract And Stage Separation`
-  Define the workflow contract, stage artifacts, traces, and handoff requirements.
-- `M3 - Control Kernel And Airlock Baseline`
-  Establish the control-kernel protocol and manual packet-out / bundle-back airlock.
-- `M4 - First Orchestration Integrity Proof Slice`
-  Prove the first bounded architect slice with distinct artifacts, inspectable workflow state, and fail-closed stage blocking.
+## 11. Roadmap Relationship And Current Posture
+- the original AIOffice `M1` through `M10` roadmap remains the strategic backbone for sequencing
+- the current accepted local `execution/KANBAN.md` is the authoritative source for milestone and task status truth
+- current accepted posture is:
+  - `M1` through `M4`: complete
+  - `M5`: partially complete
+  - completed current `M5` work: `AIO-029`, `AIO-030`, `AIO-031`
+  - remaining current `M5` work: `AIO-032`, `AIO-033`, `AIO-034`
+- accepted divergence from the original roadmap is explicit:
+  - original `M3` operator-design work was deferred rather than silently removed
+  - control-kernel, persistence, inspection, and supervised-control work were pulled forward into current `M3` through `M5`
+- original `M6` through `M10` remain preserved with refinements rather than replaced in this charter
+- constitutional product ideas may refine future milestone intent, but they do not become backlog commitments until explicitly accepted into `execution/KANBAN.md`

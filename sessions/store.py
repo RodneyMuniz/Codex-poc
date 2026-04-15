@@ -162,6 +162,22 @@ CREATE TABLE IF NOT EXISTS projects (
 """
 
 
+def _is_aioffice_isolated_rehearsal_workspace_root(root: Path) -> bool:
+    parts = [part.lower() for part in root.parts]
+    if not parts or parts[-1] != "workspace":
+        return False
+    for index in range(len(parts) - 3):
+        if parts[index : index + 3] == ["projects", "aioffice", "artifacts"]:
+            return index + 3 < len(parts) - 1
+    return False
+
+
+def _resolve_bootstrap_legacy_defaults(root: Path, bootstrap_legacy_defaults: bool | None) -> bool:
+    if bootstrap_legacy_defaults is not None:
+        return bool(bootstrap_legacy_defaults)
+    return not _is_aioffice_isolated_rehearsal_workspace_root(root)
+
+
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
@@ -378,13 +394,13 @@ class SessionStore:
         repo_root: str | Path | None = None,
         db_path: str | Path | None = None,
         *,
-        bootstrap_legacy_defaults: bool = True,
+        bootstrap_legacy_defaults: bool | None = None,
     ) -> None:
         root = Path(repo_root or Path.cwd()).resolve()
         database_path = Path(db_path) if db_path else root / "sessions" / "studio.db"
         memory_dir = root / "memory"
         backups_dir = root / "sessions" / "backups"
-        self.bootstrap_legacy_defaults = bool(bootstrap_legacy_defaults)
+        self.bootstrap_legacy_defaults = _resolve_bootstrap_legacy_defaults(root, bootstrap_legacy_defaults)
         self.paths = StorePaths(
             repo_root=root,
             db_path=database_path.resolve(),
@@ -2156,6 +2172,13 @@ class SessionStore:
             raise ValueError(f"{field_name} must contain at least one path.")
         return normalized
 
+    def _repo_relative_path_is_within(self, candidate_path: str, root_path: str) -> bool:
+        try:
+            Path(candidate_path).relative_to(Path(root_path))
+        except ValueError:
+            return False
+        return True
+
     def _effective_packet_workflow_run_id(self, packet: dict[str, Any]) -> str | None:
         workflow_run_id = packet.get("workflow_run_id")
         if workflow_run_id:
@@ -2973,6 +2996,211 @@ class SessionStore:
         with self._connect() as connection:
             rows = connection.execute(query, tuple(params)).fetchall()
         return [self._deserialize_execution_bundle(row) for row in rows]
+
+    def execute_apply_promotion_decision(
+        self,
+        bundle_id: str,
+        *,
+        approved_decision: dict[str, Any],
+        destination_mappings: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        bundle = self.get_execution_bundle(bundle_id)
+        if bundle is None:
+            raise ValueError(f"Execution bundle not found: {bundle_id}")
+        if bundle["acceptance_state"] != "pending_review":
+            raise ValueError("Only pending_review execution bundles can be applied or promoted.")
+
+        if not isinstance(approved_decision, dict):
+            raise ValueError("approved_decision must be a dictionary.")
+        decision = _require_non_empty_text(
+            "approved_decision.decision",
+            str(approved_decision.get("decision") or ""),
+        )
+        if decision != "approved":
+            raise ValueError("Apply/promotion requires an explicit approved decision input.")
+        action = _require_non_empty_text(
+            "approved_decision.action",
+            str(approved_decision.get("action") or ""),
+        )
+        if action not in {"apply", "promote"}:
+            raise ValueError("approved_decision.action must be either 'apply' or 'promote'.")
+        approved_by = _require_non_empty_text(
+            "approved_decision.approved_by",
+            str(approved_decision.get("approved_by") or ""),
+        )
+        decision_note = approved_decision.get("decision_note")
+        if decision_note is not None:
+            decision_note = _require_non_empty_text(
+                "approved_decision.decision_note",
+                str(decision_note),
+            )
+
+        packet = self.get_control_execution_packet(bundle["packet_id"])
+        if packet is None:
+            raise ValueError(f"Control execution packet not found for bundle: {bundle_id}")
+        if bundle["project_name"] != packet["project_name"]:
+            raise ValueError("Execution bundle project_name must match the source packet.")
+        if bundle["task_id"] != packet["task_id"]:
+            raise ValueError("Execution bundle task_id must match the source packet.")
+        packet_workflow_run_id = self._effective_packet_workflow_run_id(packet)
+        if packet_workflow_run_id and bundle.get("workflow_run_id") != packet_workflow_run_id:
+            raise ValueError("Execution bundle workflow_run_id must match the source packet.")
+        packet_stage_run_id = packet.get("stage_run_id")
+        if packet_stage_run_id and bundle.get("stage_run_id") != packet_stage_run_id:
+            raise ValueError("Execution bundle stage_run_id must match the source packet.")
+        if packet_workflow_run_id:
+            workflow_run = self.get_workflow_run(packet_workflow_run_id)
+            if workflow_run is None:
+                raise ValueError(f"Workflow run not found for execution bundle: {packet_workflow_run_id}")
+            if workflow_run["project_name"] != bundle["project_name"]:
+                raise ValueError("Workflow run project_name must match the execution bundle.")
+            if workflow_run.get("task_id") and workflow_run["task_id"] != bundle["task_id"]:
+                raise ValueError("Workflow run task_id must match the execution bundle.")
+        if packet_stage_run_id:
+            stage_run = self.get_stage_run(packet_stage_run_id)
+            if stage_run is None:
+                raise ValueError(f"Stage run not found for execution bundle: {packet_stage_run_id}")
+            if stage_run["project_name"] != bundle["project_name"]:
+                raise ValueError("Stage run project_name must match the execution bundle.")
+            if stage_run.get("task_id") and stage_run["task_id"] != bundle["task_id"]:
+                raise ValueError("Stage run task_id must match the execution bundle.")
+            if packet_workflow_run_id and stage_run["workflow_run_id"] != packet_workflow_run_id:
+                raise ValueError("Stage run workflow_run_id must match the execution bundle workflow_run_id.")
+
+        produced_artifact_ids = _normalize_string_list(bundle.get("produced_artifact_ids"))
+        if not produced_artifact_ids:
+            raise ValueError("Execution bundle must contain produced_artifact_ids before apply/promotion.")
+
+        normalized_mappings = _require_non_empty_list("destination_mappings", destination_mappings)
+        authoritative_root = packet["authoritative_workspace_root"]
+        project_name = bundle["project_name"]
+        artifact_root = f"projects/{project_name}/artifacts"
+        governance_roots = ["governance", f"projects/{project_name}/governance"]
+        planned_writes: list[dict[str, Any]] = []
+        mapped_artifact_ids: set[str] = set()
+        destination_paths: set[str] = set()
+
+        for index, mapping in enumerate(normalized_mappings):
+            if not isinstance(mapping, dict):
+                raise ValueError(f"destination_mappings[{index}] must be a dictionary.")
+            source_artifact_id = _require_non_empty_text(
+                f"destination_mappings[{index}].source_artifact_id",
+                str(mapping.get("source_artifact_id") or ""),
+            )
+            if source_artifact_id in mapped_artifact_ids:
+                raise ValueError("destination_mappings must not contain duplicate source_artifact_id entries.")
+            destination_path = self._normalize_repo_relative_path(
+                str(mapping.get("destination_path") or ""),
+                field_name=f"destination_mappings[{index}].destination_path",
+            )
+            if destination_path in destination_paths:
+                raise ValueError("destination_mappings must not contain duplicate destination_path entries.")
+
+            artifact = self.get_workflow_artifact(source_artifact_id)
+            if artifact is None:
+                raise ValueError(f"Produced artifact not found for apply/promotion: {source_artifact_id}")
+            self._validate_packet_record_context(packet, record=artifact, record_kind="artifact")
+            if source_artifact_id not in produced_artifact_ids:
+                raise ValueError("destination_mappings must only reference produced_artifact_ids from the bundle.")
+
+            source_artifact_path = artifact.get("artifact_path")
+            if not source_artifact_path:
+                raise ValueError("Apply/promotion requires produced artifacts with persisted artifact_path values.")
+            if not any(
+                self._repo_relative_path_is_within(source_artifact_path, allowed_path)
+                for allowed_path in packet["allowed_write_paths"]
+            ):
+                raise ValueError("Produced artifact path must be covered by the packet allowed_write_paths.")
+            if source_artifact_path == destination_path:
+                raise ValueError("Apply/promotion must not reuse the non-authoritative source artifact path.")
+            if not self._repo_relative_path_is_within(destination_path, authoritative_root):
+                raise ValueError("destination_path must stay within the packet authoritative_workspace_root.")
+            if any(
+                destination_path == forbidden_root
+                or self._repo_relative_path_is_within(destination_path, forbidden_root)
+                for forbidden_root in governance_roots
+            ):
+                raise ValueError("destination_path must not target governance-controlled paths.")
+            if destination_path == artifact_root or self._repo_relative_path_is_within(destination_path, artifact_root):
+                raise ValueError("destination_path must not stay within the non-authoritative artifact tree.")
+            if any(
+                destination_path == forbidden_path
+                or self._repo_relative_path_is_within(destination_path, forbidden_path)
+                for forbidden_path in packet["forbidden_paths"]
+            ):
+                raise ValueError("destination_path must not target packet-forbidden paths.")
+
+            source_absolute_path = (self.paths.repo_root / source_artifact_path).resolve()
+            if not source_absolute_path.exists():
+                raise ValueError(f"Produced artifact path does not exist on disk: {source_artifact_path}")
+
+            mapped_artifact_ids.add(source_artifact_id)
+            destination_paths.add(destination_path)
+            planned_writes.append(
+                {
+                    "artifact": artifact,
+                    "source_artifact_id": source_artifact_id,
+                    "source_artifact_path": source_artifact_path,
+                    "source_absolute_path": source_absolute_path,
+                    "destination_path": destination_path,
+                }
+            )
+
+        expected_artifact_ids = set(produced_artifact_ids)
+        if mapped_artifact_ids != expected_artifact_ids:
+            raise ValueError("destination_mappings must provide one explicit destination_path for each produced_artifact_id.")
+
+        decision_captured_at = _utc_now()
+        promotion_receipts: list[dict[str, Any]] = [
+            {
+                "kind": "apply_promotion_decision",
+                "bundle_id": bundle_id,
+                "decision": decision,
+                "action": action,
+                "approved_by": approved_by,
+                "decision_note": decision_note,
+                "captured_at": decision_captured_at,
+            }
+        ]
+        for write_plan in planned_writes:
+            destination_absolute_path = (self.paths.repo_root / write_plan["destination_path"]).resolve()
+            destination_absolute_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(write_plan["source_absolute_path"], destination_absolute_path)
+            destination_metadata = self.file_metadata(write_plan["destination_path"])
+            promotion_receipts.append(
+                {
+                    "kind": "authoritative_destination_write",
+                    "action": action,
+                    "source_artifact_id": write_plan["source_artifact_id"],
+                    "source_artifact_path": write_plan["source_artifact_path"],
+                    "source_artifact_sha256": write_plan["artifact"].get("artifact_sha256"),
+                    "destination_path": write_plan["destination_path"],
+                    "destination_artifact_sha256": destination_metadata["artifact_sha256"],
+                    "bytes_written": destination_metadata["bytes_written"],
+                    "modified_at": destination_metadata["modified_at"],
+                }
+            )
+
+        updated_evidence_receipts = list(bundle["evidence_receipts"]) + promotion_receipts
+        updated_acceptance_state = "applied" if action == "apply" else "promoted"
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE execution_bundles
+                SET acceptance_state = ?, evidence_receipts_json = ?, updated_at = ?
+                WHERE bundle_id = ?
+                """,
+                (
+                    updated_acceptance_state,
+                    _json_dumps(updated_evidence_receipts),
+                    _utc_now(),
+                    bundle_id,
+                ),
+            )
+        updated_bundle = self.get_execution_bundle(bundle_id)
+        if updated_bundle is None:
+            raise ValueError(f"Execution bundle vanished after apply/promotion: {bundle_id}")
+        return updated_bundle
 
     def _project_context(self, project_name: str | None) -> dict[str, Any] | None:
         if not project_name:

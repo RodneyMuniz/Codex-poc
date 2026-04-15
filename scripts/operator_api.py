@@ -233,6 +233,28 @@ def _control_kernel_details(
     return payload
 
 
+def _resolve_control_kernel_workspace_root(repo_root: Path, workspace_root: str | None) -> Path | None:
+    normalized = " ".join(str(workspace_root or "").split())
+    if not normalized:
+        return None
+    candidate = Path(normalized)
+    if not candidate.is_absolute():
+        candidate = repo_root / candidate
+    return ensure_authoritative_workspace_path(candidate, label="control-kernel-details workspace")
+
+
+def _inspection_store_for_control_kernel(repo_root: Path, workspace_root: str | None) -> tuple[Any, Path | None]:
+    inspection_workspace_root = _resolve_control_kernel_workspace_root(repo_root, workspace_root)
+    if inspection_workspace_root is None:
+        return _orchestrator().store, None
+    database_path = inspection_workspace_root / "sessions" / "studio.db"
+    if not database_path.exists():
+        raise ValueError(
+            "control-kernel-details workspace must already contain a sanctioned persisted store at sessions/studio.db."
+        )
+    return SessionStore(inspection_workspace_root, bootstrap_legacy_defaults=False), inspection_workspace_root
+
+
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
@@ -666,7 +688,7 @@ def _run_aioffice_supervised_architect_rehearsal(
         workflow_run_id=workflow["id"],
         stage_run_id=stage_runs["architect"]["id"],
         issued_by=normalized_operator,
-        provenance_note="AIO-029 supervised operator CLI architect rehearsal",
+        provenance_note=f"{task_id} supervised operator CLI architect rehearsal",
     )
 
     produced_artifacts: list[dict[str, Any]] = []
@@ -760,6 +782,7 @@ def _run_aioffice_supervised_architect_rehearsal(
             Path(sys.executable).name,
             "scripts/operator_api.py",
             "aioffice-supervised-architect-rehearsal",
+            f'--task-id "{task_id}"',
             "--confirm-supervised",
             f'--operator "{normalized_operator}"',
             f'--provider-request-id "{normalized_provider_request_id}"',
@@ -934,6 +957,7 @@ def main() -> None:
     control_kernel_details.add_argument("--stage-run-id", default=None)
     control_kernel_details.add_argument("--packet-id", default=None)
     control_kernel_details.add_argument("--bundle-id", default=None)
+    control_kernel_details.add_argument("--workspace-root", default=None)
 
     aioffice_rehearsal = subparsers.add_parser("aioffice-supervised-architect-rehearsal")
     aioffice_rehearsal.add_argument("--task-id", default="AIO-029")
@@ -1003,13 +1027,16 @@ def main() -> None:
             payload = _get_orchestrator().store.get_task_work_graph(args.task_id)
             payload["routing_catalog"] = _routing_catalog()
         elif args.command == "control-kernel-details":
+            inspection_store, inspection_workspace_root = _inspection_store_for_control_kernel(ROOT, args.workspace_root)
             payload = _control_kernel_details(
-                _get_orchestrator().store,
+                inspection_store,
                 workflow_run_id=args.workflow_run_id,
                 stage_run_id=args.stage_run_id,
                 packet_id=args.packet_id,
                 bundle_id=args.bundle_id,
             )
+            if inspection_workspace_root is not None:
+                payload["inspection_workspace_root"] = str(inspection_workspace_root)
             payload["routing_catalog"] = _routing_catalog()
         elif args.command == "aioffice-supervised-architect-rehearsal":
             payload = _run_aioffice_supervised_architect_rehearsal(
