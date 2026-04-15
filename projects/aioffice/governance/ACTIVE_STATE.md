@@ -10,8 +10,8 @@
 - authoritative milestone snapshot branch: `snapshot/aioffice-m9-closeout-2026-04-16`
 
 ## Current Accepted Posture
-- `M1` through `M9` are complete.
-- `M10` is the active milestone and remains a narrow change-governance, recovery, and maintainability hardening slice.
+- `M1` through `M10` are complete.
+- `M10` completed as a narrow change-governance, recovery, and maintainability hardening slice.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -47,11 +47,15 @@
   - UAT readiness
 - `M9` completed as a narrow current-state / planning-surface reconciliation slice.
 - `M9` did not change control behavior, later-stage workflow proof, or readiness posture.
-- `M10` does not imply control-behavior changes, later-stage workflow proof, UI expansion, or readiness upgrades.
+- `M10` defined:
+  - the admin-only product/self-change governance boundary
+  - the recovery and rollback contract with a bounded rehearsal plan
+  - the Codex change isolation and code-review contract for shared AIOffice control surfaces
+- `M10` did not change runtime control behavior, later-stage workflow proof, UI scope, or readiness posture.
 - no post-`M10` milestone is ratified yet.
 
-## Current Active M10 Tasks In Order
-1. `AIO-052` - define the feature-isolation and code-review contract for Codex-delivered changes
+## Current Active Task Order
+_None. `M10` is complete and no post-`M10` milestone is ratified yet._
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -69,6 +73,7 @@
 - `projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
 - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
+- `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`
 - `projects/aioffice/governance/SYSTEM_REALITY_MAP.md`
 - `projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md`
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`

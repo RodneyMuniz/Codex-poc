@@ -98,7 +98,7 @@ Ledger status:
 - entry_goal: `M9` has closed with reconciled planning surfaces, and the next work should harden change governance, recovery discipline, and maintainability contracts before any UI or art-pipeline expansion is considered.
 - exit_goal: an admin-only product/self-change governance boundary, an automated snapshot/version/restore/rollback contract with rehearsal plan, and a feature-isolation/code-review contract are defined clearly enough to guide later implementation without changing readiness or widening workflow proof.
 - owner_role: Project Orchestrator
-- status: in_progress
+- status: completed
 
 ## Completed
 
@@ -1133,20 +1133,6 @@ Ledger status:
   - AIO-049
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define feature-isolation and code-review contract for Codex-delivered changes
 - id: AIO-052
 - item_type: task
@@ -1163,7 +1149,23 @@ _No items_
   - the contract stays narrow and does not imply new implementation behavior by itself
 - dependencies:
   - AIO-049
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+_No items_
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
