@@ -9,7 +9,7 @@
 - authoritative accepted baseline tag: `aioffice-m5-closeout-2026-04-15`
 
 ## Current Accepted Posture
-- `M1` through `M7` are complete.
+- `M1` through `M8` are complete.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -33,11 +33,20 @@
   - later-stage workflow
   - real multi-agent maturity
   - UAT readiness
-- `M8` is the active milestone and remains a narrow operator decision input/ergonomics hardening slice.
-- `M8` does not imply later-stage workflow proof, autonomy readiness, or UAT readiness.
+- `M8` proved:
+  - the shell-safe operator decision input contract is defined in committed governance
+  - the operator-facing `bundle-decision` wrapper supports `--destination-mappings-file` with focused verification
+  - one bounded supervised rehearsal of the file-based operator decision input path was executed against persisted state
+  - the file-based path reduced shell and JSON transport brittleness on the exercised operator path
+- `M8` did not prove:
+  - concurrent contention handling
+  - later-stage workflow
+  - real multi-agent maturity
+  - UAT readiness
+- no post-`M8` milestone is ratified yet.
 
-## Current Active M8 Tasks In Order
-1. `AIO-046` - rehearse the shell-safe operator decision input path under supervision and record evidence
+## Current Post-M8 Planning State
+- no post-`M8` milestone is ratified yet.
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -49,11 +58,13 @@
 - `projects/aioffice/governance/ACTIVE_STATE.md`
 - `projects/aioffice/governance/M6_NARROW_PROOF_REVIEW.md`
 - `projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md`
+- `projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md`
 - `projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md`
 - `projects/aioffice/governance/SYSTEM_REALITY_MAP.md`
 - `projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md`
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`
 - `projects/aioffice/artifacts/M7_OPERATOR_DECISION_SURFACE_REHEARSAL.md`
+- `projects/aioffice/artifacts/M8_OPERATOR_DECISION_INPUT_REHEARSAL.md`
 
 ## Review Surface Statement
 GitHub is the external review surface for audit anchoring of the accepted AIOffice state. The local repository remains the implementation workspace and source of in-progress changes until those changes are deliberately staged, committed, and pushed.

@@ -76,7 +76,7 @@ Bootstrap status:
 - entry_goal: `M7` has closed with an explicit review, and the next work should reduce remaining manual operator glue on the already-real `bundle-decision` surface, especially shell-safe explicit input handling, without changing readiness claims or widening workflow proof.
 - exit_goal: a shell-safe operator decision input contract is defined, implemented, and rehearsed on the existing `bundle-decision` surface without weakening explicit destination-mapping control or implying later-stage workflow or readiness upgrades.
 - owner_role: Project Orchestrator
-- status: in_progress
+- status: completed
 
 ## Completed
 
@@ -1027,7 +1027,7 @@ _No items_
   - no concurrency, later-stage, or readiness overclaim is made
 - dependencies:
   - AIO-045
-- status: backlog
+- status: completed
 
 ## TODO
 - decide whether and when to mirror these tasks into the canonical SQLite task store
