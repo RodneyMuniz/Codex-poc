@@ -37,9 +37,8 @@
 - `M8` does not imply later-stage workflow proof, autonomy readiness, or UAT readiness.
 
 ## Current Active M8 Tasks In Order
-1. `AIO-044` - define shell-safe operator decision input contract over the existing bundle-decision surface
-2. `AIO-045` - implement shell-safe operator decision input path and focused verification
-3. `AIO-046` - rehearse the shell-safe operator decision input path under supervision and record evidence
+1. `AIO-045` - implement shell-safe operator decision input path and focused verification
+2. `AIO-046` - rehearse the shell-safe operator decision input path under supervision and record evidence
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

@@ -958,20 +958,6 @@ Bootstrap status:
   - AIO-042
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define shell-safe operator decision input contract over the existing bundle-decision surface
 - id: AIO-044
 - item_type: task
@@ -989,7 +975,21 @@ _No items_
   - no later-stage workflow or readiness claim is added
 - dependencies:
   - AIO-043
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Implement shell-safe operator decision input path and focused verification
 - id: AIO-045
