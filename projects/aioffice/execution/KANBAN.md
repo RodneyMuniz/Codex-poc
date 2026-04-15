@@ -64,6 +64,13 @@ Bootstrap status:
 - owner_role: Project Orchestrator
 - status: completed
 
+### M7 - Post-M6 Operator Decision Surface Hardening
+- milestone_order: 7
+- entry_goal: `M6` has closed with an explicit narrow proof review and a current system-reality map, and the next work should reduce manual operator glue on the already-real control surfaces without widening workflow proof.
+- exit_goal: a narrow operator-facing bundle decision surface is defined, implemented over sanctioned persisted state, and rehearsed under supervision without implying later-stage workflow or readiness upgrades.
+- owner_role: Project Orchestrator
+- status: in_progress
+
 ## Completed
 
 ### Write AIOffice charter, doctrine, non-goals, and success definition
@@ -829,6 +836,25 @@ Bootstrap status:
   - AIO-037
 - status: completed
 
+### Create AIOffice system reality map and seed the next conservative slice
+- id: AIO-039
+- item_type: task
+- title: Create AIOffice system reality map and seed the next conservative slice
+- details: create one authoritative post-`M6` system reality map that distinguishes built, partial, and conceptual AIOffice components, identifies active control surfaces and manual glue points, records document conflicts, and seeds the minimum next conservative slice without changing readiness claims
+- objective: ground future AIOffice work in committed repo truth rather than narrated capability
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M7 - Post-M6 Operator Decision Surface Hardening
+- expected_artifact_path: projects/aioffice/governance/SYSTEM_REALITY_MAP.md
+- acceptance:
+  - `SYSTEM_REALITY_MAP.md` distinguishes proven, partial, and conceptual system elements
+  - current proof-backed control surfaces and manual glue points are explicit
+  - stale or conflicting document wording is named factually
+  - the next conservative slice is seeded narrowly in `KANBAN.md` and reflected in `ACTIVE_STATE.md`
+- dependencies:
+  - AIO-038
+- status: completed
+
 ## In Review
 
 _No items_
@@ -843,7 +869,62 @@ _No items_
 
 ## Backlog
 
-_No items_
+### Define narrow operator-facing bundle decision surface and fail-closed rules
+- id: AIO-040
+- item_type: task
+- title: Define narrow operator-facing bundle decision surface and fail-closed rules
+- details: define the operator-facing surface for inspecting pending-review bundles and issuing sanctioned apply/promotion decisions against persisted state, including required approval inputs, destination-mapping rules, and explicit out-of-scope boundaries
+- objective: reduce manual glue on the currently real decision path before any later-stage workflow expansion
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M7 - Post-M6 Operator Decision Surface Hardening
+- expected_artifact_path: projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md
+- acceptance:
+  - the supported decision actions and identifiers are explicit
+  - required approval inputs and destination-mapping rules are explicit
+  - fail-closed behavior and out-of-scope boundaries are explicit
+  - the surface is grounded in the current `sessions/store.py` and `scripts/operator_api.py` reality
+- dependencies:
+  - AIO-039
+- status: backlog
+
+### Implement narrow operator CLI wrapper over the sanctioned bundle decision path
+- id: AIO-041
+- item_type: task
+- title: Implement narrow operator CLI wrapper over the sanctioned bundle decision path
+- details: add a bounded operator-facing CLI command that uses sanctioned persisted state to inspect a target bundle context and issue an explicit approved apply/promotion decision without widening workflow proof
+- objective: make the currently real decision path usable without direct store-path scripting
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M7 - Post-M6 Operator Decision Surface Hardening
+- expected_artifact_path: scripts/operator_api.py
+- acceptance:
+  - a bounded operator-facing decision wrapper exists for the sanctioned bundle decision path
+  - the wrapper requires explicit approval inputs and preserves exact-path enforcement
+  - the wrapper does not imply later-stage workflow or readiness upgrades
+  - focused verification exists
+- dependencies:
+  - AIO-040
+- status: backlog
+
+### Rehearse the operator-facing decision surface under supervision and record evidence
+- id: AIO-042
+- item_type: task
+- title: Rehearse the operator-facing decision surface under supervision and record evidence
+- details: run one bounded supervised rehearsal that uses the operator-facing decision surface to inspect a pending-review bundle and issue a sanctioned decision, then record what the surface proved and what still remains manual or unproven
+- objective: prove the next narrow operator decision surface in practice without widening workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M7 - Post-M6 Operator Decision Surface Hardening
+- expected_artifact_path: projects/aioffice/artifacts/M7_OPERATOR_DECISION_SURFACE_REHEARSAL.md
+- acceptance:
+  - one bounded supervised rehearsal of the operator-facing decision surface is executed
+  - evidence is recorded factually
+  - manual-glue reduction and remaining limits are explicit
+  - no concurrency, later-stage, or readiness overclaim is made
+- dependencies:
+  - AIO-041
+- status: backlog
 
 ## TODO
 - decide whether and when to mirror these tasks into the canonical SQLite task store
