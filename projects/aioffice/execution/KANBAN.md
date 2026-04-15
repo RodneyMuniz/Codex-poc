@@ -748,6 +748,27 @@ Bootstrap status:
 - dependencies: []
 - status: completed
 
+### Rehearse separate apply branch under supervision and record evidence
+- id: AIO-036
+- item_type: task
+- title: Rehearse separate apply branch under supervision and record evidence
+- details: run one bounded supervised rehearsal that exercises the sanctioned `apply` branch explicitly so current readiness does not rely only on `promote`-branch proof
+- objective: prove the separate `apply` decision path in practice without expanding the workflow boundary
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M6 - Post-M5 Narrow Proof Slice
+- expected_artifact_path: projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md
+- acceptance:
+  - one supervised rehearsal of the sanctioned `apply` branch is executed
+  - evidence is recorded factually
+  - resulting state and limits are explicit
+  - no later-stage, unattended, or overnight claim is made
+- dependencies:
+  - AIO-031
+  - AIO-034
+  - AIO-035A
+- status: completed
+
 ## In Review
 
 _No items_
@@ -779,27 +800,6 @@ _No items_
   - no later-stage workflow, autonomy, or UAT readiness claim is added
 - dependencies:
   - AIO-034
-- status: backlog
-
-### Rehearse separate apply branch under supervision and record evidence
-- id: AIO-036
-- item_type: task
-- title: Rehearse separate apply branch under supervision and record evidence
-- details: run one bounded supervised rehearsal that exercises the sanctioned `apply` branch explicitly so current readiness does not rely only on `promote`-branch proof
-- objective: prove the separate `apply` decision path in practice without expanding the workflow boundary
-- owner_role: Project Orchestrator
-- assigned_role: QA
-- milestone: M6 - Post-M5 Narrow Proof Slice
-- expected_artifact_path: projects/aioffice/artifacts/M6_APPLY_BRANCH_REHEARSAL.md
-- acceptance:
-  - one supervised rehearsal of the sanctioned `apply` branch is executed
-  - evidence is recorded factually
-  - resulting state and limits are explicit
-  - no later-stage, unattended, or overnight claim is made
-- dependencies:
-  - AIO-031
-  - AIO-034
-  - AIO-035A
 - status: backlog
 
 ### Run bounded same-workspace repeated-run or shared-store contention rehearsal
