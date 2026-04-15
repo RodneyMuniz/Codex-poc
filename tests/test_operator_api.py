@@ -227,6 +227,12 @@ def _build_bundle_decision_fixture(tmp_path: Path) -> dict[str, object]:
     }
 
 
+def _write_bundle_decision_mappings_file(tmp_path: Path, payload: object, *, filename: str) -> Path:
+    path = tmp_path / filename
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
 def test_operator_api_preview_routes_through_ingress_first(monkeypatch, capsys):
     captured: dict[str, object] = {}
 
@@ -737,6 +743,16 @@ def test_operator_api_control_kernel_details_reads_without_mutation(monkeypatch,
 def test_operator_api_bundle_decision_executes_controlled_apply(monkeypatch, capsys, tmp_path):
     fixture = _build_bundle_decision_fixture(tmp_path)
     captured: dict[str, object] = {"call_count": 0}
+    mappings_file = _write_bundle_decision_mappings_file(
+        tmp_path,
+        [
+            {
+                "source_artifact_id": fixture["artifact"]["id"],
+                "destination_path": fixture["destination_path"],
+            }
+        ],
+        filename="bundle_decision_success.json",
+    )
 
     class _DecisionStoreProxy:
         def __init__(self, store):
@@ -779,15 +795,8 @@ def test_operator_api_bundle_decision_executes_controlled_apply(monkeypatch, cap
             "apply",
             "--approved-by",
             "Project Orchestrator",
-            "--destination-mappings",
-            json.dumps(
-                [
-                    {
-                        "source_artifact_id": fixture["artifact"]["id"],
-                        "destination_path": fixture["destination_path"],
-                    }
-                ]
-            ),
+            "--destination-mappings-file",
+            str(mappings_file),
             "--decision-note",
             "Approved bounded apply into the authoritative workspace.",
         ],
@@ -798,6 +807,7 @@ def test_operator_api_bundle_decision_executes_controlled_apply(monkeypatch, cap
 
     assert payload["command"] == "bundle-decision"
     assert payload["bundle_id"] == fixture["bundle"]["bundle_id"]
+    assert payload["destination_mappings_file"] == str(mappings_file.resolve())
     assert captured["call_count"] == 1
     assert captured["bundle_id"] == fixture["bundle"]["bundle_id"]
     assert captured["approved_decision"] == {
@@ -826,6 +836,16 @@ def test_operator_api_bundle_decision_executes_controlled_apply(monkeypatch, cap
 def test_operator_api_bundle_decision_rejects_blank_approved_by(monkeypatch, capsys, tmp_path):
     fixture = _build_bundle_decision_fixture(tmp_path)
     captured: dict[str, object] = {"call_count": 0}
+    mappings_file = _write_bundle_decision_mappings_file(
+        tmp_path,
+        [
+            {
+                "source_artifact_id": fixture["artifact"]["id"],
+                "destination_path": fixture["destination_path"],
+            }
+        ],
+        filename="bundle_decision_blank_approved_by.json",
+    )
 
     class _DecisionStoreProxy:
         def __init__(self, store):
@@ -854,15 +874,8 @@ def test_operator_api_bundle_decision_rejects_blank_approved_by(monkeypatch, cap
             "apply",
             "--approved-by",
             "   ",
-            "--destination-mappings",
-            json.dumps(
-                [
-                    {
-                        "source_artifact_id": fixture["artifact"]["id"],
-                        "destination_path": fixture["destination_path"],
-                    }
-                ]
-            ),
+            "--destination-mappings-file",
+            str(mappings_file),
         ],
     )
 
@@ -878,14 +891,14 @@ def test_operator_api_bundle_decision_rejects_blank_approved_by(monkeypatch, cap
     assert not fixture["destination_file"].exists()
 
 
-def test_operator_api_bundle_decision_rejects_destination_outside_authoritative_workspace(
+def test_operator_api_bundle_decision_rejects_missing_destination_mappings_file(
     monkeypatch,
     capsys,
     tmp_path,
 ):
     fixture = _build_bundle_decision_fixture(tmp_path)
     captured: dict[str, object] = {"call_count": 0}
-    outside_destination = fixture["repo_root"] / "sessions" / "not_allowed.md"
+    missing_file = tmp_path / "bundle_decision_missing.json"
 
     class _DecisionStoreProxy:
         def __init__(self, store):
@@ -914,15 +927,125 @@ def test_operator_api_bundle_decision_rejects_destination_outside_authoritative_
             "apply",
             "--approved-by",
             "Project Orchestrator",
-            "--destination-mappings",
-            json.dumps(
-                [
-                    {
-                        "source_artifact_id": fixture["artifact"]["id"],
-                        "destination_path": "sessions/not_allowed.md",
-                    }
-                ]
-            ),
+            "--destination-mappings-file",
+            str(missing_file),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "destination_mappings_file does not exist" in payload["error"]
+    assert captured["call_count"] == 0
+    assert fixture["store"].get_execution_bundle(fixture["bundle"]["bundle_id"])["acceptance_state"] == "pending_review"
+    assert not fixture["destination_file"].exists()
+
+
+def test_operator_api_bundle_decision_rejects_invalid_destination_mappings_file_json(
+    monkeypatch,
+    capsys,
+    tmp_path,
+):
+    fixture = _build_bundle_decision_fixture(tmp_path)
+    captured: dict[str, object] = {"call_count": 0}
+    invalid_json_file = tmp_path / "bundle_decision_invalid.json"
+    invalid_json_file.write_text('{"source_artifact_id": ', encoding="utf-8")
+
+    class _DecisionStoreProxy:
+        def __init__(self, store):
+            self._store = store
+
+        def __getattr__(self, name: str):
+            return getattr(self._store, name)
+
+        def execute_apply_promotion_decision(self, *args, **kwargs):
+            captured["call_count"] = int(captured["call_count"]) + 1
+            return self._store.execute_apply_promotion_decision(*args, **kwargs)
+
+    class _DummyOrchestrator:
+        store = _DecisionStoreProxy(fixture["store"])
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "bundle-decision",
+            "--bundle-id",
+            fixture["bundle"]["bundle_id"],
+            "--action",
+            "apply",
+            "--approved-by",
+            "Project Orchestrator",
+            "--destination-mappings-file",
+            str(invalid_json_file),
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        operator_api.main()
+
+    assert exc_info.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_type"] == "ValueError"
+    assert "destination_mappings_file must contain valid JSON" in payload["error"]
+    assert captured["call_count"] == 0
+    assert fixture["store"].get_execution_bundle(fixture["bundle"]["bundle_id"])["acceptance_state"] == "pending_review"
+    assert not fixture["destination_file"].exists()
+
+
+def test_operator_api_bundle_decision_rejects_destination_outside_authoritative_workspace(
+    monkeypatch,
+    capsys,
+    tmp_path,
+):
+    fixture = _build_bundle_decision_fixture(tmp_path)
+    captured: dict[str, object] = {"call_count": 0}
+    outside_destination = fixture["repo_root"] / "sessions" / "not_allowed.md"
+    mappings_file = _write_bundle_decision_mappings_file(
+        tmp_path,
+        [
+            {
+                "source_artifact_id": fixture["artifact"]["id"],
+                "destination_path": "sessions/not_allowed.md",
+            }
+        ],
+        filename="bundle_decision_outside_root.json",
+    )
+
+    class _DecisionStoreProxy:
+        def __init__(self, store):
+            self._store = store
+
+        def __getattr__(self, name: str):
+            return getattr(self._store, name)
+
+        def execute_apply_promotion_decision(self, *args, **kwargs):
+            captured["call_count"] = int(captured["call_count"]) + 1
+            return self._store.execute_apply_promotion_decision(*args, **kwargs)
+
+    class _DummyOrchestrator:
+        store = _DecisionStoreProxy(fixture["store"])
+
+    monkeypatch.setattr(operator_api, "_orchestrator", lambda: _DummyOrchestrator())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "operator_api.py",
+            "bundle-decision",
+            "--bundle-id",
+            fixture["bundle"]["bundle_id"],
+            "--action",
+            "apply",
+            "--approved-by",
+            "Project Orchestrator",
+            "--destination-mappings-file",
+            str(mappings_file),
         ],
     )
 

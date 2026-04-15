@@ -1008,7 +1008,7 @@ _No items_
   - no readiness upgrade or workflow expansion is implied
 - dependencies:
   - AIO-044
-- status: backlog
+- status: completed
 
 ### Rehearse the shell-safe operator decision input path under supervision and record evidence
 - id: AIO-046

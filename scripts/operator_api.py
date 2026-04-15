@@ -269,17 +269,40 @@ def _normalize_bundle_decision_action(action: str | None) -> str:
     return normalized
 
 
-def _parse_destination_mappings_argument(raw_value: str | None) -> list[dict[str, Any]]:
-    normalized = _require_cli_non_empty_text("destination_mappings", raw_value)
+def _parse_destination_mappings_payload(raw_value: str, *, field_name: str) -> list[dict[str, Any]]:
+    normalized = str(raw_value).strip()
+    if not normalized:
+        raise ValueError(f"{field_name} must not be empty.")
     try:
         decoded = json.loads(normalized)
     except json.JSONDecodeError as exc:
-        raise ValueError("destination_mappings must be valid JSON.") from exc
+        raise ValueError(f"{field_name} must contain valid JSON.") from exc
     if not isinstance(decoded, list):
-        raise ValueError("destination_mappings must decode to a JSON array.")
+        raise ValueError(f"{field_name} must decode to a JSON array.")
     if not decoded:
-        raise ValueError("destination_mappings must not be empty.")
+        raise ValueError(f"{field_name} must not be empty.")
     return decoded
+
+
+def _load_destination_mappings_file(repo_root: Path, raw_path: str | None) -> tuple[str, list[dict[str, Any]]]:
+    normalized = _require_cli_non_empty_text("destination_mappings_file", raw_path)
+    candidate = Path(normalized)
+    if not candidate.is_absolute():
+        candidate = repo_root / candidate
+    resolved = candidate.resolve()
+    if not resolved.exists():
+        raise ValueError(f"destination_mappings_file does not exist: {normalized}")
+    if resolved.is_dir():
+        raise ValueError("destination_mappings_file must point to a file.")
+    try:
+        raw_payload = resolved.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ValueError(f"destination_mappings_file is not readable: {resolved}") from exc
+    decoded = _parse_destination_mappings_payload(
+        raw_payload,
+        field_name="destination_mappings_file",
+    )
+    return str(resolved), decoded
 
 
 def _bundle_decision_snapshot(inspection: dict[str, Any]) -> dict[str, Any]:
@@ -310,14 +333,17 @@ def _execute_control_kernel_bundle_decision(
     bundle_id: str,
     action: str,
     approved_by: str,
-    destination_mappings: str,
+    destination_mappings_file: str,
     decision_note: str | None = None,
     workspace_root: str | None = None,
 ) -> dict[str, Any]:
     normalized_bundle_id = _require_cli_non_empty_text("bundle_id", bundle_id)
     normalized_action = _normalize_bundle_decision_action(action)
     normalized_approved_by = _require_cli_non_empty_text("approved_by", approved_by)
-    normalized_destination_mappings = _parse_destination_mappings_argument(destination_mappings)
+    resolved_destination_mappings_file, normalized_destination_mappings = _load_destination_mappings_file(
+        repo_root,
+        destination_mappings_file,
+    )
 
     normalized_decision_note = None
     if decision_note is not None:
@@ -352,6 +378,7 @@ def _execute_control_kernel_bundle_decision(
         "command": "bundle-decision",
         "bundle_id": normalized_bundle_id,
         "approved_decision": approved_decision,
+        "destination_mappings_file": resolved_destination_mappings_file,
         "destination_mappings": normalized_destination_mappings,
         "updated_bundle": updated_bundle,
         "inspection_before": _bundle_decision_snapshot(inspection_before),
@@ -1070,7 +1097,7 @@ def main() -> None:
     bundle_decision.add_argument("--bundle-id", required=True)
     bundle_decision.add_argument("--action", required=True)
     bundle_decision.add_argument("--approved-by", required=True)
-    bundle_decision.add_argument("--destination-mappings", required=True)
+    bundle_decision.add_argument("--destination-mappings-file", required=True)
     bundle_decision.add_argument("--decision-note", default=None)
     bundle_decision.add_argument("--workspace-root", default=None)
 
@@ -1159,7 +1186,7 @@ def main() -> None:
                 bundle_id=args.bundle_id,
                 action=args.action,
                 approved_by=args.approved_by,
-                destination_mappings=args.destination_mappings,
+                destination_mappings_file=args.destination_mappings_file,
                 decision_note=args.decision_note,
                 workspace_root=args.workspace_root,
             )
