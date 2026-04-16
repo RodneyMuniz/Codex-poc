@@ -1,0 +1,1376 @@
+{
+  "metadata": {
+    "schema_version": "1.0",
+    "generated_at": "2026-04-17T00:00:00+00:00",
+    "generator_version": "aioffice-structural-truth-baseline-v1",
+    "input_files": [
+      "projects/aioffice/governance/VISION.md",
+      "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "projects/aioffice/governance/ACTIVE_STATE.md",
+      "projects/aioffice/governance/DECISION_LOG.md",
+      "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "projects/aioffice/execution/KANBAN.md",
+      "scripts/operator_api.py",
+      "sessions/store.py",
+      "state_machine.py",
+      "tests/test_control_kernel_store.py",
+      "tests/test_store.py"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "artifact:projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md",
+      "node_class": "artifact",
+      "label": "projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1477
+      },
+      "attributes": {
+        "task_id": "AIO-066",
+        "exists_in_bounded_inputs": false,
+        "exists_in_repo": false
+      }
+    },
+    {
+      "id": "artifact:projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md",
+      "node_class": "artifact",
+      "label": "projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1408
+      },
+      "attributes": {
+        "task_id": "AIO-063",
+        "exists_in_bounded_inputs": false,
+        "exists_in_repo": true
+      }
+    },
+    {
+      "id": "artifact:projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "node_class": "artifact",
+      "label": "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "artifact:projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md",
+      "node_class": "artifact",
+      "label": "projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1495
+      },
+      "attributes": {
+        "task_id": "AIO-067",
+        "exists_in_bounded_inputs": false,
+        "exists_in_repo": false
+      }
+    },
+    {
+      "id": "artifact:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "node_class": "artifact",
+      "label": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1426
+      },
+      "attributes": {
+        "task_id": "AIO-064",
+        "exists_in_bounded_inputs": true,
+        "exists_in_repo": true
+      }
+    },
+    {
+      "id": "artifact:scripts/generate_structural_truth.py",
+      "node_class": "artifact",
+      "label": "scripts/generate_structural_truth.py",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1459
+      },
+      "attributes": {
+        "task_id": "AIO-065",
+        "exists_in_bounded_inputs": false,
+        "exists_in_repo": true
+      }
+    },
+    {
+      "id": "command:bundle-decision",
+      "node_class": "command_or_function",
+      "label": "bundle-decision",
+      "source_ref": {
+        "path": "scripts/operator_api.py",
+        "line": 1096
+      },
+      "attributes": {
+        "symbol_kind": "command"
+      }
+    },
+    {
+      "id": "command:control-kernel-details",
+      "node_class": "command_or_function",
+      "label": "control-kernel-details",
+      "source_ref": {
+        "path": "scripts/operator_api.py",
+        "line": 1089
+      },
+      "attributes": {
+        "symbol_kind": "command"
+      }
+    },
+    {
+      "id": "decision:AIO-D-013",
+      "node_class": "decision",
+      "label": "AIO-D-013: after the post-`M12` protected-surface enforcement review, `M12 - Protected Core Surfaces Enforcement` is complete and `M13 - Design Lane Operationalization` is ratified as the next active conservative slice.",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 115
+      },
+      "attributes": {
+        "date": "2026-04-16",
+        "status": "reviewed"
+      }
+    },
+    {
+      "id": "decision:AIO-D-014",
+      "node_class": "decision",
+      "label": "AIO-D-014: after `M13 - Design Lane Operationalization` was ratified in `AIO-D-013` but before `AIO-064` through `AIO-067` began implementation, the operator explicitly rebaselined `M13` to `M13 - Structural Truth Layer Baseline` and preserved `AIO-064` through `AIO-067` as the seeded task ids under the new scope.",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 125
+      },
+      "attributes": {
+        "date": "2026-04-16",
+        "status": "reviewed"
+      }
+    },
+    {
+      "id": "file:projects/aioffice/execution/KANBAN.md",
+      "node_class": "file",
+      "label": "projects/aioffice/execution/KANBAN.md",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:projects/aioffice/governance/ACTIVE_STATE.md",
+      "node_class": "file",
+      "label": "projects/aioffice/governance/ACTIVE_STATE.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/ACTIVE_STATE.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:projects/aioffice/governance/DECISION_LOG.md",
+      "node_class": "file",
+      "label": "projects/aioffice/governance/DECISION_LOG.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "node_class": "file",
+      "label": "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "node_class": "file",
+      "label": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "node_class": "file",
+      "label": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:projects/aioffice/governance/VISION.md",
+      "node_class": "file",
+      "label": "projects/aioffice/governance/VISION.md",
+      "source_ref": {
+        "path": "projects/aioffice/governance/VISION.md",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:scripts/operator_api.py",
+      "node_class": "file",
+      "label": "scripts/operator_api.py",
+      "source_ref": {
+        "path": "scripts/operator_api.py",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:sessions/store.py",
+      "node_class": "file",
+      "label": "sessions/store.py",
+      "source_ref": {
+        "path": "sessions/store.py",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:state_machine.py",
+      "node_class": "file",
+      "label": "state_machine.py",
+      "source_ref": {
+        "path": "state_machine.py",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:tests/test_control_kernel_store.py",
+      "node_class": "file",
+      "label": "tests/test_control_kernel_store.py",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 1
+      }
+    },
+    {
+      "id": "file:tests/test_store.py",
+      "node_class": "file",
+      "label": "tests/test_store.py",
+      "source_ref": {
+        "path": "tests/test_store.py",
+        "line": 1
+      }
+    },
+    {
+      "id": "function:ensure_first_slice_stage_completion",
+      "node_class": "command_or_function",
+      "label": "ensure_first_slice_stage_completion",
+      "source_ref": {
+        "path": "state_machine.py",
+        "line": 582
+      },
+      "attributes": {
+        "symbol_kind": "function"
+      }
+    },
+    {
+      "id": "function:ensure_first_slice_stage_start",
+      "node_class": "command_or_function",
+      "label": "ensure_first_slice_stage_start",
+      "source_ref": {
+        "path": "state_machine.py",
+        "line": 546
+      },
+      "attributes": {
+        "symbol_kind": "function"
+      }
+    },
+    {
+      "id": "function:execute_apply_promotion_decision",
+      "node_class": "command_or_function",
+      "label": "execute_apply_promotion_decision",
+      "source_ref": {
+        "path": "sessions/store.py",
+        "line": 3073
+      },
+      "attributes": {
+        "symbol_kind": "function"
+      }
+    },
+    {
+      "id": "protected_surface_class:accepted_truth_surfaces",
+      "node_class": "protected_surface_class",
+      "label": "accepted truth surfaces",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 72
+      }
+    },
+    {
+      "id": "protected_surface_class:governance_law_surfaces",
+      "node_class": "protected_surface_class",
+      "label": "governance law surfaces",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 71
+      }
+    },
+    {
+      "id": "protected_surface_class:protected_control_path_code_surfaces",
+      "node_class": "protected_surface_class",
+      "label": "protected control-path code surfaces",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 73
+      }
+    },
+    {
+      "id": "protected_surface_class:protected_operator_control_surfaces",
+      "node_class": "protected_surface_class",
+      "label": "protected operator/control surfaces",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 74
+      }
+    },
+    {
+      "id": "requirement:deterministic_ingestion_rules",
+      "node_class": "requirement",
+      "label": "Deterministic Ingestion Rules",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 70
+      }
+    },
+    {
+      "id": "requirement:explicit_non_claims",
+      "node_class": "requirement",
+      "label": "Explicit Non-Claims",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 103
+      }
+    },
+    {
+      "id": "requirement:gold_standard_maturity_rubric",
+      "node_class": "requirement",
+      "label": "Gold-Standard Maturity Rubric",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 88
+      }
+    },
+    {
+      "id": "requirement:minimum_schema",
+      "node_class": "requirement",
+      "label": "Minimum Schema",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 40
+      }
+    },
+    {
+      "id": "requirement:sanctioned_enforcement_and_review_points",
+      "node_class": "requirement",
+      "label": "Sanctioned Enforcement And Review Points",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 78
+      }
+    },
+    {
+      "id": "requirement:source_of_truth_precedence",
+      "node_class": "requirement",
+      "label": "Source-Of-Truth Precedence",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 29
+      }
+    },
+    {
+      "id": "requirement:vision_derived_structural_truth_layer",
+      "node_class": "requirement",
+      "label": "Derived Structural Truth Layer",
+      "source_ref": {
+        "path": "projects/aioffice/governance/VISION.md",
+        "line": 160
+      }
+    },
+    {
+      "id": "task:AIO-062",
+      "node_class": "task",
+      "label": "AIO-062: Rehearse blocked ordinary-lane attempts against a protected surface and record evidence",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1382
+      },
+      "attributes": {
+        "milestone": "M12 - Protected Core Surfaces Enforcement",
+        "status": "completed",
+        "expected_artifact_path": "projects/aioffice/artifacts/M12_PROTECTED_SURFACE_BLOCK_REHEARSAL.md"
+      }
+    },
+    {
+      "id": "task:AIO-063",
+      "node_class": "task",
+      "label": "AIO-063: Record post-M12 protected-surface enforcement review and ratify the next conservative slice",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1400
+      },
+      "attributes": {
+        "milestone": "M12 - Protected Core Surfaces Enforcement",
+        "status": "completed",
+        "expected_artifact_path": "projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md"
+      }
+    },
+    {
+      "id": "task:AIO-064",
+      "node_class": "task",
+      "label": "AIO-064: Define structural truth layer contract, source-of-truth boundaries, and gold-standard maturity rubric",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1418
+      },
+      "attributes": {
+        "milestone": "M13 - Structural Truth Layer Baseline",
+        "status": "completed",
+        "expected_artifact_path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md"
+      }
+    },
+    {
+      "id": "task:AIO-065",
+      "node_class": "task",
+      "label": "AIO-065: Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1451
+      },
+      "attributes": {
+        "milestone": "M13 - Structural Truth Layer Baseline",
+        "status": "backlog",
+        "expected_artifact_path": "scripts/generate_structural_truth.py"
+      }
+    },
+    {
+      "id": "task:AIO-066",
+      "node_class": "task",
+      "label": "AIO-066: Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1469
+      },
+      "attributes": {
+        "milestone": "M13 - Structural Truth Layer Baseline",
+        "status": "backlog",
+        "expected_artifact_path": "projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md"
+      }
+    },
+    {
+      "id": "task:AIO-067",
+      "node_class": "task",
+      "label": "AIO-067: Record post-M13 structural truth review and ratify the next conservative slice",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1487
+      },
+      "attributes": {
+        "milestone": "M13 - Structural Truth Layer Baseline",
+        "status": "backlog",
+        "expected_artifact_path": "projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md"
+      }
+    },
+    {
+      "id": "test:test_store_can_execute_controlled_apply_promotion_with_explicit_approved_decision",
+      "node_class": "test",
+      "label": "test_store_can_execute_controlled_apply_promotion_with_explicit_approved_decision",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 661
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_destination_outside_authoritative_workspace",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_destination_outside_authoritative_workspace",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 729
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_into_accepted_truth_surface",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_into_accepted_truth_surface",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 796
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_into_governance_or_forbidden_paths",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_into_governance_or_forbidden_paths",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 761
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_into_protected_control_path_code_surface",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_into_protected_control_path_code_surface",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 833
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_self_promotion_paths",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_self_promotion_paths",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 910
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 870
+      }
+    },
+    {
+      "id": "test:test_store_rejects_apply_promotion_without_explicit_approved_decision",
+      "node_class": "test",
+      "label": "test_store_rejects_apply_promotion_without_explicit_approved_decision",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 697
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "protected_surface_class:accepted_truth_surfaces",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 63
+      }
+    },
+    {
+      "from": "protected_surface_class:accepted_truth_surfaces",
+      "to": "file:projects/aioffice/governance/ACTIVE_STATE.md",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 64
+      }
+    },
+    {
+      "from": "protected_surface_class:accepted_truth_surfaces",
+      "to": "file:projects/aioffice/governance/DECISION_LOG.md",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 159
+      }
+    },
+    {
+      "from": "protected_surface_class:governance_law_surfaces",
+      "to": "file:projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 81
+      }
+    },
+    {
+      "from": "protected_surface_class:governance_law_surfaces",
+      "to": "file:projects/aioffice/governance/VISION.md",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 80
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_control_path_code_surfaces",
+      "to": "file:scripts/operator_api.py",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 162
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_control_path_code_surfaces",
+      "to": "file:sessions/store.py",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 161
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_operator_control_surfaces",
+      "to": "command:bundle-decision",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 164
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_operator_control_surfaces",
+      "to": "command:control-kernel-details",
+      "relationship_class": "classifies",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 164
+      }
+    },
+    {
+      "from": "artifact:projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "to": "file:projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+        "line": 1
+      }
+    },
+    {
+      "from": "artifact:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1426
+      }
+    },
+    {
+      "from": "command:bundle-decision",
+      "to": "file:scripts/operator_api.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "scripts/operator_api.py",
+        "line": 1096
+      }
+    },
+    {
+      "from": "command:control-kernel-details",
+      "to": "file:scripts/operator_api.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "scripts/operator_api.py",
+        "line": 1089
+      }
+    },
+    {
+      "from": "decision:AIO-D-013",
+      "to": "file:projects/aioffice/governance/DECISION_LOG.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 115
+      }
+    },
+    {
+      "from": "decision:AIO-D-014",
+      "to": "file:projects/aioffice/governance/DECISION_LOG.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 125
+      }
+    },
+    {
+      "from": "function:ensure_first_slice_stage_completion",
+      "to": "file:state_machine.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "state_machine.py",
+        "line": 582
+      }
+    },
+    {
+      "from": "function:ensure_first_slice_stage_start",
+      "to": "file:state_machine.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "state_machine.py",
+        "line": 546
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "file:sessions/store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "sessions/store.py",
+        "line": 3073
+      }
+    },
+    {
+      "from": "protected_surface_class:accepted_truth_surfaces",
+      "to": "file:projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 72
+      }
+    },
+    {
+      "from": "protected_surface_class:governance_law_surfaces",
+      "to": "file:projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 71
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_control_path_code_surfaces",
+      "to": "file:projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 73
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_operator_control_surfaces",
+      "to": "file:projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md",
+        "line": 74
+      }
+    },
+    {
+      "from": "requirement:deterministic_ingestion_rules",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 70
+      }
+    },
+    {
+      "from": "requirement:explicit_non_claims",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 103
+      }
+    },
+    {
+      "from": "requirement:gold_standard_maturity_rubric",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 88
+      }
+    },
+    {
+      "from": "requirement:minimum_schema",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 40
+      }
+    },
+    {
+      "from": "requirement:sanctioned_enforcement_and_review_points",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 78
+      }
+    },
+    {
+      "from": "requirement:source_of_truth_precedence",
+      "to": "file:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "line": 29
+      }
+    },
+    {
+      "from": "requirement:vision_derived_structural_truth_layer",
+      "to": "file:projects/aioffice/governance/VISION.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/governance/VISION.md",
+        "line": 160
+      }
+    },
+    {
+      "from": "task:AIO-062",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1382
+      }
+    },
+    {
+      "from": "task:AIO-063",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1400
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1418
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1451
+      }
+    },
+    {
+      "from": "task:AIO-066",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1469
+      }
+    },
+    {
+      "from": "task:AIO-067",
+      "to": "file:projects/aioffice/execution/KANBAN.md",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1487
+      }
+    },
+    {
+      "from": "test:test_store_can_execute_controlled_apply_promotion_with_explicit_approved_decision",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 661
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_destination_outside_authoritative_workspace",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 729
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_into_accepted_truth_surface",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 796
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_into_governance_or_forbidden_paths",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 761
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_into_protected_control_path_code_surface",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 833
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_self_promotion_paths",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 910
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 870
+      }
+    },
+    {
+      "from": "test:test_store_rejects_apply_promotion_without_explicit_approved_decision",
+      "to": "file:tests/test_control_kernel_store.py",
+      "relationship_class": "defined_in",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 697
+      }
+    },
+    {
+      "from": "decision:AIO-D-014",
+      "to": "decision:AIO-D-013",
+      "relationship_class": "depends_on",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 128
+      }
+    },
+    {
+      "from": "task:AIO-063",
+      "to": "task:AIO-062",
+      "relationship_class": "depends_on",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1414
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "task:AIO-063",
+      "relationship_class": "depends_on",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1433
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "task:AIO-064",
+      "relationship_class": "depends_on",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1465
+      }
+    },
+    {
+      "from": "task:AIO-066",
+      "to": "task:AIO-065",
+      "relationship_class": "depends_on",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1483
+      }
+    },
+    {
+      "from": "task:AIO-067",
+      "to": "task:AIO-066",
+      "relationship_class": "depends_on",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1502
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_can_execute_controlled_apply_promotion_with_explicit_approved_decision",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 661
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_destination_outside_authoritative_workspace",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 729
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_into_accepted_truth_surface",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 796
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_into_governance_or_forbidden_paths",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 761
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_into_protected_control_path_code_surface",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 833
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_self_promotion_paths",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 910
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 870
+      }
+    },
+    {
+      "from": "function:execute_apply_promotion_decision",
+      "to": "test:test_store_rejects_apply_promotion_without_explicit_approved_decision",
+      "relationship_class": "exercised_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 697
+      }
+    },
+    {
+      "from": "task:AIO-063",
+      "to": "artifact:projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md",
+      "relationship_class": "implemented_by",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1408
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "artifact:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+      "relationship_class": "implemented_by",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1426
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "artifact:scripts/generate_structural_truth.py",
+      "relationship_class": "implemented_by",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1459
+      }
+    },
+    {
+      "from": "task:AIO-066",
+      "to": "artifact:projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md",
+      "relationship_class": "implemented_by",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1477
+      }
+    },
+    {
+      "from": "task:AIO-067",
+      "to": "artifact:projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md",
+      "relationship_class": "implemented_by",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1495
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "decision:AIO-D-014",
+      "relationship_class": "ratified_by",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 128
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "decision:AIO-D-014",
+      "relationship_class": "ratified_by",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 128
+      }
+    },
+    {
+      "from": "task:AIO-066",
+      "to": "decision:AIO-D-014",
+      "relationship_class": "ratified_by",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 128
+      }
+    },
+    {
+      "from": "task:AIO-067",
+      "to": "decision:AIO-D-014",
+      "relationship_class": "ratified_by",
+      "source_ref": {
+        "path": "projects/aioffice/governance/DECISION_LOG.md",
+        "line": 128
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "requirement:deterministic_ingestion_rules",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1430
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "requirement:explicit_non_claims",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1431
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "requirement:gold_standard_maturity_rubric",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1417
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "requirement:minimum_schema",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1429
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "requirement:sanctioned_enforcement_and_review_points",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1430
+      }
+    },
+    {
+      "from": "task:AIO-064",
+      "to": "requirement:source_of_truth_precedence",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1428
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "protected_surface_class:accepted_truth_surfaces",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1454
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "protected_surface_class:governance_law_surfaces",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1454
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "protected_surface_class:protected_control_path_code_surfaces",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1454
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "protected_surface_class:protected_operator_control_surfaces",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1454
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "requirement:deterministic_ingestion_rules",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1461
+      }
+    },
+    {
+      "from": "task:AIO-065",
+      "to": "requirement:explicit_non_claims",
+      "relationship_class": "touches",
+      "source_ref": {
+        "path": "projects/aioffice/execution/KANBAN.md",
+        "line": 1463
+      }
+    },
+    {
+      "from": "protected_surface_class:accepted_truth_surfaces",
+      "to": "test:test_store_rejects_apply_promotion_into_accepted_truth_surface",
+      "relationship_class": "verified_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 824
+      }
+    },
+    {
+      "from": "protected_surface_class:protected_control_path_code_surfaces",
+      "to": "test:test_store_rejects_apply_promotion_into_protected_control_path_code_surface",
+      "relationship_class": "verified_by",
+      "source_ref": {
+        "path": "tests/test_control_kernel_store.py",
+        "line": 861
+      }
+    }
+  ],
+  "diagnostics": {
+    "unresolved_references": [
+      {
+        "id": "unresolved:test_file:tests/test_store.py",
+        "kind": "missing_bounded_linked_test",
+        "message": "tests/test_store.py is in the bounded input set, but no explicit structural-truth link to the current protected/control surfaces was detected safely.",
+        "source_ref": {
+          "path": "tests/test_store.py",
+          "line": 1
+        }
+      },
+      {
+        "id": "unresolved:classification:projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+        "kind": "missing_surface_classification",
+        "message": "M13_SCOPE_REBASELINE.md is in the bounded input set, but no explicit protected-surface class mapping was found in the bounded governance sources.",
+        "source_ref": {
+          "path": "projects/aioffice/governance/M13_SCOPE_REBASELINE.md",
+          "line": 1
+        }
+      },
+      {
+        "id": "unresolved:classification:projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+        "kind": "missing_surface_classification",
+        "message": "STRUCTURAL_TRUTH_LAYER_CONTRACT.md is in the bounded input set, but no explicit protected-surface class mapping was found in the bounded governance sources.",
+        "source_ref": {
+          "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+          "line": 1
+        }
+      },
+      {
+        "id": "unresolved:test_link:command:bundle-decision",
+        "kind": "missing_test_link",
+        "message": "No explicit linked test for bundle-decision was detected in the bounded input set.",
+        "source_ref": {
+          "path": "scripts/operator_api.py",
+          "line": 1096
+        }
+      },
+      {
+        "id": "unresolved:test_link:command:control-kernel-details",
+        "kind": "missing_test_link",
+        "message": "No explicit linked test for control-kernel-details was detected in the bounded input set.",
+        "source_ref": {
+          "path": "scripts/operator_api.py",
+          "line": 1089
+        }
+      },
+      {
+        "id": "unresolved:test_link:function:ensure_first_slice_stage_completion",
+        "kind": "missing_test_link",
+        "message": "No explicit linked test for ensure_first_slice_stage_completion was detected in the bounded input set.",
+        "source_ref": {
+          "path": "state_machine.py",
+          "line": 582
+        }
+      },
+      {
+        "id": "unresolved:test_link:function:ensure_first_slice_stage_start",
+        "kind": "missing_test_link",
+        "message": "No explicit linked test for ensure_first_slice_stage_start was detected in the bounded input set.",
+        "source_ref": {
+          "path": "state_machine.py",
+          "line": 546
+        }
+      }
+    ],
+    "orphan_nodes": [
+      {
+        "node_id": "file:tests/test_store.py",
+        "message": "No explicit structural-truth relationships were established safely for this node in the bounded baseline.",
+        "source_ref": {
+          "path": "tests/test_store.py",
+          "line": 1
+        }
+      }
+    ],
+    "warnings": [
+      {
+        "id": "warning:bounded_input_set_only",
+        "message": "Generation is limited to the explicit bounded input set; no open-ended repo crawl or inferred relationships were used.",
+        "source_ref": {
+          "path": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
+          "line": 71
+        }
+      },
+      {
+        "id": "warning:readiness_boundary_unchanged",
+        "message": "This baseline artifact does not upgrade readiness or widen workflow proof beyond architect.",
+        "source_ref": {
+          "path": "projects/aioffice/governance/ACTIVE_STATE.md",
+          "line": 24
+        }
+      },
+      {
+        "id": "warning:workflow_boundary_architect",
+        "message": "Current live workflow proof still stops at architect.",
+        "source_ref": {
+          "path": "projects/aioffice/governance/ACTIVE_STATE.md",
+          "line": 26
+        }
+      }
+    ]
+  }
+}
