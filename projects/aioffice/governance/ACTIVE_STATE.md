@@ -19,7 +19,8 @@
 - `M13` is active as a narrow structural truth layer baseline slice.
 - `M13` was originally ratified as `Design Lane Operationalization` and was explicitly rebaselined before implementation.
 - `AIO-064` is complete as the structural truth layer contract-definition task.
-- `AIO-065` through `AIO-067` remain seeded only; no `M13` runtime implementation has started yet.
+- `AIO-065` is complete as the deterministic structural truth baseline-generation task.
+- `AIO-066` through `AIO-067` remain seeded only; no bounded `M13` rehearsal or post-`M13` review has started yet.
 - design-lane work is deferred, not canceled.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
@@ -83,7 +84,6 @@
 - no post-`M13` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-065` - Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces
 - `AIO-066` - Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence
 - `AIO-067` - Record post-M13 structural truth review and ratify the next conservative slice
 

@@ -1433,20 +1433,6 @@ Ledger status:
   - AIO-063
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces
 - id: AIO-065
 - item_type: task
@@ -1463,7 +1449,21 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-064
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence
 - id: AIO-066
