@@ -63,6 +63,122 @@
   - `projects/aioffice/governance/ACTIVE_STATE.md`
   - control-path code such as `scripts/operator_api.py` and `sessions/store.py` when AIOffice control behavior is changed
 
+## 6A. Protected Core Surface Classes
+- The following protected core surface classes are explicit governance classes for later fail-closed enforcement.
+- A surface is protected when an ordinary mutation lane must not be allowed to change it directly under routine bundle approval.
+- Protected core surface classes in current repo truth are:
+  - `governance law surfaces`
+  - `accepted truth surfaces`
+  - `protected control-path code surfaces`
+  - `protected operator/control surfaces`
+
+### Governance Law Surfaces
+- What belongs in the class:
+  - governance artifacts whose contents define accepted law, posture, authority boundaries, review boundaries, or proof boundaries
+  - current grounded examples include:
+    - `projects/aioffice/governance/VISION.md`
+    - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
+    - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
+    - `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`
+    - `projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md`
+    - `projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md`
+- Why it is protected:
+  - changing these surfaces can redefine what AIOffice is allowed to claim, how authority is routed, how review works, or what proof boundary is accepted
+- Why ordinary mutation lanes must fail closed on it:
+  - routine output approval is not a lawful substitute for changing product law
+- What makes a change fall into this class:
+  - a file write or proposed mutation changes accepted governance rules, authority rules, stage/proof boundaries, or review law rather than just producing bounded output content
+
+### Accepted Truth Surfaces
+- What belongs in the class:
+  - surfaces that state accepted milestone, task, posture, and review-anchor truth for AIOffice
+  - current grounded examples include:
+    - `projects/aioffice/execution/KANBAN.md`
+    - `projects/aioffice/governance/ACTIVE_STATE.md`
+    - `projects/aioffice/governance/DECISION_LOG.md` when it records ratified milestone or divergence decisions
+- Why it is protected:
+  - these surfaces define what the repo currently accepts as true about active milestones, backlog truth, review anchors, and posture
+- Why ordinary mutation lanes must fail closed on it:
+  - ordinary bundle approval must not silently change accepted roadmap truth, accepted posture, or the authoritative review anchor
+- What makes a change fall into this class:
+  - a file write or proposed mutation changes accepted milestone/task status, active-task order, authoritative branch/tag/snapshot anchor meaning, or ratified decision truth
+
+### Protected Control-Path Code Surfaces
+- What belongs in the class:
+  - runtime code surfaces that implement sanctioned mutation law, accepted-state handling, recovery discipline, or control behavior for AIOffice itself
+  - current grounded examples include:
+    - `sessions/store.py` when a change affects sanctioned mutation law, accepted-state handling, recovery preflight, snapshot/restore/rollback behavior, or fail-closed path blocking
+    - `scripts/operator_api.py` when a change affects operator control behavior, approval routing, inspection behavior, or mutation-entry semantics
+- Why it is protected:
+  - these paths are where AIOffice product law becomes real in code
+- Why ordinary mutation lanes must fail closed on it:
+  - a routine artifact disposition must not alter the code path that governs future authority, accepted-state handling, or control behavior
+- What makes a change fall into this class:
+  - a file write or proposed mutation changes sanctioned mutation semantics, recovery semantics, approval semantics, or accepted-state handling in control-path code
+
+### Protected Operator/Control Surfaces
+- What belongs in the class:
+  - the narrow operator-facing inspection and decision surfaces, plus the contracts that define them
+  - current grounded examples include:
+    - `scripts/operator_api.py control-kernel-details`
+    - `scripts/operator_api.py bundle-decision`
+    - `projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md`
+    - `projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md`
+- Why it is protected:
+  - these surfaces define what the operator can inspect, approve, and mutate through sanctioned control paths
+- Why ordinary mutation lanes must fail closed on it:
+  - allowing routine output flows to alter the operator/control surface would collapse bounded execution and product authority into the same lane
+- What makes a change fall into this class:
+  - a file write or proposed mutation changes operator-facing inspection scope, bundle-decision semantics, approval input contract, or control-surface routing behavior
+
+## 6B. Classification Criteria
+- A proposed change falls into a protected core surface class if any of the following are true:
+  - it changes accepted governance law, posture, readiness wording, workflow-proof wording, or authority boundaries
+  - it changes accepted milestone/task/current-state truth or accepted review-anchor meaning
+  - it changes sanctioned mutation, recovery, restore, rollback, or accepted-state handling behavior in `sessions/store.py`
+  - it changes operator-facing control or approval behavior in `scripts/operator_api.py`
+  - it changes the governance contracts that define operator/control semantics
+  - it creates, widens, or weakens a path by which ordinary lanes could mutate protected surfaces
+- Classification is based on the effect of the change, not only the file extension or whether the diff is code versus markdown.
+- If a proposed change touches multiple classes, it is treated as protected at the highest-risk applicable class.
+- If classification is ambiguous, it fails closed as protected rather than being treated as ordinary output work.
+
+## 6C. Current Repo Mapping For Later Enforcement
+- Current repo mapping from surface class to concrete AIOffice surfaces:
+  - governance law surfaces:
+    - `projects/aioffice/governance/VISION.md`
+    - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
+    - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
+    - `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`
+    - `projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md`
+    - `projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md`
+  - accepted truth surfaces:
+    - `projects/aioffice/execution/KANBAN.md`
+    - `projects/aioffice/governance/ACTIVE_STATE.md`
+    - `projects/aioffice/governance/DECISION_LOG.md` when it ratifies accepted divergence or milestone selection
+  - protected control-path code surfaces:
+    - `sessions/store.py`
+    - `scripts/operator_api.py`
+  - protected operator/control surfaces:
+    - the `control-kernel-details` and `bundle-decision` command surfaces
+    - the operator decision governance contracts that define those surfaces
+- Not every file under `projects/aioffice/` is protected core surface law.
+- Ordinary bounded artifact outputs may remain ordinary execution decisions when they do not change any protected class above.
+
+## 6D. Enforcement Expectations For Ordinary Lanes
+- `AIO-061` should later enforce this contract by treating an ordinary-lane write or mutation attempt as blockable when the attempted target path or requested effect falls into any protected core surface class.
+- Later fail-closed enforcement should be explicit enough to map:
+  - protected surface class
+  - attempted ordinary-lane mutation
+  - blocking reason
+- Required fail-closed behavior for ordinary lanes should include:
+  - do not write the protected target
+  - do not silently downgrade, reroute, or partially apply the mutation
+  - return an explicit blocking reason that names the protected class or equivalent enforcement reason
+  - leave accepted truth unchanged
+- Until a separate admin-only mutation lane exists in code, later enforcement should block ordinary-lane mutation attempts rather than inventing a new admin runtime path silently.
+- This artifact defines what later enforcement should protect. It does not implement that enforcement now.
+
 ## 7. Non-Admin Action Classes That Remain Ordinary Execution Decisions
 - The following remain ordinary persisted execution-bundle decisions when they stay inside already-sanctioned behavior:
   - approving or promoting a pending-review execution bundle that writes bounded output artifacts to explicitly mapped sanctioned destinations
@@ -106,12 +222,14 @@
 - If a proposed change falls into an admin-only action class and no explicit admin proposal artifact exists, the change fails closed.
 - If a proposed change falls into an admin-only action class and approval is attempted only through the ordinary execution-bundle lane, the change fails closed.
 - If the proposal does not identify the affected truth surfaces, authority boundaries, or control surfaces, the change fails closed.
+- If an ordinary lane attempts to mutate a protected core surface class, the change fails closed.
 - If the change would alter readiness, workflow proof, UI authority, art-pipeline authority, later-stage workflow claims, or self-modifying scope without explicit governance review, the change fails closed.
 - If classification is ambiguous between ordinary execution output and product/self-change, it is treated as admin-only until explicitly resolved.
 - No convenience fallback is allowed from admin-only product/self-change into the ordinary `bundle-decision` lane.
 
 ## 12. Exact Out-Of-Scope Boundaries
 - This artifact does not implement admin-only enforcement in code.
+- This artifact does not yet implement protected-surface blocking in ordinary mutation paths.
 - This artifact does not create a new UI, admin console, or writable client surface.
 - This artifact does not change `bundle-decision` semantics for ordinary bounded execution outputs.
 - This artifact does not authorize later-stage workflow, concurrency safety, real multi-agent maturity, semi-autonomous operation, or UAT readiness.

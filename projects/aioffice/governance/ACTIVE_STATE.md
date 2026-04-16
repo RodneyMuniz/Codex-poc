@@ -67,7 +67,6 @@
 - no post-`M12` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-060` - Reconcile `PRODUCT_CHANGE_GOVERNANCE.md` to post-`M11` truth and define enforceable protected core surface classes
 - `AIO-061` - Implement fail-closed blocking for protected core surfaces in ordinary mutation paths
 - `AIO-062` - Rehearse blocked ordinary-lane attempts against a protected surface and record evidence
 - `AIO-063` - Record post-`M12` protected-surface enforcement review and ratify the next conservative slice

@@ -1335,20 +1335,6 @@ Ledger status:
   - AIO-058A
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Reconcile PRODUCT_CHANGE_GOVERNANCE.md to post-M11 truth and define enforceable protected core surface classes
 - id: AIO-060
 - item_type: task
@@ -1365,7 +1351,21 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-059
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Implement fail-closed blocking for protected core surfaces in ordinary mutation paths
 - id: AIO-061
