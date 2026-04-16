@@ -3,11 +3,12 @@
 ## 1. Purpose
 - Define the narrow AIOffice contract for snapshots, version checkpoints, restore, rollback, and the bounded rehearsal plan required before broader writable or parallel surfaces are considered.
 - Formalize recovery discipline before UI expansion, stronger autonomy claims, or broader control-surface broadening are considered.
-- Keep the contract grounded in current committed AIOffice reality without claiming that restore or rollback automation is already implemented or rehearsed.
+- Keep the contract grounded in current committed AIOffice reality without claiming that automated restore/rollback discipline is already fully solved, generally operationalized, or broader than the bounded committed evidence.
 
 ## 2. Current Committed Reality This Contract Must Fit
 - `M1` through `M10` are complete.
-- No post-`M10` milestone is ratified yet.
+- `M11` is active as a narrow recovery-discipline operationalization slice.
+- No post-`M11` milestone is ratified yet.
 - Current readiness remains `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof still stops at `architect`.
@@ -24,9 +25,9 @@
   - `scripts/operator_api.py bundle-decision`
   - `sessions/store.py execute_apply_promotion_decision(...)`
 - No committed AIOffice artifact currently proves:
-  - automated snapshot/version/restore/rollback discipline
-  - a restore or rollback rehearsal
+  - automated snapshot/version/restore/rollback discipline as an accepted fully operationalized practice
   - broader writable UI or later-stage workflow recovery semantics
+- One bounded restore and rollback rehearsal is now recorded in committed evidence, but that bounded evidence does not by itself prove fully operationalized recovery discipline or any readiness change.
 
 ## 3. Exact Definitions
 - `snapshot`

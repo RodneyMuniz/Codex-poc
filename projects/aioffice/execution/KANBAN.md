@@ -1291,20 +1291,6 @@ Ledger status:
   - AIO-057
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Rehearse bounded rollback execution and amend M11 recovery evidence
 - id: AIO-058A
 - item_type: task
@@ -1321,7 +1307,21 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-057A
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Record post-M11 recovery discipline review and ratify the next conservative slice
 - id: AIO-059
