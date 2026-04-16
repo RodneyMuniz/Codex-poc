@@ -6694,6 +6694,117 @@ class SessionStore:
             "verified_at": _utc_now(),
         }
 
+    def _load_verified_recovery_rollback_preparation(self, rollback_id: str) -> dict[str, Any]:
+        receipt_path = self._recovery_rollback_receipt_path(rollback_id=rollback_id)
+        if not receipt_path.exists():
+            raise ValueError(f"Prepared recovery rollback receipt not found: {rollback_id}")
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Prepared recovery rollback receipt is invalid JSON: {rollback_id}") from exc
+        if receipt.get("rollback_id") != rollback_id:
+            raise ValueError(f"Prepared recovery rollback receipt id mismatch for {rollback_id}.")
+        if receipt.get("receipt_kind") != "recovery_rollback_prepared":
+            raise ValueError(f"Prepared recovery rollback receipt kind mismatch for {rollback_id}.")
+        if receipt.get("rollback_ready") is not True:
+            raise ValueError(f"Prepared recovery rollback receipt is not marked rollback_ready for {rollback_id}.")
+        if receipt.get("rollback_executed") is not False:
+            raise ValueError(f"Prepared recovery rollback receipt must not record executed rollback for {rollback_id}.")
+        verification = receipt.get("verification")
+        if not isinstance(verification, dict):
+            raise ValueError(f"Prepared recovery rollback receipt verification is missing for {rollback_id}.")
+        if verification.get("target_recovery_package_verified") is not True:
+            raise ValueError(f"Prepared recovery rollback receipt requires verified target package for {rollback_id}.")
+        if verification.get("target_refs_match_current_anchor") is not True:
+            raise ValueError(f"Prepared recovery rollback receipt requires target ref verification for {rollback_id}.")
+        if verification.get("backup_manifest_verified") is not True:
+            raise ValueError(f"Prepared recovery rollback receipt requires backup manifest verification for {rollback_id}.")
+        if verification.get("backup_sha256_matches") is not True:
+            raise ValueError(f"Prepared recovery rollback receipt requires backup sha verification for {rollback_id}.")
+        if verification.get("pre_action_snapshot_created") is not True:
+            raise ValueError(
+                f"Prepared recovery rollback receipt requires pre-action snapshot evidence for {rollback_id}."
+            )
+        if verification.get("rollback_executed") is not False:
+            raise ValueError(f"Prepared recovery rollback receipt has inconsistent rollback state for {rollback_id}.")
+        if verification.get("accepted_current_truth_changed") is not False:
+            raise ValueError(f"Prepared recovery rollback receipt has inconsistent truth-change flag for {rollback_id}.")
+
+        target_recovery_package_id = _require_non_empty_text(
+            "target_recovery_package_id",
+            receipt.get("target_recovery_package_id"),
+        )
+        target_recovery_package = self._load_recovery_snapshot_package(target_recovery_package_id)
+        recorded_target_package_path = receipt.get("target_recovery_package_path")
+        if recorded_target_package_path and Path(recorded_target_package_path).resolve() != self._recovery_package_path(
+            recovery_package_id=target_recovery_package_id
+        ).resolve():
+            raise ValueError(f"Prepared recovery rollback receipt target package path mismatch for {rollback_id}.")
+
+        target_checkpoint_tag = _require_non_empty_text("target_checkpoint_tag", receipt.get("target_checkpoint_tag"))
+        target_snapshot_branch = _require_non_empty_text(
+            "target_snapshot_branch",
+            receipt.get("target_snapshot_branch"),
+        )
+        target_checkpoint_commit_sha = _require_non_empty_text(
+            "target_checkpoint_commit_sha",
+            receipt.get("target_checkpoint_commit_sha"),
+        )
+        target_snapshot_commit_sha = _require_non_empty_text(
+            "target_snapshot_commit_sha",
+            receipt.get("target_snapshot_commit_sha") or target_recovery_package.get("snapshot_commit_sha"),
+        )
+        if target_recovery_package.get("checkpoint_tag") != target_checkpoint_tag:
+            raise ValueError(f"Prepared recovery rollback receipt checkpoint tag mismatch for {rollback_id}.")
+        if target_recovery_package.get("snapshot_branch") != target_snapshot_branch:
+            raise ValueError(f"Prepared recovery rollback receipt snapshot branch mismatch for {rollback_id}.")
+        if target_recovery_package.get("checkpoint_commit_sha") != target_checkpoint_commit_sha:
+            raise ValueError(f"Prepared recovery rollback receipt checkpoint commit mismatch for {rollback_id}.")
+        if target_recovery_package.get("snapshot_commit_sha") != target_snapshot_commit_sha:
+            raise ValueError(f"Prepared recovery rollback receipt snapshot commit mismatch for {rollback_id}.")
+
+        target_backup_id = _require_non_empty_text("target_backup_id", receipt.get("target_backup_id"))
+        verified_backup = self._load_verified_dispatch_backup(target_backup_id)
+        if target_recovery_package.get("dispatch_backup_id") != target_backup_id:
+            raise ValueError(f"Prepared recovery rollback receipt target backup mismatch for {rollback_id}.")
+        if receipt.get("target_backup_manifest_path") != verified_backup["manifest_path"]:
+            raise ValueError(f"Prepared recovery rollback receipt backup manifest path mismatch for {rollback_id}.")
+        if receipt.get("target_backup_sha256") != verified_backup["sha256"]:
+            raise ValueError(f"Prepared recovery rollback receipt backup sha mismatch for {rollback_id}.")
+
+        pre_rollback_recovery_package_id = _require_non_empty_text(
+            "pre_rollback_recovery_package_id",
+            receipt.get("pre_rollback_recovery_package_id"),
+        )
+        pre_rollback_recovery_package = self._load_recovery_snapshot_package(pre_rollback_recovery_package_id)
+        pre_rollback_recovery_package_path = Path(
+            _require_non_empty_text(
+                "pre_rollback_recovery_package_path",
+                receipt.get("pre_rollback_recovery_package_path"),
+            )
+        )
+        if pre_rollback_recovery_package_path.resolve() != self._recovery_package_path(
+            recovery_package_id=pre_rollback_recovery_package_id
+        ).resolve():
+            raise ValueError(f"Prepared recovery rollback receipt pre-action snapshot path mismatch for {rollback_id}.")
+        if pre_rollback_recovery_package.get("checkpoint_tag") != target_checkpoint_tag:
+            raise ValueError(f"Prepared recovery rollback receipt pre-action checkpoint mismatch for {rollback_id}.")
+        if pre_rollback_recovery_package.get("snapshot_branch") != target_snapshot_branch:
+            raise ValueError(f"Prepared recovery rollback receipt pre-action snapshot branch mismatch for {rollback_id}.")
+        if pre_rollback_recovery_package.get("checkpoint_commit_sha") != target_checkpoint_commit_sha:
+            raise ValueError(f"Prepared recovery rollback receipt pre-action checkpoint commit mismatch for {rollback_id}.")
+        if pre_rollback_recovery_package.get("snapshot_commit_sha") != target_snapshot_commit_sha:
+            raise ValueError(f"Prepared recovery rollback receipt pre-action snapshot commit mismatch for {rollback_id}.")
+
+        return {
+            **receipt,
+            "target_recovery_package": target_recovery_package,
+            "target_backup": verified_backup,
+            "target_snapshot_commit_sha": target_snapshot_commit_sha,
+            "pre_rollback_recovery_package": pre_rollback_recovery_package,
+            "verified_at": _utc_now(),
+        }
+
     def create_recovery_snapshot_package(
         self,
         *,
@@ -6923,9 +7034,11 @@ class SessionStore:
             "project_name": project_name,
             "task_id": package["task_id"],
             "target_recovery_package_id": recovery_package_id,
+            "target_recovery_package_path": package["package_path"],
             "target_checkpoint_tag": package["checkpoint_tag"],
             "target_snapshot_branch": package["snapshot_branch"],
             "target_checkpoint_commit_sha": package["checkpoint_commit_sha"],
+            "target_snapshot_commit_sha": package["snapshot_commit_sha"],
             "target_backup_id": verified_backup["backup_id"],
             "target_backup_manifest_path": verified_backup["manifest_path"],
             "target_backup_sha256": verified_backup["sha256"],
@@ -6943,6 +7056,95 @@ class SessionStore:
             },
             "rollback_ready": True,
             "rollback_executed": False,
+            "accepted_current_truth_changed": False,
+            "receipt_path": str(receipt_path),
+        }
+        receipt_path.write_text(_json_dumps(receipt) + "\n", encoding="utf-8")
+        return receipt
+
+    def execute_recovery_rollback(
+        self,
+        *,
+        rollback_id: str,
+        requested_by: str,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        working_branch: str,
+        checkpoint_tag: str | None = None,
+        snapshot_branch: str | None = None,
+        authoritative_doc_paths: list[str] | None = None,
+        require_clean_worktree: bool = True,
+    ) -> dict[str, Any]:
+        prepared = self._load_verified_recovery_rollback_preparation(rollback_id)
+        if prepared["project_name"] != project_name:
+            raise ValueError("Recovery rollback preparation project mismatch.")
+        current_anchor = self.run_recovery_preflight(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            checkpoint_tag=checkpoint_tag or prepared["target_checkpoint_tag"],
+            snapshot_branch=snapshot_branch or prepared["target_snapshot_branch"],
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        if (
+            current_anchor["checkpoint_tag"]["name"] != prepared["target_checkpoint_tag"]
+            or current_anchor["snapshot_branch"]["name"] != prepared["target_snapshot_branch"]
+            or current_anchor["checkpoint_tag"]["commit_sha"] != prepared["target_checkpoint_commit_sha"]
+            or current_anchor["snapshot_branch"]["commit_sha"] != prepared["target_snapshot_commit_sha"]
+        ):
+            raise ValueError("Recovery rollback execution requires target refs to match the accepted recovery anchor.")
+
+        verified_backup = prepared["target_backup"]
+        shutil.copy2(Path(verified_backup["path"]), self.paths.db_path)
+        self.initialize()
+        rolled_back_run = self.latest_run_for_task(prepared["task_id"])
+        rolled_back_context_receipt = self.load_context_receipt(rolled_back_run["id"]) if rolled_back_run else None
+
+        rollback_execution_id = _new_id("rollback")
+        receipt_path = self._recovery_rollback_receipt_path(rollback_id=rollback_execution_id)
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt = {
+            "receipt_kind": "recovery_rollback_completed",
+            "rollback_execution_id": rollback_execution_id,
+            "prepared_rollback_id": rollback_id,
+            "prepared_rollback_receipt_path": prepared["receipt_path"],
+            "executed_at": _utc_now(),
+            "requested_by": _require_non_empty_text("requested_by", requested_by),
+            "project_name": project_name,
+            "task_id": prepared["task_id"],
+            "target_recovery_package_id": prepared["target_recovery_package_id"],
+            "target_recovery_package_path": prepared.get("target_recovery_package_path")
+            or prepared["target_recovery_package"]["package_path"],
+            "target_checkpoint_tag": prepared["target_checkpoint_tag"],
+            "target_snapshot_branch": prepared["target_snapshot_branch"],
+            "target_checkpoint_commit_sha": prepared["target_checkpoint_commit_sha"],
+            "target_snapshot_commit_sha": prepared["target_snapshot_commit_sha"],
+            "target_backup_id": verified_backup["backup_id"],
+            "target_backup_manifest_path": verified_backup["manifest_path"],
+            "target_backup_sha256": verified_backup["sha256"],
+            "pre_rollback_recovery_package_id": prepared["pre_rollback_recovery_package_id"],
+            "pre_rollback_recovery_package_path": prepared["pre_rollback_recovery_package_path"],
+            "recovery_preflight": current_anchor,
+            "store_health": self.schema_health(),
+            "source_run_id": verified_backup.get("source_run_id"),
+            "source_context_receipt": verified_backup.get("source_context_receipt"),
+            "rolled_back_run_id": rolled_back_run["id"] if rolled_back_run else None,
+            "rolled_back_context_receipt": rolled_back_context_receipt,
+            "verification": {
+                "prepared_rollback_receipt_verified": True,
+                "target_recovery_package_verified": True,
+                "target_refs_match_current_anchor": True,
+                "backup_manifest_verified": True,
+                "backup_sha256_matches": True,
+                "pre_action_snapshot_verified": True,
+                "rollback_executed": True,
+                "accepted_current_truth_changed": False,
+            },
+            "rollback_status": "executed_candidate_only",
+            "rollback_executed": True,
             "accepted_current_truth_changed": False,
             "receipt_path": str(receipt_path),
         }

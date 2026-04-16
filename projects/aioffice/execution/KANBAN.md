@@ -1272,6 +1272,25 @@ Ledger status:
   - AIO-057
 - status: completed
 
+### Implement bounded rollback execution over a verified recovery package
+- id: AIO-057A
+- item_type: task
+- title: Implement bounded rollback execution over a verified recovery package
+- details: add the narrowest lawful rollback execution routine needed so later bounded rehearsal can prove actual rollback execution rather than rollback preparation only
+- objective: close the rollback-execution implementation gap exposed by the current committed `AIO-058` evidence without broadening beyond bounded recovery work
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - a bounded store-level rollback execution routine exists over a verified recovery package
+  - rollback execution fails closed on target mismatch, anchor mismatch, or missing pre-action snapshot evidence
+  - focused tests prove execution and at least one meaningful fail-closed path
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-057
+- status: completed
+
 ## In Review
 
 _No items_
@@ -1285,6 +1304,24 @@ _No items_
 _No items_
 
 ## Backlog
+
+### Rehearse bounded rollback execution and amend M11 recovery evidence
+- id: AIO-058A
+- item_type: task
+- title: Rehearse bounded rollback execution and amend M11 recovery evidence
+- details: execute one bounded rehearsal that exercises actual rollback execution over the corrected recovery path, then amend the committed `M11` recovery evidence so rollback execution proof is factual and explicit
+- objective: close the remaining rollback-execution proof gap before the post-`M11` recovery review
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: projects/aioffice/artifacts/M11_RECOVERY_REHEARSAL.md
+- acceptance:
+  - one bounded rehearsal exercises rollback execution over a verified recovery package
+  - the amended recovery evidence is factual about what was executed and what remains manual or unproven
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-057A
+- status: backlog
 
 ### Record post-M11 recovery discipline review and ratify the next conservative slice
 - id: AIO-059
@@ -1302,7 +1339,7 @@ _No items_
   - exactly one next conservative slice is ratified only if the evidence supports it
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
-  - AIO-058
+  - AIO-058A
 - status: backlog
 
 ## Open Planning Notes

@@ -1701,6 +1701,112 @@ def test_prepare_recovery_rollback_creates_pre_action_snapshot_and_receipt(tmp_p
     assert Path(receipt["pre_rollback_recovery_package_path"]).exists()
 
 
+def test_execute_recovery_rollback_restores_db_and_records_receipt(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    task = store.create_task("aioffice", "Rollback Execute Task", "Execute bounded rollback")
+    _commit_all(repo_root, "Add rollback execution task")
+    run = store.create_run("aioffice", task["id"], team_state={"phase": "architect", "runtime_mode": "custom"})
+    original_receipt = store.save_context_receipt(
+        run["id"],
+        {
+            "active_lane": task["id"],
+            "approved_objective": "Verify bounded rollback execution",
+            "next_reviewer": "QA",
+            "resume_conditions": ["Resume only after rollback verification."],
+            "current_owner_role": "Architect",
+        },
+    )
+    package = store.create_recovery_snapshot_package(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+        task_id=task["id"],
+        trigger="prepare_rollback_target",
+        note="Create rollback target package before mutation.",
+        requested_by="Test Runner",
+    )
+    store.save_context_receipt(
+        run["id"],
+        {
+            "next_reviewer": "Operator",
+            "resume_conditions": ["Mutated state should be replaced by rollback."],
+            "current_owner_role": "Developer",
+        },
+    )
+    prepared = store.prepare_recovery_rollback(
+        recovery_package_id=package["recovery_package_id"],
+        requested_by="Test Runner",
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+    )
+
+    receipt = store.execute_recovery_rollback(
+        rollback_id=prepared["rollback_id"],
+        requested_by="Test Runner",
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+    )
+
+    rolled_back_store = SessionStore(repo_root)
+    rolled_back_receipt = rolled_back_store.load_context_receipt(run["id"])
+
+    assert rolled_back_receipt is not None
+    assert rolled_back_receipt["approved_objective"] == original_receipt["approved_objective"]
+    assert rolled_back_receipt["next_reviewer"] == original_receipt["next_reviewer"]
+    assert rolled_back_receipt["current_owner_role"] == original_receipt["current_owner_role"]
+    assert Path(receipt["receipt_path"]).exists()
+    assert receipt["receipt_kind"] == "recovery_rollback_completed"
+    assert receipt["prepared_rollback_id"] == prepared["rollback_id"]
+    assert receipt["rollback_executed"] is True
+    assert receipt["rollback_status"] == "executed_candidate_only"
+    assert receipt["verification"]["prepared_rollback_receipt_verified"] is True
+    assert receipt["verification"]["pre_action_snapshot_verified"] is True
+    assert receipt["accepted_current_truth_changed"] is False
+
+
+def test_execute_recovery_rollback_rejects_missing_pre_action_snapshot_evidence(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    task = store.create_task("aioffice", "Rollback Reject Task", "Reject incomplete rollback prep")
+    _commit_all(repo_root, "Add rollback reject task")
+    package = store.create_recovery_snapshot_package(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+        task_id=task["id"],
+        trigger="prepare_rollback_target",
+        note="Create rollback target package before validation failure.",
+        requested_by="Test Runner",
+    )
+    prepared = store.prepare_recovery_rollback(
+        recovery_package_id=package["recovery_package_id"],
+        requested_by="Test Runner",
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+    )
+    receipt_path = Path(prepared["receipt_path"])
+    saved_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    saved_receipt["verification"]["pre_action_snapshot_created"] = False
+    receipt_path.write_text(json.dumps(saved_receipt, indent=2) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="pre-action snapshot evidence"):
+        store.execute_recovery_rollback(
+            rollback_id=prepared["rollback_id"],
+            requested_by="Test Runner",
+            project_name="aioffice",
+            milestone_key="M10",
+            closeout_date="2026-04-16",
+            working_branch="feature/aioffice-m10-change-governance-hardening",
+        )
+
+
 def test_store_creates_and_lists_visual_artifacts(tmp_path):
     repo_root = _prepare_repo(tmp_path)
     design_dir = repo_root / "projects" / "tactics-game" / "artifacts" / "design"

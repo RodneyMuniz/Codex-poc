@@ -53,11 +53,12 @@
   - the recovery and rollback contract with a bounded rehearsal plan
   - the Codex change isolation and code-review contract for shared AIOffice control surfaces
 - `M10` did not change runtime control behavior, later-stage workflow proof, UI scope, or readiness posture.
-- `M11` is prioritized first because the recovery contract is defined and the accepted `M10` closeout anchor now exists, but no committed artifact yet proves operationalized recovery discipline or a restore/rollback rehearsal.
+- `M11` remains active because the recovery contract is defined, the accepted `M10` closeout anchor now exists, and committed evidence covers preflight, snapshot packaging, restore, and rollback preparation, but actual rollback execution remains unproven in committed rehearsal evidence.
 - The next likely priority after `M11` is protected core product/state surfaces enforcement, and the next likely breadth slice after that is one-lane `design` operationalization; both remain directional only and are not ratified milestones.
 - no post-`M11` milestone is ratified yet.
 
 ## Current Active Task Order
+- `AIO-058A` - Rehearse bounded rollback execution and amend `M11` recovery evidence
 - `AIO-059` - Record post-`M11` recovery discipline review and ratify the next conservative slice
 
 ## Authoritative Grounding Files
