@@ -793,6 +793,80 @@ def test_store_rejects_apply_promotion_into_governance_or_forbidden_paths(tmp_pa
     assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
 
 
+def test_store_rejects_apply_promotion_into_accepted_truth_surface(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    repo_root = context["repo_root"]
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+    destination_path = "projects/aioffice/execution/KANBAN.md"
+    destination_file = repo_root / "projects" / "aioffice" / "execution" / "KANBAN.md"
+    destination_file.parent.mkdir(parents=True, exist_ok=True)
+    destination_file.write_text("# Accepted Truth\n\nDo not overwrite.\n", encoding="utf-8")
+    before_text = destination_file.read_text(encoding="utf-8")
+
+    try:
+        store.execute_apply_promotion_decision(
+            bundle["bundle_id"],
+            approved_decision={
+                "decision": "approved",
+                "action": "apply",
+                "approved_by": "Project Orchestrator",
+            },
+            destination_mappings=[
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": destination_path,
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert "accepted truth surface" in str(exc)
+        assert "fail closed" in str(exc)
+    else:
+        raise AssertionError("Expected apply/promotion to reject accepted truth surface destinations.")
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
+    assert destination_file.read_text(encoding="utf-8") == before_text
+
+
+def test_store_rejects_apply_promotion_into_protected_control_path_code_surface(tmp_path):
+    context = _prepare_pending_review_apply_bundle(tmp_path)
+    repo_root = context["repo_root"]
+    store = context["store"]
+    artifact = context["artifact"]
+    bundle = context["bundle"]
+    destination_path = "sessions/store.py"
+    destination_file = repo_root / "sessions" / "store.py"
+    destination_file.parent.mkdir(parents=True, exist_ok=True)
+    destination_file.write_text("# protected control path\n", encoding="utf-8")
+    before_text = destination_file.read_text(encoding="utf-8")
+
+    try:
+        store.execute_apply_promotion_decision(
+            bundle["bundle_id"],
+            approved_decision={
+                "decision": "approved",
+                "action": "apply",
+                "approved_by": "Project Orchestrator",
+            },
+            destination_mappings=[
+                {
+                    "source_artifact_id": artifact["id"],
+                    "destination_path": destination_path,
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert "protected control-path code surface" in str(exc)
+        assert "fail closed" in str(exc)
+    else:
+        raise AssertionError("Expected apply/promotion to reject protected control-path code surface destinations.")
+
+    assert store.get_execution_bundle(bundle["bundle_id"])["acceptance_state"] == "pending_review"
+    assert destination_file.read_text(encoding="utf-8") == before_text
+
+
 def test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings(tmp_path):
     context = _prepare_pending_review_apply_bundle(tmp_path)
     store = context["store"]

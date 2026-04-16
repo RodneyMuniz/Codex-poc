@@ -1383,7 +1383,7 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-060
-- status: backlog
+- status: completed
 
 ### Rehearse blocked ordinary-lane attempts against a protected surface and record evidence
 - id: AIO-062

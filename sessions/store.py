@@ -56,6 +56,20 @@ AIOFFICE_RECOVERY_AUTHORITATIVE_DOCS = (
     "projects/aioffice/governance/DECISION_LOG.md",
     "projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md",
 )
+AIOFFICE_GOVERNANCE_LAW_ROOT = "projects/aioffice/governance"
+AIOFFICE_ACCEPTED_TRUTH_SURFACE_PATHS = (
+    "projects/aioffice/execution/KANBAN.md",
+    "projects/aioffice/governance/ACTIVE_STATE.md",
+    "projects/aioffice/governance/DECISION_LOG.md",
+)
+AIOFFICE_PROTECTED_CONTROL_PATH_CODE_PATHS = (
+    "sessions/store.py",
+    "scripts/operator_api.py",
+)
+AIOFFICE_PROTECTED_OPERATOR_CONTROL_PATHS = (
+    "projects/aioffice/governance/OPERATOR_DECISION_SURFACE.md",
+    "projects/aioffice/governance/OPERATOR_DECISION_INPUT_CONTRACT.md",
+)
 MEDIA_SERVICE_CONTRACT_CATALOG = {
     "visual": (
         {
@@ -2217,6 +2231,27 @@ class SessionStore:
             return False
         return True
 
+    def _classify_protected_core_surface(
+        self,
+        *,
+        project_name: str,
+        repo_relative_path: str,
+    ) -> str | None:
+        if project_name != "aioffice":
+            return None
+        if repo_relative_path in AIOFFICE_ACCEPTED_TRUTH_SURFACE_PATHS:
+            return "accepted truth surface"
+        if repo_relative_path in AIOFFICE_PROTECTED_CONTROL_PATH_CODE_PATHS:
+            return "protected control-path code surface"
+        if repo_relative_path in AIOFFICE_PROTECTED_OPERATOR_CONTROL_PATHS:
+            return "protected operator/control surface"
+        if (
+            repo_relative_path == AIOFFICE_GOVERNANCE_LAW_ROOT
+            or self._repo_relative_path_is_within(repo_relative_path, AIOFFICE_GOVERNANCE_LAW_ROOT)
+        ):
+            return "governance law surface"
+        return None
+
     def _effective_packet_workflow_run_id(self, packet: dict[str, Any]) -> str | None:
         workflow_run_id = packet.get("workflow_run_id")
         if workflow_run_id:
@@ -3151,6 +3186,15 @@ class SessionStore:
                 raise ValueError("Produced artifact path must be covered by the packet allowed_write_paths.")
             if source_artifact_path == destination_path:
                 raise ValueError("Apply/promotion must not reuse the non-authoritative source artifact path.")
+            protected_surface_class = self._classify_protected_core_surface(
+                project_name=project_name,
+                repo_relative_path=destination_path,
+            )
+            if protected_surface_class is not None:
+                raise ValueError(
+                    "destination_path targets protected core surface class "
+                    f"'{protected_surface_class}' and ordinary mutation lanes must fail closed."
+                )
             if not self._repo_relative_path_is_within(destination_path, authoritative_root):
                 raise ValueError("destination_path must stay within the packet authoritative_workspace_root.")
             if any(
