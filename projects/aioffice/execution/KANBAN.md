@@ -1401,7 +1401,7 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-061
-- status: backlog
+- status: completed
 
 ### Record post-M12 protected-surface enforcement review and ratify the next conservative slice
 - id: AIO-063
