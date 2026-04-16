@@ -114,10 +114,10 @@ Ledger status:
 - owner_role: Project Orchestrator
 - status: completed
 
-### M13 - Design Lane Operationalization
+### M13 - Structural Truth Layer Baseline
 - milestone_order: 13
-- entry_goal: `M12` has proved that protected core product/state/governance surfaces are explicitly classified and that the current sanctioned ordinary mutation path fails closed against protected targets, so the next work can expand workflow breadth conservatively by making one specialist lane real without collapsing product authority.
-- exit_goal: the `design` lane is defined, implemented, and rehearsed as the first real post-architect specialist lane with bounded input/output contracts, persisted lane state, and fail-closed handoff/governance behavior, without changing readiness or widening proof beyond what the committed evidence supports.
+- entry_goal: `M12` proved bounded protected-surface enforcement on the current sanctioned ordinary mutation path, but the repo still lacks a deterministic structural truth layer for dependency mapping, change impact analysis, QA traceability, and stronger verification of LLM claims. The next work should reduce that ambiguity before workflow breadth expands.
+- exit_goal: a narrow deterministic structural truth layer is defined, generated for the current AIOffice control kernel and protected surfaces, exercised in at least one bounded review/rehearsal path, and reviewed explicitly without changing readiness or widening workflow proof.
 - owner_role: Project Orchestrator
 - status: in_progress
 
@@ -1428,74 +1428,76 @@ _No items_
 
 ## Backlog
 
-### Define design-lane contract, input/output boundaries, and persisted state expectations
+### Define structural truth layer contract, source-of-truth boundaries, and gold-standard maturity rubric
 - id: AIO-064
 - item_type: task
-- title: Define design-lane contract, input/output boundaries, and persisted state expectations
-- details: define the first real post-architect specialist lane contract for `design`, including bounded handoff inputs, lane-owned persisted state, required outputs, and fail-closed governance behavior
-- objective: make the first workflow-breadth slice explicit enough that later implementation can add the `design` lane without inventing its contract ad hoc
+- title: Define structural truth layer contract, source-of-truth boundaries, and gold-standard maturity rubric
+- details: define a narrow structural truth layer for relationships between requirements, decisions, tasks, protected surface classes, files, commands/functions, artifacts, and tests; include source-of-truth precedence, minimal schema, deterministic ingestion rules, enforcement points, and explicit non-claims
+- objective: make dependency-impact and verification truth explicit before graph-backed enforcement or later breadth work
 - owner_role: Project Orchestrator
 - assigned_role: Architect
-- milestone: M13 - Design Lane Operationalization
-- expected_artifact_path: projects/aioffice/governance/DESIGN_LANE_CONTRACT.md
+- milestone: M13 - Structural Truth Layer Baseline
+- expected_artifact_path: projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md
 - acceptance:
-  - the `design` lane contract defines bounded inputs, outputs, persisted state expectations, and fail-closed handoff boundaries
-  - the contract does not widen readiness or workflow-proof claims
+  - `STRUCTURAL_TRUTH_LAYER_CONTRACT.md` defines source-of-truth precedence for the derived structural truth layer versus its source systems
+  - the minimum schema covers requirements, decisions, tasks, protected surface classes, files, commands/functions, artifacts, and tests
+  - deterministic ingestion rules, enforcement points, explicit non-claims, and a gold-standard maturity rubric are defined
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-063
 - status: backlog
 
-### Implement bounded design-lane state path and fail-closed architect-to-design handoff behavior
+### Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces
 - id: AIO-065
 - item_type: task
-- title: Implement bounded design-lane state path and fail-closed architect-to-design handoff behavior
-- details: implement the narrow persisted state and handoff path needed to make the `design` lane real as the first post-architect specialist lane without weakening current governance boundaries
-- objective: make one specialist lane materially real while preserving the protected-surface boundary already proved in `M12`
+- title: Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces
+- details: implement one narrow deterministic generator that produces a structural truth artifact for current AIOffice governance law surfaces, accepted truth surfaces, protected control-path code surfaces, operator/control surfaces, and linked tests
+- objective: make impact analysis and orphan or missing-link detection materially real on the current control kernel before later breadth expansion
 - owner_role: Project Orchestrator
 - assigned_role: Architect
-- milestone: M13 - Design Lane Operationalization
-- expected_artifact_path: sessions/store.py
+- milestone: M13 - Structural Truth Layer Baseline
+- expected_artifact_path: scripts/generate_structural_truth.py
 - acceptance:
-  - the `design` lane has a bounded persisted state path
-  - architect-to-design handoff behavior is explicit and fail-closed
-  - readiness and workflow-proof boundaries remain unchanged
+  - a deterministic generator produces a structural truth artifact for current governance law surfaces, accepted truth surfaces, protected control-path code surfaces, operator/control surfaces, and linked tests
+  - the output makes missing or orphaned links explicit without inventing unsupported relationships
+  - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-064
 - status: backlog
 
-### Rehearse architect-to-design lane flow and record evidence
+### Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence
 - id: AIO-066
 - item_type: task
-- title: Rehearse architect-to-design lane flow and record evidence
-- details: execute one bounded rehearsal of the architect-to-design handoff and lane flow, then record what the new specialist-lane slice proves and what remains unproven
-- objective: prove one conservative post-architect specialist lane before any later breadth expansion is considered
+- title: Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence
+- details: execute one bounded rehearsal using the structural truth artifact to assess impact, linked tests, missing coverage, and protected-surface classification on a narrowly scoped change, then record evidence factually
+- objective: prove the structural truth layer is useful in a control/review workflow rather than passive documentation
 - owner_role: Project Orchestrator
 - assigned_role: QA
-- milestone: M13 - Design Lane Operationalization
-- expected_artifact_path: projects/aioffice/artifacts/M13_DESIGN_LANE_REHEARSAL.md
+- milestone: M13 - Structural Truth Layer Baseline
+- expected_artifact_path: projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md
 - acceptance:
-  - one bounded architect-to-design rehearsal is executed and recorded factually
-  - lane-state and handoff boundary evidence are explicit
+  - one bounded rehearsal uses the structural truth artifact to assess impact, linked tests, missing coverage, and protected-surface classification on a narrowly scoped change
+  - evidence is recorded factually with explicit proven and unproven boundaries
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-065
 - status: backlog
 
-### Record post-M13 design-lane review and ratify the next conservative slice
+### Record post-M13 structural truth review and ratify the next conservative slice
 - id: AIO-067
 - item_type: task
-- title: Record post-M13 design-lane review and ratify the next conservative slice
-- details: produce one explicit post-`M13` review artifact grounded only in committed evidence, state what design-lane operationalization proved, and ratify exactly one next conservative slice if the evidence supports it
-- objective: close the first specialist-lane slice conservatively without widening readiness or workflow proof beyond committed evidence
+- title: Record post-M13 structural truth review and ratify the next conservative slice
+- details: produce one explicit post-M13 review grounded only in committed evidence, state what the structural truth layer proved and what remains unproven, and ratify exactly one next conservative slice if supported
+- objective: close the structural-truth slice conservatively and ratify exactly one next slice only if the evidence supports it
 - owner_role: Project Orchestrator
 - assigned_role: QA
-- milestone: M13 - Design Lane Operationalization
-- expected_artifact_path: projects/aioffice/governance/M13_DESIGN_LANE_REVIEW.md
+- milestone: M13 - Structural Truth Layer Baseline
+- expected_artifact_path: projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md
 - acceptance:
   - the review uses committed evidence only
-  - the proven and unproven design-lane boundaries are explicit
+  - the proven and unproven structural-truth boundaries are explicit
   - exactly one next conservative slice is ratified only if the evidence supports it
+  - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-066
 - status: backlog
@@ -1503,4 +1505,6 @@ _No items_
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
+- likely next slice after `M13` is hook and automation discipline for the repo-governed milestone loop, but this is directional only and not ratified
+- design-lane operationalization is deferred, not canceled, and remains a later likely workflow-breadth slice
 - no post-`M13` milestone is ratified yet

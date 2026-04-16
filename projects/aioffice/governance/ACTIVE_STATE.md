@@ -5,16 +5,21 @@
 - project root: `C:\Users\rodne\OneDrive\Desktop\_AIStudio_POC\projects\aioffice`
 
 ## Authoritative Review Anchor
-- authoritative working branch: `feature/aioffice-m10-change-governance-hardening`
-- authoritative milestone checkpoint tag: `aioffice-m10-closeout-2026-04-16`
-- authoritative milestone snapshot branch: `snapshot/aioffice-m10-closeout-2026-04-16`
+- active planning branch: `feature/aioffice-m13-design-lane-operationalization`
+- accepted pre-rebaseline / pre-implementation `M13` source commit: `c5a3da56f89b9b45265ec885207153978ae9bf9f`
+- accepted starting-point snapshot branch: `snapshot/aioffice-m12-closeout-2026-04-16`
+- no dedicated post-`M12` or post-`M13` checkpoint tag is currently ratified in committed governance
+- the current committed branch tip carries the active `M13` planning and rebaseline state
 
 ## Current Accepted Posture
 - `M1` through `M12` are complete.
 - `M10` completed as a narrow change-governance, recovery, and maintainability hardening slice.
 - `M11` completed as a narrow recovery-discipline operationalization slice.
 - `M12` completed as a narrow protected core product/state surfaces enforcement slice.
-- `M13` is active as a narrow design-lane operationalization slice.
+- `M13` is active as a narrow structural truth layer baseline slice.
+- `M13` was originally ratified as `Design Lane Operationalization` and was explicitly rebaselined before implementation.
+- `AIO-064` through `AIO-067` remain seeded only; no `M13` implementation has started yet.
+- design-lane work is deferred, not canceled.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -73,20 +78,22 @@
   - a separate admin-only mutation lane in code
   - later-stage workflow, UI readiness, or multi-lane breadth
 - `M12` did not change readiness posture or live workflow proof boundaries.
-- `M13` is now the active conservative slice because one specialist lane can be made real next without collapsing the protected-surface boundary that `M12` proved on the current sanctioned path.
+- `M13` is now the active conservative slice because traceability, dependency-impact truth, system-map maturity, and stronger verification of LLM claims still lag behind control-surface maturity.
 - no post-`M13` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-064` - Define design-lane contract, input/output boundaries, and persisted state expectations
-- `AIO-065` - Implement bounded design-lane state path and fail-closed architect-to-design handoff behavior
-- `AIO-066` - Rehearse architect-to-design lane flow and record evidence
-- `AIO-067` - Record post-`M13` design-lane review and ratify the next conservative slice
+- `AIO-064` - Define structural truth layer contract, source-of-truth boundaries, and gold-standard maturity rubric
+- `AIO-065` - Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces
+- `AIO-066` - Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence
+- `AIO-067` - Record post-M13 structural truth review and ratify the next conservative slice
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
 - `projects/aioffice/governance/VISION.md`
 - `projects/aioffice/execution/KANBAN.md`
 - `projects/aioffice/governance/DECISION_LOG.md`
+- `projects/aioffice/governance/M13_SCOPE_REBASELINE.md`
+- `projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md`
 - `projects/aioffice/governance/WORKFLOW_VISION.md`
 - `projects/aioffice/governance/STAGE_GOVERNANCE.md`
 - `projects/aioffice/governance/ACTIVE_STATE.md`

@@ -121,3 +121,24 @@
   - design-lane operationalization now outranks UI work because current repo truth already has the conservative protected-surface boundary it needed first, while broader UI work still does not reduce the next highest-value gap in bounded workflow breadth
   - design-lane operationalization also outranks broader workflow expansion because breadth should still begin with one lane only, and `design` remains the accepted recommended first lane rather than attempting multi-lane expansion all at once
   - this decision does not authorize readiness upgrades, later-stage workflow proof beyond what the `M13` slice will actually prove, UI implementation, serious multi-agent parallelism, or multi-lane breadth all at once
+
+### AIO-D-014
+- date: 2026-04-16
+- status: reviewed
+- decision: after `M13 - Design Lane Operationalization` was ratified in `AIO-D-013` but before `AIO-064` through `AIO-067` began implementation, the operator explicitly rebaselined `M13` to `M13 - Structural Truth Layer Baseline` and preserved `AIO-064` through `AIO-067` as the seeded task ids under the new scope.
+- rationale:
+  - traceability, dependency-impact, and system-map maturity are still materially behind current control-surface maturity
+  - current governance hygiene is still weak enough that workflow breadth should not expand before dependency and impact truth improve
+  - the `AIO-061` protected-surface caution exposed that current enforcement remains intentionally conservative and is not yet supported by a stronger deterministic structural map
+  - design-lane work is deferred, not canceled
+- accepted anchor facts at rebaseline time:
+  - active planning branch: `feature/aioffice-m13-design-lane-operationalization`
+  - accepted pre-rebaseline source commit: `c5a3da56f89b9b45265ec885207153978ae9bf9f`
+  - preserved accepted snapshot branch: `snapshot/aioffice-m12-closeout-2026-04-16`
+- directional queue only:
+  - likely next slice after `M13`: hook and automation discipline for the repo-governed milestone loop
+  - later likely breadth slice: design-lane operationalization
+- non-claims:
+  - no readiness or workflow-proof upgrade is authorized
+  - this decision does not ratify a post-`M13` milestone
+  - this decision does not authorize design-lane, hook, automation, or graph-runtime implementation by itself

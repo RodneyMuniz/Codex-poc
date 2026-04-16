@@ -157,6 +157,16 @@ Continuity requirements:
 
 The continuity model must preserve enough durable structure that a fresh summon can recover the true posture without replaying an entire transcript.
 
+## 9A. Derived Structural Truth Layer
+
+AIOffice may use a derived structural truth layer for dependency mapping, traceability, change-impact analysis, and verification support.
+
+Derived structural truth rules:
+- it is subordinate to its source systems, including governance artifacts, accepted truth surfaces, code, commands/functions, tests, and committed review evidence
+- it is not freeform memory and must be produced through deterministic sanctioned rules rather than conversational accumulation
+- it is useful only when tied to sanctioned review and control workflows such as impact review, protected-surface review, coverage review, and bounded rehearsal
+- it must not become a second silent truth surface or silently override the authoritative source systems it summarizes
+
 ## 10. Execution Modes / Profiles / Budget Governance
 
 AIOffice should support execution modes and profiles only as governed routing choices, never as governance exceptions.

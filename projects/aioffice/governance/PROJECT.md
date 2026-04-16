@@ -146,8 +146,10 @@ The first success bar is integrity, not throughput. AIOffice succeeds early if i
 - the original AIOffice `M1` through `M10` roadmap remains the strategic backbone for sequencing
 - the current accepted local `execution/KANBAN.md` is the authoritative source for milestone and task status truth
 - current accepted posture is:
-  - `M1` through `M9`: complete
-  - no post-`M9` milestone is ratified yet
+  - `M1` through `M12`: complete
+  - `M13` is active as `Structural Truth Layer Baseline`
+  - `M13` was originally ratified as `Design Lane Operationalization` and rebaselined before implementation
+  - `AIO-064` through `AIO-067` are seeded only; no `M13` implementation has started yet
   - current readiness posture is:
     - `ready only for narrow supervised bounded operation`
     - not ready for a bounded supervised semi-autonomous cycle
@@ -167,6 +169,18 @@ The first success bar is integrity, not throughput. AIOffice succeeds early if i
     - the operator-facing `bundle-decision` wrapper supports `--destination-mappings-file` with focused verification
     - one bounded supervised rehearsal of the file-based operator decision input path was executed against persisted state
     - the file-based path reduced shell and JSON transport brittleness on the exercised operator path
+  - `M10` defined:
+    - the admin-only product/self-change governance boundary
+    - the recovery and rollback contract with a bounded rehearsal plan
+    - the Codex change isolation and code-review contract for shared AIOffice control surfaces
+  - `M11` proved:
+    - checkpoint naming and snapshot packaging are more real in committed code and receipts
+    - recovery preflight is fail-closed over the accepted closeout anchor
+    - bounded restore and rollback rehearsal was executed without changing accepted authoritative truth
+  - `M12` proved:
+    - protected core surface classes are explicit in governance
+    - the current sanctioned ordinary mutation path fails closed on protected targets
+    - one bounded blocked-attempt rehearsal was executed without changing accepted truth
   - `M6` through `M8` did not prove:
     - concurrent contention handling
     - later-stage workflow
@@ -175,7 +189,7 @@ The first success bar is integrity, not throughput. AIOffice succeeds early if i
 - accepted divergence from the original roadmap is explicit:
   - original `M3` operator-design work was deferred rather than silently removed
   - control-kernel, persistence, inspection, and supervised-control work were pulled forward into accepted `M3` through `M5`
-  - accepted execution through `M9` outranks older roadmap wording for present-tense status claims
+  - accepted execution through `M12` outranks older roadmap wording for present-tense status claims
 - original `M6` through `M10` remain preserved as strategic roadmap references rather than being silently discarded
-- no post-`M9` milestone is ratified by this charter
+- no post-`M13` milestone is ratified by this charter
 - constitutional product ideas may refine future milestone intent, but they do not become backlog commitments until explicitly accepted into `execution/KANBAN.md`
