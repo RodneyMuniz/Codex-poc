@@ -5,6 +5,7 @@ import json
 import re
 import shutil
 import sqlite3
+import subprocess
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -42,6 +43,19 @@ COMPLIANCE_RECORD_KINDS = {
     "compliant_delegated_run": "compliant",
     "local_exception_approved": "approved_exception",
 }
+RECOVERY_CLOSEOUT_LABEL = "closeout"
+RECOVERY_CHECKPOINT_TAG_PATTERN = re.compile(
+    r"^(?P<project>[a-z0-9][a-z0-9-]*)-(?P<milestone>m\d+)-closeout-(?P<date>\d{4}-\d{2}-\d{2})$"
+)
+RECOVERY_SNAPSHOT_BRANCH_PATTERN = re.compile(
+    r"^snapshot/(?P<project>[a-z0-9][a-z0-9-]*)-(?P<milestone>m\d+)-closeout-(?P<date>\d{4}-\d{2}-\d{2})$"
+)
+AIOFFICE_RECOVERY_AUTHORITATIVE_DOCS = (
+    "projects/aioffice/execution/KANBAN.md",
+    "projects/aioffice/governance/ACTIVE_STATE.md",
+    "projects/aioffice/governance/DECISION_LOG.md",
+    "projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md",
+)
 MEDIA_SERVICE_CONTRACT_CATALOG = {
     "visual": (
         {
@@ -326,6 +340,30 @@ def _require_non_empty_list(field_name: str, value: Any) -> list[Any]:
 def _slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug or "milestone"
+
+
+def _normalize_recovery_project_slug(project_name: str) -> str:
+    text = _require_non_empty_text("project_name", project_name).lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    if not slug:
+        raise ValueError("project_name must contain at least one letter or digit.")
+    return slug
+
+
+def _normalize_recovery_milestone_key(milestone_key: str) -> str:
+    text = _require_non_empty_text("milestone_key", milestone_key).lower()
+    if not re.fullmatch(r"m\d+", text):
+        raise ValueError("milestone_key must use the form M10.")
+    return text
+
+
+def _normalize_recovery_closeout_date(closeout_date: str) -> str:
+    text = _require_non_empty_text("closeout_date", closeout_date)
+    try:
+        datetime.strptime(text, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("closeout_date must use YYYY-MM-DD.") from exc
+    return text
 
 
 def _sha256_bytes(content: bytes) -> str:
@@ -6265,6 +6303,285 @@ class SessionStore:
 
     def _backup_manifest_path(self, backup_path: Path) -> Path:
         return backup_path.with_suffix(".json")
+
+    def _run_git_command(self, *args: str) -> str:
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                cwd=self.paths.repo_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            command = " ".join(["git", *args])
+            raise ValueError(f"Recovery git command failed to start: {command}") from exc
+        if result.returncode != 0:
+            command = " ".join(["git", *args])
+            detail = (result.stderr or result.stdout).strip() or f"git exited with code {result.returncode}"
+            raise ValueError(f"Recovery git command failed: {command}: {detail}")
+        return result.stdout.strip()
+
+    def _recovery_manifest_dir(self) -> Path:
+        return self.paths.backups_dir / "recovery_manifests"
+
+    def _recovery_snapshot_manifest_path(self, *, checkpoint_tag: str, checkpoint_commit_sha: str) -> Path:
+        safe_checkpoint_tag = checkpoint_tag.replace("/", "__")
+        return self._recovery_manifest_dir() / f"{safe_checkpoint_tag}__{checkpoint_commit_sha[:12]}.json"
+
+    def _recovery_authoritative_doc_requirements(
+        self,
+        *,
+        project_name: str,
+        working_branch: str,
+        checkpoint_tag: str,
+        snapshot_branch: str,
+        authoritative_doc_paths: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        normalized_project_name = _normalize_recovery_project_slug(project_name)
+        normalized_paths = (
+            _normalize_string_list(authoritative_doc_paths)
+            if authoritative_doc_paths is not None
+            else list(AIOFFICE_RECOVERY_AUTHORITATIVE_DOCS if normalized_project_name == "aioffice" else [])
+        )
+        requirements: list[dict[str, Any]] = []
+        for relative_path in normalized_paths:
+            required_markers: list[str] = []
+            if normalized_project_name == "aioffice" and relative_path == "projects/aioffice/governance/ACTIVE_STATE.md":
+                required_markers = [working_branch, checkpoint_tag, snapshot_branch]
+            requirements.append(
+                {
+                    "path": relative_path,
+                    "required_markers": required_markers,
+                }
+            )
+        return requirements
+
+    def build_recovery_checkpoint_refs(
+        self,
+        *,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+    ) -> dict[str, str]:
+        project_slug = _normalize_recovery_project_slug(project_name)
+        normalized_milestone_key = _normalize_recovery_milestone_key(milestone_key)
+        normalized_closeout_date = _normalize_recovery_closeout_date(closeout_date)
+        checkpoint_tag = f"{project_slug}-{normalized_milestone_key}-{RECOVERY_CLOSEOUT_LABEL}-{normalized_closeout_date}"
+        snapshot_branch = f"snapshot/{checkpoint_tag}"
+        return {
+            "project_name": project_slug,
+            "milestone_key": normalized_milestone_key,
+            "closeout_date": normalized_closeout_date,
+            "checkpoint_tag": checkpoint_tag,
+            "snapshot_branch": snapshot_branch,
+        }
+
+    def validate_recovery_checkpoint_refs(
+        self,
+        *,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        checkpoint_tag: str,
+        snapshot_branch: str,
+    ) -> dict[str, str]:
+        expected = self.build_recovery_checkpoint_refs(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+        )
+        normalized_checkpoint_tag = _require_non_empty_text("checkpoint_tag", checkpoint_tag)
+        normalized_snapshot_branch = _require_non_empty_text("snapshot_branch", snapshot_branch)
+        if RECOVERY_CHECKPOINT_TAG_PATTERN.fullmatch(normalized_checkpoint_tag) is None:
+            raise ValueError("checkpoint_tag must use the form <project>-m<digits>-closeout-YYYY-MM-DD.")
+        if RECOVERY_SNAPSHOT_BRANCH_PATTERN.fullmatch(normalized_snapshot_branch) is None:
+            raise ValueError("snapshot_branch must use the form snapshot/<project>-m<digits>-closeout-YYYY-MM-DD.")
+        if normalized_checkpoint_tag != expected["checkpoint_tag"] or normalized_snapshot_branch != expected["snapshot_branch"]:
+            raise ValueError(
+                "checkpoint_tag and snapshot_branch must match the expected recovery naming pattern for the declared project, milestone, and closeout_date."
+            )
+        return {
+            **expected,
+            "checkpoint_tag": normalized_checkpoint_tag,
+            "snapshot_branch": normalized_snapshot_branch,
+        }
+
+    def run_recovery_preflight(
+        self,
+        *,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        working_branch: str,
+        checkpoint_tag: str | None = None,
+        snapshot_branch: str | None = None,
+        authoritative_doc_paths: list[str] | None = None,
+        require_clean_worktree: bool = True,
+    ) -> dict[str, Any]:
+        normalized_working_branch = _require_non_empty_text("working_branch", working_branch)
+        expected_refs = self.build_recovery_checkpoint_refs(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+        )
+        normalized_checkpoint_tag = _require_non_empty_text(
+            "checkpoint_tag",
+            checkpoint_tag or expected_refs["checkpoint_tag"],
+        )
+        normalized_snapshot_branch = _require_non_empty_text(
+            "snapshot_branch",
+            snapshot_branch or expected_refs["snapshot_branch"],
+        )
+        validated_refs = self.validate_recovery_checkpoint_refs(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            checkpoint_tag=normalized_checkpoint_tag,
+            snapshot_branch=normalized_snapshot_branch,
+        )
+
+        observed_working_branch = self._run_git_command("branch", "--show-current")
+        if observed_working_branch != normalized_working_branch:
+            raise ValueError(
+                f"Recovery preflight requires working_branch {normalized_working_branch!r}, observed {observed_working_branch!r}."
+            )
+
+        status_output = self._run_git_command("status", "--short")
+        status_lines = status_output.splitlines() if status_output else []
+        clean_worktree = {
+            "command": "git status --short",
+            "required": bool(require_clean_worktree),
+            "output": status_lines,
+            "is_clean": not status_lines,
+        }
+        if require_clean_worktree and status_lines:
+            raise ValueError("Recovery preflight requires a clean worktree.")
+
+        current_head_commit_sha = self._run_git_command("rev-parse", "HEAD")
+        checkpoint_commit_sha = self._run_git_command("rev-list", "-n", "1", validated_refs["checkpoint_tag"])
+        snapshot_commit_sha = self._run_git_command("rev-parse", validated_refs["snapshot_branch"])
+        if checkpoint_commit_sha != snapshot_commit_sha:
+            raise ValueError(
+                "Recovery preflight requires checkpoint_tag and snapshot_branch to resolve to the same commit."
+            )
+
+        document_requirements = self._recovery_authoritative_doc_requirements(
+            project_name=validated_refs["project_name"],
+            working_branch=normalized_working_branch,
+            checkpoint_tag=validated_refs["checkpoint_tag"],
+            snapshot_branch=validated_refs["snapshot_branch"],
+            authoritative_doc_paths=authoritative_doc_paths,
+        )
+        authoritative_documents: list[dict[str, Any]] = []
+        missing_documents: list[str] = []
+        marker_mismatches: list[str] = []
+        for requirement in document_requirements:
+            relative_path = str(requirement["path"])
+            document_path = self.paths.repo_root / relative_path
+            required_markers = _normalize_string_list(requirement.get("required_markers"))
+            exists = document_path.exists()
+            markers_present: list[bool] = []
+            if exists:
+                content = document_path.read_text(encoding="utf-8")
+                markers_present = [marker in content for marker in required_markers]
+            document_record = {
+                "path": relative_path,
+                "exists": exists,
+                "required_markers": required_markers,
+                "markers_present": markers_present,
+                "all_required_markers_present": all(markers_present) if required_markers else True,
+            }
+            authoritative_documents.append(document_record)
+            if not exists:
+                missing_documents.append(relative_path)
+            elif required_markers and not document_record["all_required_markers_present"]:
+                marker_mismatches.append(relative_path)
+
+        if missing_documents:
+            raise ValueError(
+                "Recovery preflight requires authoritative docs to exist at HEAD: "
+                + ", ".join(missing_documents)
+            )
+        if marker_mismatches:
+            raise ValueError(
+                "Recovery preflight requires authoritative docs to match the expected recovery anchors: "
+                + ", ".join(marker_mismatches)
+            )
+
+        return {
+            "status": "passed",
+            "project_name": validated_refs["project_name"],
+            "milestone_key": validated_refs["milestone_key"],
+            "closeout_date": validated_refs["closeout_date"],
+            "working_branch": {
+                "expected": normalized_working_branch,
+                "observed": observed_working_branch,
+                "matches": observed_working_branch == normalized_working_branch,
+            },
+            "checkpoint_tag": {
+                "name": validated_refs["checkpoint_tag"],
+                "commit_sha": checkpoint_commit_sha,
+            },
+            "snapshot_branch": {
+                "name": validated_refs["snapshot_branch"],
+                "commit_sha": snapshot_commit_sha,
+            },
+            "checkpoint_alignment": {
+                "refs_match": checkpoint_commit_sha == snapshot_commit_sha,
+            },
+            "current_head_commit_sha": current_head_commit_sha,
+            "clean_worktree": clean_worktree,
+            "authoritative_documents": authoritative_documents,
+        }
+
+    def create_recovery_snapshot_manifest(
+        self,
+        *,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        working_branch: str,
+        checkpoint_tag: str | None = None,
+        snapshot_branch: str | None = None,
+        authoritative_doc_paths: list[str] | None = None,
+        require_clean_worktree: bool = True,
+    ) -> dict[str, Any]:
+        preflight = self.run_recovery_preflight(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            checkpoint_tag=checkpoint_tag,
+            snapshot_branch=snapshot_branch,
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        manifest_path = self._recovery_snapshot_manifest_path(
+            checkpoint_tag=preflight["checkpoint_tag"]["name"],
+            checkpoint_commit_sha=preflight["checkpoint_tag"]["commit_sha"],
+        )
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest = {
+            "manifest_kind": "recovery_snapshot_manifest",
+            "schema_version": "recovery_snapshot_manifest_v1",
+            "created_at": _utc_now(),
+            "project_name": preflight["project_name"],
+            "milestone_key": preflight["milestone_key"],
+            "closeout_date": preflight["closeout_date"],
+            "working_branch": preflight["working_branch"]["observed"],
+            "checkpoint_tag": preflight["checkpoint_tag"]["name"],
+            "snapshot_branch": preflight["snapshot_branch"]["name"],
+            "current_head_commit_sha": preflight["current_head_commit_sha"],
+            "checkpoint_commit_sha": preflight["checkpoint_tag"]["commit_sha"],
+            "snapshot_commit_sha": preflight["snapshot_branch"]["commit_sha"],
+            "clean_worktree": preflight["clean_worktree"],
+            "authoritative_documents": preflight["authoritative_documents"],
+            "checkpoint_alignment": preflight["checkpoint_alignment"],
+            "manifest_path": str(manifest_path),
+        }
+        manifest_path.write_text(_json_dumps(manifest) + "\n", encoding="utf-8")
+        return manifest
 
     def create_dispatch_backup(
         self,

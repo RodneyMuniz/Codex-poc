@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,58 @@ def _prepare_repo(tmp_path):
     )
     (tmp_path / "sessions" / "approvals.json").write_text("", encoding="utf-8")
     return tmp_path
+
+
+def _run_git(repo_root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)} failed: {(result.stderr or result.stdout).strip()}")
+    return result.stdout.strip()
+
+
+def _prepare_aioffice_recovery_repo(tmp_path: Path) -> tuple[Path, SessionStore]:
+    repo_root = tmp_path
+    (repo_root / "projects" / "aioffice" / "execution").mkdir(parents=True)
+    (repo_root / "projects" / "aioffice" / "governance").mkdir(parents=True)
+    (repo_root / "sessions").mkdir(parents=True)
+    (repo_root / "governance").mkdir(parents=True)
+    (repo_root / "sessions" / "approvals.json").write_text("", encoding="utf-8")
+    (repo_root / "projects" / "aioffice" / "execution" / "KANBAN.md").write_text(
+        "# AIOffice Operational Ledger\n\n### M10 - Change Governance, Recovery, And Maintainability Hardening\n- status: completed\n\n### M11 - Recovery Discipline Operationalization\n- status: in_progress\n",
+        encoding="utf-8",
+    )
+    (repo_root / "projects" / "aioffice" / "governance" / "ACTIVE_STATE.md").write_text(
+        "# AIOffice Active State\n\n"
+        "## Authoritative Review Anchor\n"
+        "- authoritative working branch: `feature/aioffice-m10-change-governance-hardening`\n"
+        "- authoritative milestone checkpoint tag: `aioffice-m10-closeout-2026-04-16`\n"
+        "- authoritative milestone snapshot branch: `snapshot/aioffice-m10-closeout-2026-04-16`\n",
+        encoding="utf-8",
+    )
+    (repo_root / "projects" / "aioffice" / "governance" / "DECISION_LOG.md").write_text(
+        "# AIOffice Decision Log\n\n## Decisions\n\n### AIO-D-010\n- status: reviewed\n",
+        encoding="utf-8",
+    )
+    (repo_root / "projects" / "aioffice" / "governance" / "RECOVERY_AND_ROLLBACK_CONTRACT.md").write_text(
+        "# Recovery And Rollback Contract\n\n- no committed artifact proves automated snapshot/version/restore/rollback discipline\n- no restore or rollback rehearsal has been executed\n",
+        encoding="utf-8",
+    )
+    store = SessionStore(repo_root)
+    _run_git(repo_root, "init")
+    _run_git(repo_root, "config", "user.email", "test@example.com")
+    _run_git(repo_root, "config", "user.name", "Test Runner")
+    _run_git(repo_root, "checkout", "-b", "feature/aioffice-m10-change-governance-hardening")
+    _run_git(repo_root, "add", ".")
+    _run_git(repo_root, "commit", "-m", "Initial recovery anchor")
+    _run_git(repo_root, "tag", "-a", "aioffice-m10-closeout-2026-04-16", "-m", "M10 closeout")
+    _run_git(repo_root, "branch", "snapshot/aioffice-m10-closeout-2026-04-16")
+    return repo_root, store
 
 
 def test_store_persists_queue_states_subtasks_and_kanban(tmp_path):
@@ -1389,6 +1442,102 @@ def test_restore_dispatch_backup_restores_db_and_creates_receipt(tmp_path):
     evidence = restored_store.get_run_evidence(run["id"])
     assert evidence["restore_history"][0]["restore_id"] == restore["restore_id"]
     assert evidence["restore_history"][0]["restored_context_receipt"]["current_owner_role"] == "Architect"
+
+
+def test_store_builds_recovery_checkpoint_refs_for_aioffice_closeout(tmp_path):
+    repo_root = _prepare_repo(tmp_path)
+    store = SessionStore(repo_root)
+
+    refs = store.build_recovery_checkpoint_refs(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+    )
+
+    assert refs["project_name"] == "aioffice"
+    assert refs["milestone_key"] == "m10"
+    assert refs["closeout_date"] == "2026-04-16"
+    assert refs["checkpoint_tag"] == "aioffice-m10-closeout-2026-04-16"
+    assert refs["snapshot_branch"] == "snapshot/aioffice-m10-closeout-2026-04-16"
+    assert store.validate_recovery_checkpoint_refs(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        checkpoint_tag=refs["checkpoint_tag"],
+        snapshot_branch=refs["snapshot_branch"],
+    )["checkpoint_tag"] == "aioffice-m10-closeout-2026-04-16"
+
+
+def test_store_creates_recovery_snapshot_manifest_after_preflight(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+
+    manifest = store.create_recovery_snapshot_manifest(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+    )
+
+    manifest_path = Path(manifest["manifest_path"])
+    assert manifest_path.exists()
+    saved_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    expected_checkpoint_sha = _run_git(repo_root, "rev-list", "-n", "1", "aioffice-m10-closeout-2026-04-16")
+    expected_snapshot_sha = _run_git(repo_root, "rev-parse", "snapshot/aioffice-m10-closeout-2026-04-16")
+    expected_head_sha = _run_git(repo_root, "rev-parse", "HEAD")
+
+    assert saved_manifest["schema_version"] == "recovery_snapshot_manifest_v1"
+    assert saved_manifest["checkpoint_tag"] == "aioffice-m10-closeout-2026-04-16"
+    assert saved_manifest["snapshot_branch"] == "snapshot/aioffice-m10-closeout-2026-04-16"
+    assert saved_manifest["working_branch"] == "feature/aioffice-m10-change-governance-hardening"
+    assert saved_manifest["checkpoint_commit_sha"] == expected_checkpoint_sha
+    assert saved_manifest["snapshot_commit_sha"] == expected_snapshot_sha
+    assert saved_manifest["current_head_commit_sha"] == expected_head_sha
+    assert saved_manifest["clean_worktree"]["required"] is True
+    assert saved_manifest["clean_worktree"]["is_clean"] is True
+    assert saved_manifest["checkpoint_alignment"]["refs_match"] is True
+    assert any(
+        doc["path"] == "projects/aioffice/governance/ACTIVE_STATE.md"
+        and doc["all_required_markers_present"] is True
+        for doc in saved_manifest["authoritative_documents"]
+    )
+
+
+def test_store_recovery_preflight_rejects_dirty_worktree(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    (repo_root / "projects" / "aioffice" / "execution" / "KANBAN.md").write_text(
+        "# AIOffice Operational Ledger\n\nDirty worktree\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="clean worktree"):
+        store.run_recovery_preflight(
+            project_name="aioffice",
+            milestone_key="M10",
+            closeout_date="2026-04-16",
+            working_branch="feature/aioffice-m10-change-governance-hardening",
+        )
+
+
+def test_store_recovery_preflight_rejects_active_state_anchor_mismatch(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    active_state_path = repo_root / "projects" / "aioffice" / "governance" / "ACTIVE_STATE.md"
+    active_state_path.write_text(
+        active_state_path.read_text(encoding="utf-8").replace(
+            "snapshot/aioffice-m10-closeout-2026-04-16",
+            "snapshot/aioffice-m9-closeout-2026-04-16",
+        ),
+        encoding="utf-8",
+    )
+    _run_git(repo_root, "add", ".")
+    _run_git(repo_root, "commit", "-m", "Break active state anchor")
+
+    with pytest.raises(ValueError, match="authoritative docs to match the expected recovery anchors"):
+        store.run_recovery_preflight(
+            project_name="aioffice",
+            milestone_key="M10",
+            closeout_date="2026-04-16",
+            working_branch="feature/aioffice-m10-change-governance-hardening",
+        )
 
 
 def test_store_creates_and_lists_visual_artifacts(tmp_path):

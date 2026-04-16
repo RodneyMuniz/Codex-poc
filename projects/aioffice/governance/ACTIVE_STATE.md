@@ -58,7 +58,6 @@
 - no post-`M11` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-056` - Implement recovery checkpoint naming, snapshot manifest, and recovery preflight discipline
 - `AIO-057` - Harden backup, restore, and rollback routines over the accepted `M10` checkpoint reality
 - `AIO-058` - Rehearse bounded restore and rollback against the accepted `M10` closeout anchor and record evidence
 - `AIO-059` - Record post-`M11` recovery discipline review and ratify the next conservative slice

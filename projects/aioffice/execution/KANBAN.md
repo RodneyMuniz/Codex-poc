@@ -1217,20 +1217,6 @@ Ledger status:
   - AIO-054
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement recovery checkpoint naming, snapshot manifest, and recovery preflight discipline
 - id: AIO-056
 - item_type: task
@@ -1247,7 +1233,21 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-055
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Harden backup, restore, and rollback routines over the accepted M10 checkpoint reality
 - id: AIO-057
