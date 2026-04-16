@@ -101,3 +101,13 @@
   - protected core product/state surfaces enforcement remains the next likely priority after recovery, but it is not ratified or authorized for implementation in this decision
   - workflow breadth beyond `architect` remains important, but it should begin later with one lane only, starting with `design`
   - this decision does not authorize readiness upgrades, UI implementation, later-stage workflow proof, serious multi-agent parallelism, protected-surface enforcement implementation yet, or design-lane implementation yet
+
+### AIO-D-012
+- date: 2026-04-16
+- status: reviewed
+- decision: after the post-`M11` recovery review, `M11 - Recovery Discipline Operationalization` is complete and `M12 - Protected Core Surfaces Enforcement` is ratified as the next active conservative slice.
+- rationale:
+  - committed `M11` evidence now proves checkpoint naming and snapshot packaging are more real, recovery preflight is fail-closed, backup/restore/rollback routines are materially real on the sanctioned store path, and one bounded restore and rollback rehearsal was executed in a disposable target without changing accepted authoritative truth
+  - protected core product/state surfaces enforcement now outranks workflow breadth and UI work because ordinary mutation paths still need code-level fail-closed blocking on core accepted-truth surfaces before broader writable or review-sensitive surface area is added
+  - workflow breadth beyond `architect` remains important, but it should still begin later with one lane only, starting with `design`, after protected-surface enforcement is reviewed
+  - this decision does not authorize readiness upgrades, later-stage workflow proof, design-lane implementation yet, UI implementation, or serious multi-agent parallelism

@@ -10,9 +10,10 @@
 - authoritative milestone snapshot branch: `snapshot/aioffice-m10-closeout-2026-04-16`
 
 ## Current Accepted Posture
-- `M1` through `M10` are complete.
+- `M1` through `M11` are complete.
 - `M10` completed as a narrow change-governance, recovery, and maintainability hardening slice.
-- `M11` is active as a narrow recovery-discipline operationalization slice.
+- `M11` completed as a narrow recovery-discipline operationalization slice.
+- `M12` is active as a narrow protected core product/state surfaces enforcement slice.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -53,12 +54,23 @@
   - the recovery and rollback contract with a bounded rehearsal plan
   - the Codex change isolation and code-review contract for shared AIOffice control surfaces
 - `M10` did not change runtime control behavior, later-stage workflow proof, UI scope, or readiness posture.
-- `M11` remains active because the recovery contract is defined, the accepted `M10` closeout anchor now exists, and committed evidence covers preflight, snapshot packaging, restore, rollback preparation, and rollback execution in a bounded disposable rehearsal, but the post-`M11` recovery review is still open and no readiness or workflow-proof expansion follows from that evidence.
-- The next likely priority after `M11` is protected core product/state surfaces enforcement, and the next likely breadth slice after that is one-lane `design` operationalization; both remain directional only and are not ratified milestones.
-- no post-`M11` milestone is ratified yet.
+- `M11` proved:
+  - checkpoint naming and snapshot packaging are now more real in committed code and receipts
+  - recovery preflight is now real and fail-closed over the accepted `M10` closeout anchor
+  - backup, restore, rollback preparation, and rollback execution routines are now more real on the sanctioned store path
+  - one bounded restore and rollback rehearsal was executed in a disposable reviewable target
+  - that rehearsal did not change accepted authoritative truth
+- `M11` did not change readiness posture, live workflow proof, UI scope, or later-stage workflow proof.
+- `M11` still leaves residual manual glue, including the clone-local `projects/tactics-game/execution/KANBAN.md` projection side effect recorded in the committed rehearsal evidence.
+- `M12` is now the active conservative slice because protected core product/state surfaces should be fail-closed before workflow breadth expands.
+- The next likely breadth slice after `M12` remains one-lane `design` operationalization, and it is still directional only rather than a ratified milestone.
+- no post-`M12` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-059` - Record post-`M11` recovery discipline review and ratify the next conservative slice
+- `AIO-060` - Reconcile `PRODUCT_CHANGE_GOVERNANCE.md` to post-`M11` truth and define enforceable protected core surface classes
+- `AIO-061` - Implement fail-closed blocking for protected core surfaces in ordinary mutation paths
+- `AIO-062` - Rehearse blocked ordinary-lane attempts against a protected surface and record evidence
+- `AIO-063` - Record post-`M12` protected-surface enforcement review and ratify the next conservative slice
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -75,6 +87,7 @@
 - `projects/aioffice/governance/M8_OPERATOR_DECISION_INPUT_REVIEW.md`
 - `projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/M10_RECOVERY_PRIORITY_REVIEW.md`
+- `projects/aioffice/governance/M11_RECOVERY_REVIEW.md`
 - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
 - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
 - `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`

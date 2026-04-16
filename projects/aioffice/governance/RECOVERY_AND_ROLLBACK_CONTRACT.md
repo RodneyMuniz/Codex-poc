@@ -6,9 +6,9 @@
 - Keep the contract grounded in current committed AIOffice reality without claiming that automated restore/rollback discipline is already fully solved, generally operationalized, or broader than the bounded committed evidence.
 
 ## 2. Current Committed Reality This Contract Must Fit
-- `M1` through `M10` are complete.
-- `M11` is active as a narrow recovery-discipline operationalization slice.
-- No post-`M11` milestone is ratified yet.
+- `M1` through `M11` are complete.
+- `M12` is active as a narrow protected core product/state surfaces enforcement slice.
+- No post-`M12` milestone is ratified yet.
 - Current readiness remains `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof still stops at `architect`.
@@ -263,13 +263,13 @@
   - record any repo-structure or shared-file risks still present
   - record any remaining ambiguity between Git ref recovery and product-state recovery
 - Execution note:
-  - this rehearsal is planned here only
+  - this rehearsal was first planned here
   - it is not executed in `AIO-051`
-  - a later bounded task must explicitly authorize and record the rehearsal
+  - later bounded `M11` tasks explicitly authorized and recorded one bounded restore and rollback rehearsal in committed evidence
 
 ## 15. Explicit Non-Claims
 - This artifact does not claim restore/rollback automation is already implemented for AIOffice.
-- This artifact does not claim any restore or rollback rehearsal has already been executed.
+- This artifact does not claim the recorded bounded restore and rollback rehearsal makes recovery fully operationalized, generally repeatable, or authoritative by itself.
 - This artifact does not claim UI readiness.
 - This artifact does not claim later-stage workflow proof.
 - This artifact does not claim concurrency safety.

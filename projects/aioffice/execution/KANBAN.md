@@ -105,6 +105,13 @@ Ledger status:
 - entry_goal: `M10` closeout is complete and anchored, and the next work should operationalize recovery discipline by making checkpoint naming, snapshot packaging, restore/rollback routines, and recovery proof more real before protected-surface enforcement or workflow-breadth expansion increases blast radius.
 - exit_goal: checkpoint naming and version discipline are explicit in current practice, recovery preflight and backup/restore routines are hardened over the existing repo reality, one bounded restore/rollback rehearsal is executed and recorded, and the resulting recovery posture is reviewed without changing readiness or widening workflow proof.
 - owner_role: Project Orchestrator
+- status: completed
+
+### M12 - Protected Core Surfaces Enforcement
+- milestone_order: 12
+- entry_goal: `M11` has proved a bounded recovery path through preflight, snapshot packaging, restore, rollback preparation, and rollback execution in a disposable rehearsal target, and the next work should protect core product/state/governance surfaces from ordinary user-facing mutation before workflow breadth expands.
+- exit_goal: protected surface classes are reconciled to current truth, ordinary lanes are fail-closed from mutating those surfaces in code, one bounded blocked-attempt rehearsal is recorded, and the resulting enforcement boundary is reviewed without changing readiness or widening workflow proof.
+- owner_role: Project Orchestrator
 - status: in_progress
 
 ## Completed
@@ -1309,20 +1316,6 @@ Ledger status:
   - AIO-057A
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Record post-M11 recovery discipline review and ratify the next conservative slice
 - id: AIO-059
 - item_type: task
@@ -1340,9 +1333,95 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-058A
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Reconcile PRODUCT_CHANGE_GOVERNANCE.md to post-M11 truth and define enforceable protected core surface classes
+- id: AIO-060
+- item_type: task
+- title: Reconcile PRODUCT_CHANGE_GOVERNANCE.md to post-M11 truth and define enforceable protected core surface classes
+- details: reconcile the product-change governance artifact to post-`M11` truth and make the protected core product/state/governance surface classes explicit enough to support later fail-closed enforcement
+- objective: define the exact protected surface classes that ordinary lanes must not mutate before workflow breadth expands
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M12 - Protected Core Surfaces Enforcement
+- expected_artifact_path: projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md
+- acceptance:
+  - `PRODUCT_CHANGE_GOVERNANCE.md` reflects post-`M11` truth without widening substantive boundary law unnecessarily
+  - protected core surface classes are explicit and enforceable in principle
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-059
+- status: backlog
+
+### Implement fail-closed blocking for protected core surfaces in ordinary mutation paths
+- id: AIO-061
+- item_type: task
+- title: Implement fail-closed blocking for protected core surfaces in ordinary mutation paths
+- details: implement the bounded fail-closed enforcement path that prevents ordinary mutation lanes from changing protected core product/state/governance surfaces in code
+- objective: move protected-surface governance from review-only doctrine into explicit runtime blocking on the sanctioned mutation path
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M12 - Protected Core Surfaces Enforcement
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - ordinary mutation paths fail closed on protected surface writes
+  - protected surface enforcement composes with the current sanctioned mutation path rather than creating a parallel framework
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-060
+- status: backlog
+
+### Rehearse blocked ordinary-lane attempts against a protected surface and record evidence
+- id: AIO-062
+- item_type: task
+- title: Rehearse blocked ordinary-lane attempts against a protected surface and record evidence
+- details: execute one bounded rehearsal showing that an ordinary lane is blocked from mutating a protected surface and record the resulting evidence without widening workflow proof
+- objective: prove that protected-surface enforcement is real on the current sanctioned path before ratifying any later slice
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M12 - Protected Core Surfaces Enforcement
+- expected_artifact_path: projects/aioffice/artifacts/M12_PROTECTED_SURFACE_BLOCK_REHEARSAL.md
+- acceptance:
+  - one bounded blocked-attempt rehearsal is executed and recorded factually
+  - the rehearsal shows fail-closed blocking on a protected surface
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-061
+- status: backlog
+
+### Record post-M12 protected-surface enforcement review and ratify the next conservative slice
+- id: AIO-063
+- item_type: task
+- title: Record post-M12 protected-surface enforcement review and ratify the next conservative slice
+- details: produce one explicit post-`M12` review artifact grounded only in committed evidence, state what protected-surface enforcement proved, and ratify exactly one next conservative slice if the evidence supports it
+- objective: close the protected-surface slice conservatively without widening readiness or workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M12 - Protected Core Surfaces Enforcement
+- expected_artifact_path: projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - the protected-surface enforcement boundary and residual risks are explicit
+  - exactly one next conservative slice is ratified only if the evidence supports it
+- dependencies:
+  - AIO-062
 - status: backlog
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- no post-`M11` milestone is ratified yet
+- no post-`M12` milestone is ratified yet

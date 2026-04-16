@@ -6,7 +6,7 @@
 - Provide a concrete boundary that later implementation, UI constraints, and recovery work can follow without widening workflow proof or changing current readiness.
 
 ## 2. Current Committed Reality This Boundary Must Fit
-- `M1` through `M9` are complete and `M10` is the active milestone.
+- `M1` through `M11` are complete and `M12` is the active milestone.
 - Current readiness remains `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof still stops at `architect`.
