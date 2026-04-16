@@ -1414,20 +1414,6 @@ Ledger status:
   - AIO-062
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define structural truth layer contract, source-of-truth boundaries, and gold-standard maturity rubric
 - id: AIO-064
 - item_type: task
@@ -1445,7 +1431,21 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-063
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces
 - id: AIO-065
