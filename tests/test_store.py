@@ -42,6 +42,10 @@ def _prepare_aioffice_recovery_repo(tmp_path: Path) -> tuple[Path, SessionStore]
     (repo_root / "projects" / "aioffice" / "governance").mkdir(parents=True)
     (repo_root / "sessions").mkdir(parents=True)
     (repo_root / "governance").mkdir(parents=True)
+    (repo_root / ".gitignore").write_text(
+        "sessions/*.db\nsessions/*.db-*\nsessions/backups/\nmemory/\n",
+        encoding="utf-8",
+    )
     (repo_root / "sessions" / "approvals.json").write_text("", encoding="utf-8")
     (repo_root / "projects" / "aioffice" / "execution" / "KANBAN.md").write_text(
         "# AIOffice Operational Ledger\n\n### M10 - Change Governance, Recovery, And Maintainability Hardening\n- status: completed\n\n### M11 - Recovery Discipline Operationalization\n- status: in_progress\n",
@@ -73,6 +77,11 @@ def _prepare_aioffice_recovery_repo(tmp_path: Path) -> tuple[Path, SessionStore]
     _run_git(repo_root, "tag", "-a", "aioffice-m10-closeout-2026-04-16", "-m", "M10 closeout")
     _run_git(repo_root, "branch", "snapshot/aioffice-m10-closeout-2026-04-16")
     return repo_root, store
+
+
+def _commit_all(repo_root: Path, message: str) -> None:
+    _run_git(repo_root, "add", ".")
+    _run_git(repo_root, "commit", "-m", message)
 
 
 def test_store_persists_queue_states_subtasks_and_kanban(tmp_path):
@@ -1538,6 +1547,158 @@ def test_store_recovery_preflight_rejects_active_state_anchor_mismatch(tmp_path)
             closeout_date="2026-04-16",
             working_branch="feature/aioffice-m10-change-governance-hardening",
         )
+
+
+def test_store_creates_recovery_snapshot_package_with_backup_and_manifest(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    task = store.create_task("aioffice", "Recovery Package Task", "Create recovery package")
+    _commit_all(repo_root, "Add recovery package task")
+
+    package = store.create_recovery_snapshot_package(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+        task_id=task["id"],
+        trigger="prepare_restore",
+        note="Create a lawful recovery package.",
+        requested_by="Test Runner",
+    )
+
+    package_path = Path(package["package_path"])
+    assert package_path.exists()
+    saved_package = json.loads(package_path.read_text(encoding="utf-8"))
+    assert saved_package["package_kind"] == "recovery_snapshot_package"
+    assert saved_package["receipt_kind"] == "recovery_snapshot_created"
+    assert saved_package["checkpoint_tag"] == "aioffice-m10-closeout-2026-04-16"
+    assert saved_package["snapshot_branch"] == "snapshot/aioffice-m10-closeout-2026-04-16"
+    assert Path(saved_package["recovery_manifest_path"]).exists()
+    assert Path(saved_package["dispatch_backup_path"]).exists()
+    assert Path(saved_package["dispatch_backup_manifest_path"]).exists()
+    assert saved_package["verification"]["backup_manifest_verified"] is True
+    assert saved_package["verification"]["backup_sha256_matches"] is True
+
+
+def test_restore_recovery_snapshot_package_restores_db_and_records_receipt(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    task = store.create_task("aioffice", "Recovery Restore Task", "Verify hardened recovery restore")
+    _commit_all(repo_root, "Add recovery restore task")
+    run = store.create_run("aioffice", task["id"], team_state={"phase": "architect", "runtime_mode": "custom"})
+    original_receipt = store.save_context_receipt(
+        run["id"],
+        {
+            "active_lane": task["id"],
+            "approved_objective": "Verify hardened recovery restore",
+            "next_reviewer": "QA",
+            "resume_conditions": ["Resume on the restored checkpoint."],
+            "current_owner_role": "Architect",
+        },
+    )
+    package = store.create_recovery_snapshot_package(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+        task_id=task["id"],
+        trigger="prepare_restore",
+        note="Create recovery package before mutation.",
+        requested_by="Test Runner",
+    )
+
+    store.save_context_receipt(
+        run["id"],
+        {
+            "next_reviewer": "Operator",
+            "resume_conditions": ["This mutated receipt should be replaced by restore."],
+            "current_owner_role": "Developer",
+        },
+    )
+
+    restore = store.restore_recovery_snapshot_package(
+        recovery_package_id=package["recovery_package_id"],
+        requested_by="Test Runner",
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+    )
+
+    restored_store = SessionStore(repo_root)
+    restored_receipt = restored_store.load_context_receipt(run["id"])
+
+    assert restored_receipt is not None
+    assert restored_receipt["approved_objective"] == original_receipt["approved_objective"]
+    assert restored_receipt["next_reviewer"] == original_receipt["next_reviewer"]
+    assert Path(restore["receipt_path"]).exists()
+    assert restore["receipt_kind"] == "recovery_restore_completed"
+    assert restore["verification"]["target_recovery_package_verified"] is True
+    assert restore["verification"]["pre_action_snapshot_created"] is True
+    assert restore["accepted_current_truth_changed"] is False
+    assert restore["restore_status"] == "verified_candidate_only"
+    assert Path(restore["pre_restore_recovery_package_path"]).exists()
+    evidence = restored_store.get_run_evidence(run["id"])
+    assert evidence["restore_history"][0]["restore_id"] == restore["restore_id"]
+    assert evidence["restore_history"][0]["receipt_kind"] == "recovery_restore_completed"
+
+
+def test_restore_recovery_snapshot_package_rejects_missing_backup_file(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    task = store.create_task("aioffice", "Missing Backup Task", "Reject missing recovery backup")
+    _commit_all(repo_root, "Add missing backup task")
+    package = store.create_recovery_snapshot_package(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+        task_id=task["id"],
+        trigger="prepare_restore",
+        note="Create recovery package before deleting backup.",
+        requested_by="Test Runner",
+    )
+    Path(package["dispatch_backup_path"]).unlink()
+
+    with pytest.raises(ValueError, match="Backup file missing"):
+        store.restore_recovery_snapshot_package(
+            recovery_package_id=package["recovery_package_id"],
+            requested_by="Test Runner",
+            project_name="aioffice",
+            milestone_key="M10",
+            closeout_date="2026-04-16",
+            working_branch="feature/aioffice-m10-change-governance-hardening",
+        )
+
+
+def test_prepare_recovery_rollback_creates_pre_action_snapshot_and_receipt(tmp_path):
+    repo_root, store = _prepare_aioffice_recovery_repo(tmp_path)
+    task = store.create_task("aioffice", "Rollback Task", "Prepare bounded rollback")
+    _commit_all(repo_root, "Add rollback task")
+    package = store.create_recovery_snapshot_package(
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+        task_id=task["id"],
+        trigger="prepare_rollback_target",
+        note="Create target recovery package before rollback prep.",
+        requested_by="Test Runner",
+    )
+
+    receipt = store.prepare_recovery_rollback(
+        recovery_package_id=package["recovery_package_id"],
+        requested_by="Test Runner",
+        project_name="aioffice",
+        milestone_key="M10",
+        closeout_date="2026-04-16",
+        working_branch="feature/aioffice-m10-change-governance-hardening",
+    )
+
+    assert Path(receipt["receipt_path"]).exists()
+    assert receipt["receipt_kind"] == "recovery_rollback_prepared"
+    assert receipt["rollback_ready"] is True
+    assert receipt["rollback_executed"] is False
+    assert receipt["verification"]["target_recovery_package_verified"] is True
+    assert receipt["verification"]["pre_action_snapshot_created"] is True
+    assert Path(receipt["pre_rollback_recovery_package_path"]).exists()
 
 
 def test_store_creates_and_lists_visual_artifacts(tmp_path):

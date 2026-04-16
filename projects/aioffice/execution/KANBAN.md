@@ -1235,20 +1235,6 @@ Ledger status:
   - AIO-055
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Harden backup, restore, and rollback routines over the accepted M10 checkpoint reality
 - id: AIO-057
 - item_type: task
@@ -1265,7 +1251,21 @@ _No items_
   - no UI, readiness, or later-stage workflow claim is added
 - dependencies:
   - AIO-056
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Rehearse bounded restore and rollback against the accepted M10 closeout anchor and record evidence
 - id: AIO-058

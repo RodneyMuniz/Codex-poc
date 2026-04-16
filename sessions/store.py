@@ -6329,6 +6329,22 @@ class SessionStore:
         safe_checkpoint_tag = checkpoint_tag.replace("/", "__")
         return self._recovery_manifest_dir() / f"{safe_checkpoint_tag}__{checkpoint_commit_sha[:12]}.json"
 
+    def _recovery_package_dir(self) -> Path:
+        return self.paths.backups_dir / "recovery_packages"
+
+    def _recovery_package_path(self, *, recovery_package_id: str) -> Path:
+        return self._recovery_package_dir() / f"{recovery_package_id}.json"
+
+    def _recovery_rollback_receipts_dir(self) -> Path:
+        return self.paths.backups_dir / "recovery_rollback_receipts"
+
+    def _recovery_rollback_receipt_path(self, *, rollback_id: str) -> Path:
+        return self._recovery_rollback_receipts_dir() / f"{rollback_id}.json"
+
+    def _is_recovery_status_artifact_path(self, relative_path: str) -> bool:
+        normalized_path = relative_path.replace("\\", "/").strip()
+        return normalized_path.startswith("sessions/backups/")
+
     def _recovery_authoritative_doc_requirements(
         self,
         *,
@@ -6449,13 +6465,25 @@ class SessionStore:
 
         status_output = self._run_git_command("status", "--short")
         status_lines = status_output.splitlines() if status_output else []
+        ignored_recovery_artifact_output: list[str] = []
+        blocking_output: list[str] = []
+        for line in status_lines:
+            relative_path = line[3:].strip() if len(line) > 3 else ""
+            if " -> " in relative_path:
+                relative_path = relative_path.split(" -> ", 1)[1].strip()
+            if relative_path and self._is_recovery_status_artifact_path(relative_path):
+                ignored_recovery_artifact_output.append(line)
+            else:
+                blocking_output.append(line)
         clean_worktree = {
             "command": "git status --short",
             "required": bool(require_clean_worktree),
             "output": status_lines,
-            "is_clean": not status_lines,
+            "ignored_recovery_artifact_output": ignored_recovery_artifact_output,
+            "blocking_output": blocking_output,
+            "is_clean": not blocking_output,
         }
-        if require_clean_worktree and status_lines:
+        if require_clean_worktree and blocking_output:
             raise ValueError("Recovery preflight requires a clean worktree.")
 
         current_head_commit_sha = self._run_git_command("rev-parse", "HEAD")
@@ -6583,6 +6611,344 @@ class SessionStore:
         manifest_path.write_text(_json_dumps(manifest) + "\n", encoding="utf-8")
         return manifest
 
+    def _load_verified_dispatch_backup(self, backup_id: str) -> dict[str, Any]:
+        backup = self._find_dispatch_backup(backup_id)
+        if backup is None:
+            raise ValueError(f"Backup not found: {backup_id}")
+        manifest_path = Path(_require_non_empty_text("manifest_path", backup.get("manifest_path")))
+        if not manifest_path.exists():
+            raise ValueError(f"Backup manifest missing for {backup_id}.")
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Backup manifest is invalid JSON for {backup_id}.") from exc
+        if manifest.get("backup_id") != backup_id:
+            raise ValueError(f"Backup manifest backup_id mismatch for {backup_id}.")
+        backup_path = Path(_require_non_empty_text("path", manifest.get("path")))
+        if not backup_path.exists():
+            raise ValueError(f"Backup file missing for {backup_id}.")
+        if manifest_path.resolve() != self._backup_manifest_path(backup_path).resolve():
+            raise ValueError(f"Backup manifest path mismatch for {backup_id}.")
+        actual_sha256 = _sha256_bytes(backup_path.read_bytes())
+        if manifest.get("sha256") != actual_sha256:
+            raise ValueError(f"Backup sha256 mismatch for {backup_id}.")
+        source_db_path = Path(_require_non_empty_text("source_db_path", manifest.get("source_db_path")))
+        if source_db_path.resolve() != self.paths.db_path.resolve():
+            raise ValueError(f"Backup source_db_path mismatch for {backup_id}.")
+        return {
+            **manifest,
+            "backup_file_exists": True,
+            "manifest_file_exists": True,
+            "sha256_matches": True,
+            "verified_at": _utc_now(),
+        }
+
+    def _load_recovery_snapshot_package(self, recovery_package_id: str) -> dict[str, Any]:
+        package_path = self._recovery_package_path(recovery_package_id=recovery_package_id)
+        if not package_path.exists():
+            raise ValueError(f"Recovery snapshot package not found: {recovery_package_id}")
+        try:
+            package = json.loads(package_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Recovery snapshot package is invalid JSON: {recovery_package_id}") from exc
+        if package.get("recovery_package_id") != recovery_package_id:
+            raise ValueError(f"Recovery snapshot package id mismatch for {recovery_package_id}.")
+        if package.get("package_kind") != "recovery_snapshot_package":
+            raise ValueError(f"Recovery package kind mismatch for {recovery_package_id}.")
+        manifest_path = Path(_require_non_empty_text("recovery_manifest_path", package.get("recovery_manifest_path")))
+        if not manifest_path.exists():
+            raise ValueError(f"Recovery manifest missing for {recovery_package_id}.")
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Recovery manifest is invalid JSON for {recovery_package_id}.") from exc
+        for field in (
+            "project_name",
+            "milestone_key",
+            "closeout_date",
+            "working_branch",
+            "checkpoint_tag",
+            "snapshot_branch",
+            "checkpoint_commit_sha",
+            "snapshot_commit_sha",
+            "current_head_commit_sha",
+        ):
+            if package.get(field) != manifest.get(field):
+                raise ValueError(f"Recovery package manifest mismatch for {recovery_package_id}: {field}.")
+        verified_backup = self._load_verified_dispatch_backup(
+            _require_non_empty_text("dispatch_backup_id", package.get("dispatch_backup_id"))
+        )
+        if verified_backup["backup_id"] != package["dispatch_backup_id"]:
+            raise ValueError(f"Recovery package backup id mismatch for {recovery_package_id}.")
+        if verified_backup["path"] != package.get("dispatch_backup_path"):
+            raise ValueError(f"Recovery package backup path mismatch for {recovery_package_id}.")
+        if verified_backup["manifest_path"] != package.get("dispatch_backup_manifest_path"):
+            raise ValueError(f"Recovery package backup manifest path mismatch for {recovery_package_id}.")
+        if verified_backup["sha256"] != package.get("dispatch_backup_sha256"):
+            raise ValueError(f"Recovery package backup sha mismatch for {recovery_package_id}.")
+        return {
+            **package,
+            "recovery_manifest": manifest,
+            "dispatch_backup": verified_backup,
+            "package_path": str(package_path),
+            "verified_at": _utc_now(),
+        }
+
+    def create_recovery_snapshot_package(
+        self,
+        *,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        working_branch: str,
+        task_id: str,
+        trigger: str,
+        note: str,
+        requested_by: str,
+        checkpoint_tag: str | None = None,
+        snapshot_branch: str | None = None,
+        authoritative_doc_paths: list[str] | None = None,
+        require_clean_worktree: bool = True,
+    ) -> dict[str, Any]:
+        task = self.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task not found: {task_id}")
+        if task.get("project_name") != project_name:
+            raise ValueError("Recovery snapshot package task/project mismatch.")
+        manifest = self.create_recovery_snapshot_manifest(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            checkpoint_tag=checkpoint_tag,
+            snapshot_branch=snapshot_branch,
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        dispatch_backup = self.create_dispatch_backup(
+            project_name=project_name,
+            trigger=trigger,
+            task_id=task_id,
+            note=note,
+        )
+        verified_backup = self._load_verified_dispatch_backup(dispatch_backup["backup_id"])
+        recovery_package_id = _new_id("recovery")
+        package_path = self._recovery_package_path(recovery_package_id=recovery_package_id)
+        package_path.parent.mkdir(parents=True, exist_ok=True)
+        package = {
+            "package_kind": "recovery_snapshot_package",
+            "receipt_kind": "recovery_snapshot_created",
+            "recovery_package_id": recovery_package_id,
+            "created_at": _utc_now(),
+            "project_name": manifest["project_name"],
+            "task_id": task_id,
+            "trigger": _require_non_empty_text("trigger", trigger),
+            "note": _require_non_empty_text("note", note),
+            "requested_by": _require_non_empty_text("requested_by", requested_by),
+            "milestone_key": manifest["milestone_key"],
+            "closeout_date": manifest["closeout_date"],
+            "working_branch": manifest["working_branch"],
+            "checkpoint_tag": manifest["checkpoint_tag"],
+            "snapshot_branch": manifest["snapshot_branch"],
+            "current_head_commit_sha": manifest["current_head_commit_sha"],
+            "checkpoint_commit_sha": manifest["checkpoint_commit_sha"],
+            "snapshot_commit_sha": manifest["snapshot_commit_sha"],
+            "recovery_manifest_path": manifest["manifest_path"],
+            "dispatch_backup_id": verified_backup["backup_id"],
+            "dispatch_backup_path": verified_backup["path"],
+            "dispatch_backup_manifest_path": verified_backup["manifest_path"],
+            "dispatch_backup_sha256": verified_backup["sha256"],
+            "clean_worktree": manifest["clean_worktree"],
+            "checkpoint_alignment": manifest["checkpoint_alignment"],
+            "authoritative_documents": manifest["authoritative_documents"],
+            "verification": {
+                "recovery_preflight_passed": True,
+                "backup_manifest_verified": True,
+                "backup_sha256_matches": True,
+                "checkpoint_alignment_matches": manifest["checkpoint_alignment"]["refs_match"],
+            },
+            "package_path": str(package_path),
+        }
+        package_path.write_text(_json_dumps(package) + "\n", encoding="utf-8")
+        return package
+
+    def restore_recovery_snapshot_package(
+        self,
+        *,
+        recovery_package_id: str,
+        requested_by: str,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        working_branch: str,
+        checkpoint_tag: str | None = None,
+        snapshot_branch: str | None = None,
+        authoritative_doc_paths: list[str] | None = None,
+        require_clean_worktree: bool = True,
+    ) -> dict[str, Any]:
+        package = self._load_recovery_snapshot_package(recovery_package_id)
+        if package["project_name"] != project_name:
+            raise ValueError("Recovery restore package project mismatch.")
+        current_anchor = self.run_recovery_preflight(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            checkpoint_tag=checkpoint_tag or package["checkpoint_tag"],
+            snapshot_branch=snapshot_branch or package["snapshot_branch"],
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        if (
+            current_anchor["checkpoint_tag"]["name"] != package["checkpoint_tag"]
+            or current_anchor["snapshot_branch"]["name"] != package["snapshot_branch"]
+            or current_anchor["checkpoint_tag"]["commit_sha"] != package["checkpoint_commit_sha"]
+            or current_anchor["snapshot_branch"]["commit_sha"] != package["snapshot_commit_sha"]
+        ):
+            raise ValueError("Recovery restore requires target refs to match the accepted recovery anchor.")
+        pre_restore_recovery_package = self.create_recovery_snapshot_package(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            task_id=package["task_id"],
+            trigger="pre_restore",
+            note=f"Pre-restore recovery snapshot before restoring package {recovery_package_id} requested by {requested_by}.",
+            requested_by=requested_by,
+            checkpoint_tag=package["checkpoint_tag"],
+            snapshot_branch=package["snapshot_branch"],
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        verified_backup = self._load_verified_dispatch_backup(package["dispatch_backup_id"])
+        shutil.copy2(Path(verified_backup["path"]), self.paths.db_path)
+        self.initialize()
+        restored_run = self.latest_run_for_task(package["task_id"])
+        restored_context_receipt = self.load_context_receipt(restored_run["id"]) if restored_run else None
+        receipt = {
+            "receipt_kind": "recovery_restore_completed",
+            "restore_id": _new_id("restore"),
+            "recovery_package_id": recovery_package_id,
+            "task_id": package["task_id"],
+            "project_name": project_name,
+            "requested_by": _require_non_empty_text("requested_by", requested_by),
+            "restored_at": _utc_now(),
+            "target_checkpoint_tag": package["checkpoint_tag"],
+            "target_snapshot_branch": package["snapshot_branch"],
+            "target_checkpoint_commit_sha": package["checkpoint_commit_sha"],
+            "pre_restore_recovery_package_id": pre_restore_recovery_package["recovery_package_id"],
+            "pre_restore_recovery_package_path": pre_restore_recovery_package["package_path"],
+            "backup_id": verified_backup["backup_id"],
+            "backup_manifest_path": verified_backup["manifest_path"],
+            "backup_sha256": verified_backup["sha256"],
+            "recovery_preflight": current_anchor,
+            "store_health": self.schema_health(),
+            "source_run_id": verified_backup.get("source_run_id"),
+            "source_context_receipt": verified_backup.get("source_context_receipt"),
+            "restored_run_id": restored_run["id"] if restored_run else None,
+            "restored_context_receipt": restored_context_receipt,
+            "verification": {
+                "target_recovery_package_verified": True,
+                "target_refs_match_current_anchor": True,
+                "backup_manifest_verified": True,
+                "backup_sha256_matches": True,
+                "pre_action_snapshot_created": True,
+                "accepted_current_truth_changed": False,
+            },
+            "restore_status": "verified_candidate_only",
+            "accepted_current_truth_changed": False,
+        }
+        receipt_path = self.paths.restore_receipts_dir / f"{receipt['restore_id']}.json"
+        receipt["receipt_path"] = str(receipt_path)
+        receipt_path.write_text(_json_dumps(receipt) + "\n", encoding="utf-8")
+        return receipt
+
+    def prepare_recovery_rollback(
+        self,
+        *,
+        recovery_package_id: str,
+        requested_by: str,
+        project_name: str,
+        milestone_key: str,
+        closeout_date: str,
+        working_branch: str,
+        checkpoint_tag: str | None = None,
+        snapshot_branch: str | None = None,
+        authoritative_doc_paths: list[str] | None = None,
+        require_clean_worktree: bool = True,
+    ) -> dict[str, Any]:
+        package = self._load_recovery_snapshot_package(recovery_package_id)
+        if package["project_name"] != project_name:
+            raise ValueError("Recovery rollback package project mismatch.")
+        current_anchor = self.run_recovery_preflight(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            checkpoint_tag=checkpoint_tag or package["checkpoint_tag"],
+            snapshot_branch=snapshot_branch or package["snapshot_branch"],
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        if (
+            current_anchor["checkpoint_tag"]["name"] != package["checkpoint_tag"]
+            or current_anchor["snapshot_branch"]["name"] != package["snapshot_branch"]
+            or current_anchor["checkpoint_tag"]["commit_sha"] != package["checkpoint_commit_sha"]
+            or current_anchor["snapshot_branch"]["commit_sha"] != package["snapshot_commit_sha"]
+        ):
+            raise ValueError("Recovery rollback requires target refs to match the accepted recovery anchor.")
+        pre_rollback_recovery_package = self.create_recovery_snapshot_package(
+            project_name=project_name,
+            milestone_key=milestone_key,
+            closeout_date=closeout_date,
+            working_branch=working_branch,
+            task_id=package["task_id"],
+            trigger="pre_rollback",
+            note=f"Pre-rollback recovery snapshot before preparing rollback for package {recovery_package_id} requested by {requested_by}.",
+            requested_by=requested_by,
+            checkpoint_tag=package["checkpoint_tag"],
+            snapshot_branch=package["snapshot_branch"],
+            authoritative_doc_paths=authoritative_doc_paths,
+            require_clean_worktree=require_clean_worktree,
+        )
+        verified_backup = self._load_verified_dispatch_backup(package["dispatch_backup_id"])
+        rollback_id = _new_id("rollback")
+        receipt_path = self._recovery_rollback_receipt_path(rollback_id=rollback_id)
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt = {
+            "receipt_kind": "recovery_rollback_prepared",
+            "rollback_id": rollback_id,
+            "prepared_at": _utc_now(),
+            "requested_by": _require_non_empty_text("requested_by", requested_by),
+            "project_name": project_name,
+            "task_id": package["task_id"],
+            "target_recovery_package_id": recovery_package_id,
+            "target_checkpoint_tag": package["checkpoint_tag"],
+            "target_snapshot_branch": package["snapshot_branch"],
+            "target_checkpoint_commit_sha": package["checkpoint_commit_sha"],
+            "target_backup_id": verified_backup["backup_id"],
+            "target_backup_manifest_path": verified_backup["manifest_path"],
+            "target_backup_sha256": verified_backup["sha256"],
+            "pre_rollback_recovery_package_id": pre_rollback_recovery_package["recovery_package_id"],
+            "pre_rollback_recovery_package_path": pre_rollback_recovery_package["package_path"],
+            "recovery_preflight": current_anchor,
+            "verification": {
+                "target_recovery_package_verified": True,
+                "target_refs_match_current_anchor": True,
+                "backup_manifest_verified": True,
+                "backup_sha256_matches": True,
+                "pre_action_snapshot_created": True,
+                "rollback_executed": False,
+                "accepted_current_truth_changed": False,
+            },
+            "rollback_ready": True,
+            "rollback_executed": False,
+            "accepted_current_truth_changed": False,
+            "receipt_path": str(receipt_path),
+        }
+        receipt_path.write_text(_json_dumps(receipt) + "\n", encoding="utf-8")
+        return receipt
+
     def create_dispatch_backup(
         self,
         *,
@@ -6661,9 +7027,7 @@ class SessionStore:
         return receipts[:limit]
 
     def restore_dispatch_backup(self, *, backup_id: str, requested_by: str) -> dict[str, Any]:
-        backup = self._find_dispatch_backup(backup_id)
-        if backup is None:
-            raise ValueError(f"Backup not found: {backup_id}")
+        backup = self._load_verified_dispatch_backup(backup_id)
         pre_restore_backup = self.create_dispatch_backup(
             project_name=backup["project_name"],
             trigger="pre_restore",
@@ -6686,6 +7050,13 @@ class SessionStore:
             "source_context_receipt": backup.get("source_context_receipt"),
             "restored_run_id": restored_run["id"] if restored_run else None,
             "restored_context_receipt": restored_context_receipt,
+            "receipt_kind": "dispatch_backup_restore_completed",
+            "verification": {
+                "backup_manifest_verified": True,
+                "backup_sha256_matches": True,
+                "accepted_current_truth_changed": False,
+            },
+            "accepted_current_truth_changed": False,
         }
         receipt_path = self.paths.restore_receipts_dir / f"{receipt['restore_id']}.json"
         receipt["receipt_path"] = str(receipt_path)
