@@ -6,7 +6,8 @@
 - Keep the contract grounded in current committed AIOffice reality without claiming that restore or rollback automation is already implemented or rehearsed.
 
 ## 2. Current Committed Reality This Contract Must Fit
-- `M1` through `M9` are complete and `M10` is active.
+- `M1` through `M10` are complete.
+- No post-`M10` milestone is ratified yet.
 - Current readiness remains `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof still stops at `architect`.
@@ -46,11 +47,11 @@
 - `checkpoint tag`
   - the milestone closeout anchor for a previously accepted boundary
   - intended to identify the exact checkpoint commit immutably
-  - in current committed reality: `aioffice-m9-closeout-2026-04-16`
+  - in current committed reality: `aioffice-m10-closeout-2026-04-16`
 - `snapshot branch`
   - a human-readable recovery ref expected to point at the same checkpoint commit when created
   - kept as a reviewable snapshot anchor without replacing the checkpoint tag
-  - in current committed reality: `snapshot/aioffice-m9-closeout-2026-04-16`
+  - in current committed reality: `snapshot/aioffice-m10-closeout-2026-04-16`
 - `commit SHA`
   - the exact Git object identity underneath the checkpoint tag, snapshot branch, and working branch head at a specific moment
 - `authoritative docs and task truth`

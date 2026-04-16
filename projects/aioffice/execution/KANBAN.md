@@ -1172,6 +1172,25 @@ Ledger status:
   - AIO-052
 - status: completed
 
+### Reconcile RECOVERY_AND_ROLLBACK_CONTRACT.md to post-M10 closeout truth
+- id: AIO-054
+- item_type: task
+- title: Reconcile RECOVERY_AND_ROLLBACK_CONTRACT.md to post-M10 closeout truth
+- details: perform one narrow post-AIO-053 reconciliation task so the recovery contract's current committed reality and checkpoint examples match the already-accepted post-M10 closeout state without changing scope, rehearsal status, readiness posture, or workflow-proof boundaries
+- objective: keep the recovery contract aligned with the accepted M10 closeout review anchor without introducing new recovery functionality or broader milestone planning
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M10 - Change Governance, Recovery, And Maintainability Hardening
+- expected_artifact_path: projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md
+- acceptance:
+  - `RECOVERY_AND_ROLLBACK_CONTRACT.md` reflects post-M10 closeout truth consistently with `ACTIVE_STATE.md`
+  - rehearsal remains planned and not executed
+  - explicit non-claims remain intact
+  - no readiness, workflow-proof, or post-M10 planning inflation is introduced
+- dependencies:
+  - AIO-053
+- status: completed
+
 ## In Review
 
 _No items_
