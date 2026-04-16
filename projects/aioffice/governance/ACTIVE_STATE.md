@@ -12,6 +12,7 @@
 ## Current Accepted Posture
 - `M1` through `M10` are complete.
 - `M10` completed as a narrow change-governance, recovery, and maintainability hardening slice.
+- `M11` is active as a narrow recovery-discipline operationalization slice.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -52,10 +53,15 @@
   - the recovery and rollback contract with a bounded rehearsal plan
   - the Codex change isolation and code-review contract for shared AIOffice control surfaces
 - `M10` did not change runtime control behavior, later-stage workflow proof, UI scope, or readiness posture.
-- no post-`M10` milestone is ratified yet.
+- `M11` is prioritized first because the recovery contract is defined and the accepted `M10` closeout anchor now exists, but no committed artifact yet proves operationalized recovery discipline or a restore/rollback rehearsal.
+- The next likely priority after `M11` is protected core product/state surfaces enforcement, and the next likely breadth slice after that is one-lane `design` operationalization; both remain directional only and are not ratified milestones.
+- no post-`M11` milestone is ratified yet.
 
 ## Current Active Task Order
-_None. `M10` is complete and no post-`M10` milestone is ratified yet._
+- `AIO-056` - Implement recovery checkpoint naming, snapshot manifest, and recovery preflight discipline
+- `AIO-057` - Harden backup, restore, and rollback routines over the accepted `M10` checkpoint reality
+- `AIO-058` - Rehearse bounded restore and rollback against the accepted `M10` closeout anchor and record evidence
+- `AIO-059` - Record post-`M11` recovery discipline review and ratify the next conservative slice
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -71,6 +77,7 @@ _None. `M10` is complete and no post-`M10` milestone is ratified yet._
 - `projects/aioffice/governance/M7_OPERATOR_DECISION_SURFACE_REVIEW.md`
 - `projects/aioffice/governance/M8_OPERATOR_DECISION_INPUT_REVIEW.md`
 - `projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md`
+- `projects/aioffice/governance/M10_RECOVERY_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
 - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
 - `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`

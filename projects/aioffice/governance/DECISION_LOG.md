@@ -91,3 +91,13 @@
   - this is checkpoint and review-anchor hygiene only
   - the historical `M9` tag and `M9` snapshot branch remain preserved as prior accepted anchors and are not rewritten, moved, or deleted
   - this decision does not imply any readiness change, workflow-proof expansion, UI expansion, autonomy expansion, or later-stage workflow claim
+
+### AIO-D-011
+- date: 2026-04-16
+- status: reviewed
+- decision: after `M10` closeout, the next conservative slice is recovery-first, and `M11 - Recovery Discipline Operationalization` is ratified as the active milestone.
+- rationale:
+  - recovery discipline is chosen first because `RECOVERY_AND_ROLLBACK_CONTRACT.md` is defined, but no committed artifact yet proves automated snapshot/version/restore/rollback discipline in practice and no restore or rollback rehearsal has been executed
+  - protected core product/state surfaces enforcement remains the next likely priority after recovery, but it is not ratified or authorized for implementation in this decision
+  - workflow breadth beyond `architect` remains important, but it should begin later with one lane only, starting with `design`
+  - this decision does not authorize readiness upgrades, UI implementation, later-stage workflow proof, serious multi-agent parallelism, protected-surface enforcement implementation yet, or design-lane implementation yet

@@ -100,6 +100,13 @@ Ledger status:
 - owner_role: Project Orchestrator
 - status: completed
 
+### M11 - Recovery Discipline Operationalization
+- milestone_order: 11
+- entry_goal: `M10` closeout is complete and anchored, and the next work should operationalize recovery discipline by making checkpoint naming, snapshot packaging, restore/rollback routines, and recovery proof more real before protected-surface enforcement or workflow-breadth expansion increases blast radius.
+- exit_goal: checkpoint naming and version discipline are explicit in current practice, recovery preflight and backup/restore routines are hardened over the existing repo reality, one bounded restore/rollback rehearsal is executed and recorded, and the resulting recovery posture is reviewed without changing readiness or widening workflow proof.
+- owner_role: Project Orchestrator
+- status: in_progress
+
 ## Completed
 
 ### Write AIOffice charter, doctrine, non-goals, and success definition
@@ -1191,6 +1198,25 @@ Ledger status:
   - AIO-053
 - status: completed
 
+### Record post-M10 recovery-first priority review and ratify M11
+- id: AIO-055
+- item_type: task
+- title: Record post-M10 recovery-first priority review and ratify M11
+- details: record the accepted post-`M10` recovery-first priority order in the authoritative planning surfaces, ratify `M11` as the next conservative slice, and seed only the minimum recovery-discipline tasks required to begin operationalization
+- objective: make recovery discipline the explicit next milestone theme before protected-surface enforcement or workflow breadth increase control-surface blast radius
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: projects/aioffice/governance/M10_RECOVERY_PRIORITY_REVIEW.md
+- acceptance:
+  - the review artifact uses committed repo truth only plus the accepted review direction
+  - exactly one next conservative slice is ratified
+  - later priorities are recorded directionally without ratifying later milestones
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-054
+- status: completed
+
 ## In Review
 
 _No items_
@@ -1205,9 +1231,81 @@ _No items_
 
 ## Backlog
 
-_No items_
+### Implement recovery checkpoint naming, snapshot manifest, and recovery preflight discipline
+- id: AIO-056
+- item_type: task
+- title: Implement recovery checkpoint naming, snapshot manifest, and recovery preflight discipline
+- details: implement the bounded recovery-discipline layer that makes checkpoint naming, snapshot packaging, and recovery preflight checks explicit over the accepted `M10` closeout reality without widening workflow proof or readiness claims
+- objective: make checkpoint identity and recovery preconditions more real before backup, restore, and rollback behavior is hardened further
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - checkpoint naming and snapshot manifest expectations are enforceable in the accepted repo reality
+  - recovery preflight checks are explicit and fail-closed
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-055
+- status: backlog
+
+### Harden backup, restore, and rollback routines over the accepted M10 checkpoint reality
+- id: AIO-057
+- item_type: task
+- title: Harden backup, restore, and rollback routines over the accepted M10 checkpoint reality
+- details: harden the existing backup, restore, and rollback routines so they fit the accepted `M10` closeout anchor, recovery contract, and bounded repo reality without widening workflow scope
+- objective: make the current recovery path more reliable and reviewable before any broader control-surface work increases blast radius
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - backup, restore, and rollback routines align with the accepted checkpoint reality
+  - fail-closed verification boundaries remain explicit
+  - no UI, readiness, or later-stage workflow claim is added
+- dependencies:
+  - AIO-056
+- status: backlog
+
+### Rehearse bounded restore and rollback against the accepted M10 closeout anchor and record evidence
+- id: AIO-058
+- item_type: task
+- title: Rehearse bounded restore and rollback against the accepted M10 closeout anchor and record evidence
+- details: execute one bounded restore and rollback rehearsal against the accepted `M10` closeout anchor, then record what the recovery discipline proved and what still remains manual or unproven
+- objective: prove the recovery-discipline slice in practice without changing readiness or widening live workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: projects/aioffice/artifacts/M11_RECOVERY_REHEARSAL.md
+- acceptance:
+  - one bounded restore and rollback rehearsal is executed against the accepted closeout anchor
+  - evidence is recorded factually
+  - residual manual glue and remaining limits are explicit
+  - no readiness or later-stage workflow overclaim is made
+- dependencies:
+  - AIO-057
+- status: backlog
+
+### Record post-M11 recovery discipline review and ratify the next conservative slice
+- id: AIO-059
+- item_type: task
+- title: Record post-M11 recovery discipline review and ratify the next conservative slice
+- details: produce one explicit post-`M11` review artifact grounded only in committed evidence, state what the recovery-discipline slice proved, what remains unproven, and ratify exactly one next conservative slice if the evidence supports it
+- objective: keep the proof boundary explicit after `M11` and choose the next conservative slice without inflating readiness or widening workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M11 - Recovery Discipline Operationalization
+- expected_artifact_path: projects/aioffice/governance/M11_RECOVERY_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - the proven and unproven recovery boundaries are explicit
+  - exactly one next conservative slice is ratified only if the evidence supports it
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-058
+- status: backlog
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- no post-`M10` milestone is ratified yet
+- no post-`M11` milestone is ratified yet
