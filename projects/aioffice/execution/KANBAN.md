@@ -1253,20 +1253,6 @@ Ledger status:
   - AIO-056
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Rehearse bounded restore and rollback against the accepted M10 closeout anchor and record evidence
 - id: AIO-058
 - item_type: task
@@ -1284,7 +1270,21 @@ _No items_
   - no readiness or later-stage workflow overclaim is made
 - dependencies:
   - AIO-057
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Record post-M11 recovery discipline review and ratify the next conservative slice
 - id: AIO-059
