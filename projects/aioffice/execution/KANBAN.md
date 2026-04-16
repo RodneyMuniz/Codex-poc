@@ -112,6 +112,13 @@ Ledger status:
 - entry_goal: `M11` has proved a bounded recovery path through preflight, snapshot packaging, restore, rollback preparation, and rollback execution in a disposable rehearsal target, and the next work should protect core product/state/governance surfaces from ordinary user-facing mutation before workflow breadth expands.
 - exit_goal: protected surface classes are reconciled to current truth, ordinary lanes are fail-closed from mutating those surfaces in code, one bounded blocked-attempt rehearsal is recorded, and the resulting enforcement boundary is reviewed without changing readiness or widening workflow proof.
 - owner_role: Project Orchestrator
+- status: completed
+
+### M13 - Design Lane Operationalization
+- milestone_order: 13
+- entry_goal: `M12` has proved that protected core product/state/governance surfaces are explicitly classified and that the current sanctioned ordinary mutation path fails closed against protected targets, so the next work can expand workflow breadth conservatively by making one specialist lane real without collapsing product authority.
+- exit_goal: the `design` lane is defined, implemented, and rehearsed as the first real post-architect specialist lane with bounded input/output contracts, persisted lane state, and fail-closed handoff/governance behavior, without changing readiness or widening proof beyond what the committed evidence supports.
+- owner_role: Project Orchestrator
 - status: in_progress
 
 ## Completed
@@ -1353,20 +1360,6 @@ Ledger status:
   - AIO-059
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement fail-closed blocking for protected core surfaces in ordinary mutation paths
 - id: AIO-061
 - item_type: task
@@ -1419,9 +1412,95 @@ _No items_
   - exactly one next conservative slice is ratified only if the evidence supports it
 - dependencies:
   - AIO-062
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Define design-lane contract, input/output boundaries, and persisted state expectations
+- id: AIO-064
+- item_type: task
+- title: Define design-lane contract, input/output boundaries, and persisted state expectations
+- details: define the first real post-architect specialist lane contract for `design`, including bounded handoff inputs, lane-owned persisted state, required outputs, and fail-closed governance behavior
+- objective: make the first workflow-breadth slice explicit enough that later implementation can add the `design` lane without inventing its contract ad hoc
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M13 - Design Lane Operationalization
+- expected_artifact_path: projects/aioffice/governance/DESIGN_LANE_CONTRACT.md
+- acceptance:
+  - the `design` lane contract defines bounded inputs, outputs, persisted state expectations, and fail-closed handoff boundaries
+  - the contract does not widen readiness or workflow-proof claims
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-063
+- status: backlog
+
+### Implement bounded design-lane state path and fail-closed architect-to-design handoff behavior
+- id: AIO-065
+- item_type: task
+- title: Implement bounded design-lane state path and fail-closed architect-to-design handoff behavior
+- details: implement the narrow persisted state and handoff path needed to make the `design` lane real as the first post-architect specialist lane without weakening current governance boundaries
+- objective: make one specialist lane materially real while preserving the protected-surface boundary already proved in `M12`
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M13 - Design Lane Operationalization
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - the `design` lane has a bounded persisted state path
+  - architect-to-design handoff behavior is explicit and fail-closed
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-064
+- status: backlog
+
+### Rehearse architect-to-design lane flow and record evidence
+- id: AIO-066
+- item_type: task
+- title: Rehearse architect-to-design lane flow and record evidence
+- details: execute one bounded rehearsal of the architect-to-design handoff and lane flow, then record what the new specialist-lane slice proves and what remains unproven
+- objective: prove one conservative post-architect specialist lane before any later breadth expansion is considered
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M13 - Design Lane Operationalization
+- expected_artifact_path: projects/aioffice/artifacts/M13_DESIGN_LANE_REHEARSAL.md
+- acceptance:
+  - one bounded architect-to-design rehearsal is executed and recorded factually
+  - lane-state and handoff boundary evidence are explicit
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-065
+- status: backlog
+
+### Record post-M13 design-lane review and ratify the next conservative slice
+- id: AIO-067
+- item_type: task
+- title: Record post-M13 design-lane review and ratify the next conservative slice
+- details: produce one explicit post-`M13` review artifact grounded only in committed evidence, state what design-lane operationalization proved, and ratify exactly one next conservative slice if the evidence supports it
+- objective: close the first specialist-lane slice conservatively without widening readiness or workflow proof beyond committed evidence
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M13 - Design Lane Operationalization
+- expected_artifact_path: projects/aioffice/governance/M13_DESIGN_LANE_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - the proven and unproven design-lane boundaries are explicit
+  - exactly one next conservative slice is ratified only if the evidence supports it
+- dependencies:
+  - AIO-066
 - status: backlog
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- no post-`M12` milestone is ratified yet
+- no post-`M13` milestone is ratified yet

@@ -6,7 +6,7 @@
 - Provide a concrete boundary that later implementation, UI constraints, and recovery work can follow without widening workflow proof or changing current readiness.
 
 ## 2. Current Committed Reality This Boundary Must Fit
-- `M1` through `M11` are complete and `M12` is the active milestone.
+- `M1` through `M12` are complete and `M13` is the active milestone.
 - Current readiness remains `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof still stops at `architect`.
@@ -18,8 +18,9 @@
 - No committed implementation currently provides:
   - an admin identity system
   - a separate admin-only mutation lane in code
-  - product/self-change enforcement beyond governance and review discipline
-- This artifact therefore defines governance law and approval boundaries only. It does not claim that admin-only enforcement already exists in runtime code.
+  - a generalized admin-runtime approval surface distinct from governance-first review and the current ordinary-lane fail-closed boundary
+- Committed implementation now does provide fail-closed protected-surface blocking on the current sanctioned ordinary mutation path.
+- This artifact therefore defines governance law, protected-surface classes, and approval boundaries. It does not claim that a separate admin-only mutation lane already exists in runtime code.
 
 ## 3. Why Ordinary Execution-Bundle Approval Is Not Enough For Product/Self-Change
 - Ordinary execution-bundle approval is designed for bounded artifact disposition within already-sanctioned product behavior.
@@ -166,7 +167,7 @@
 - Ordinary bounded artifact outputs may remain ordinary execution decisions when they do not change any protected class above.
 
 ## 6D. Enforcement Expectations For Ordinary Lanes
-- `AIO-061` should later enforce this contract by treating an ordinary-lane write or mutation attempt as blockable when the attempted target path or requested effect falls into any protected core surface class.
+- `AIO-061` now enforces this contract on the current sanctioned ordinary apply/promotion path by treating an ordinary-lane write or mutation attempt as blockable when the attempted target path or requested effect falls into any protected core surface class.
 - Later fail-closed enforcement should be explicit enough to map:
   - protected surface class
   - attempted ordinary-lane mutation
@@ -176,8 +177,8 @@
   - do not silently downgrade, reroute, or partially apply the mutation
   - return an explicit blocking reason that names the protected class or equivalent enforcement reason
   - leave accepted truth unchanged
-- Until a separate admin-only mutation lane exists in code, later enforcement should block ordinary-lane mutation attempts rather than inventing a new admin runtime path silently.
-- This artifact defines what later enforcement should protect. It does not implement that enforcement now.
+- Until a separate admin-only mutation lane exists in code, later enforcement should continue blocking ordinary-lane mutation attempts rather than inventing a new admin runtime path silently.
+- This artifact defines the protected classes and boundary law that current and future enforcement must protect. It does not create a separate admin runtime lane by itself.
 
 ## 7. Non-Admin Action Classes That Remain Ordinary Execution Decisions
 - The following remain ordinary persisted execution-bundle decisions when they stay inside already-sanctioned behavior:
@@ -229,7 +230,7 @@
 
 ## 12. Exact Out-Of-Scope Boundaries
 - This artifact does not implement admin-only enforcement in code.
-- This artifact does not yet implement protected-surface blocking in ordinary mutation paths.
+- This artifact does not by itself implement protected-surface blocking outside the current sanctioned ordinary mutation path.
 - This artifact does not create a new UI, admin console, or writable client surface.
 - This artifact does not change `bundle-decision` semantics for ordinary bounded execution outputs.
 - This artifact does not authorize later-stage workflow, concurrency safety, real multi-agent maturity, semi-autonomous operation, or UAT readiness.

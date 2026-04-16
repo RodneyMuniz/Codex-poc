@@ -111,3 +111,13 @@
   - protected core product/state surfaces enforcement now outranks workflow breadth and UI work because ordinary mutation paths still need code-level fail-closed blocking on core accepted-truth surfaces before broader writable or review-sensitive surface area is added
   - workflow breadth beyond `architect` remains important, but it should still begin later with one lane only, starting with `design`, after protected-surface enforcement is reviewed
   - this decision does not authorize readiness upgrades, later-stage workflow proof, design-lane implementation yet, UI implementation, or serious multi-agent parallelism
+
+### AIO-D-013
+- date: 2026-04-16
+- status: reviewed
+- decision: after the post-`M12` protected-surface enforcement review, `M12 - Protected Core Surfaces Enforcement` is complete and `M13 - Design Lane Operationalization` is ratified as the next active conservative slice.
+- rationale:
+  - committed `M12` evidence now proves protected core surface classes are explicit in governance, the current sanctioned ordinary mutation path fails closed on protected targets, and one bounded blocked-attempt rehearsal was executed without changing accepted truth or advancing the exercised bundle beyond `pending_review`
+  - design-lane operationalization now outranks UI work because current repo truth already has the conservative protected-surface boundary it needed first, while broader UI work still does not reduce the next highest-value gap in bounded workflow breadth
+  - design-lane operationalization also outranks broader workflow expansion because breadth should still begin with one lane only, and `design` remains the accepted recommended first lane rather than attempting multi-lane expansion all at once
+  - this decision does not authorize readiness upgrades, later-stage workflow proof beyond what the `M13` slice will actually prove, UI implementation, serious multi-agent parallelism, or multi-lane breadth all at once

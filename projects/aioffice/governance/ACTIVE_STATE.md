@@ -10,10 +10,11 @@
 - authoritative milestone snapshot branch: `snapshot/aioffice-m10-closeout-2026-04-16`
 
 ## Current Accepted Posture
-- `M1` through `M11` are complete.
+- `M1` through `M12` are complete.
 - `M10` completed as a narrow change-governance, recovery, and maintainability hardening slice.
 - `M11` completed as a narrow recovery-discipline operationalization slice.
-- `M12` is active as a narrow protected core product/state surfaces enforcement slice.
+- `M12` completed as a narrow protected core product/state surfaces enforcement slice.
+- `M13` is active as a narrow design-lane operationalization slice.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -62,12 +63,24 @@
   - that rehearsal did not change accepted authoritative truth
 - `M11` did not change readiness posture, live workflow proof, UI scope, or later-stage workflow proof.
 - `M11` still leaves residual manual glue, including the clone-local `projects/tactics-game/execution/KANBAN.md` projection side effect recorded in the committed rehearsal evidence.
-- `M12` is now the active conservative slice because protected core product/state surfaces should be fail-closed before workflow breadth expands.
-- The next likely breadth slice after `M12` remains one-lane `design` operationalization, and it is still directional only rather than a ratified milestone.
-- no post-`M12` milestone is ratified yet.
+- `M12` proved:
+  - protected core surface classes are explicit in committed governance
+  - the current sanctioned ordinary mutation path fails closed on protected targets
+  - one bounded blocked-attempt rehearsal was executed against an accepted truth surface and a protected operator/control surface
+  - accepted truth remained unchanged and the exercised bundle remained `pending_review`
+- `M12` did not prove:
+  - every protected class exhaustively
+  - a separate admin-only mutation lane in code
+  - later-stage workflow, UI readiness, or multi-lane breadth
+- `M12` did not change readiness posture or live workflow proof boundaries.
+- `M13` is now the active conservative slice because one specialist lane can be made real next without collapsing the protected-surface boundary that `M12` proved on the current sanctioned path.
+- no post-`M13` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-063` - Record post-`M12` protected-surface enforcement review and ratify the next conservative slice
+- `AIO-064` - Define design-lane contract, input/output boundaries, and persisted state expectations
+- `AIO-065` - Implement bounded design-lane state path and fail-closed architect-to-design handoff behavior
+- `AIO-066` - Rehearse architect-to-design lane flow and record evidence
+- `AIO-067` - Record post-`M13` design-lane review and ratify the next conservative slice
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -85,6 +98,7 @@
 - `projects/aioffice/governance/M9_CONTROL_SURFACE_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/M10_RECOVERY_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/M11_RECOVERY_REVIEW.md`
+- `projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md`
 - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
 - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
 - `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`
@@ -93,6 +107,7 @@
 - `projects/aioffice/artifacts/M6_SHARED_STORE_REHEARSAL.md`
 - `projects/aioffice/artifacts/M7_OPERATOR_DECISION_SURFACE_REHEARSAL.md`
 - `projects/aioffice/artifacts/M8_OPERATOR_DECISION_INPUT_REHEARSAL.md`
+- `projects/aioffice/artifacts/M12_PROTECTED_SURFACE_BLOCK_REHEARSAL.md`
 
 ## Review Surface Statement
 GitHub is the external review surface for audit anchoring of the accepted AIOffice state. The local repository remains the implementation workspace and source of in-progress changes until those changes are deliberately staged, committed, and pushed.
