@@ -1588,20 +1588,6 @@ Ledger status:
   - AIO-071
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement one narrow sanctioned design-artifact path for the design lane
 - id: AIO-073
 - item_type: task
@@ -1618,7 +1604,21 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-072
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Rehearse one bounded design-lane artifact path and record evidence
 - id: AIO-074

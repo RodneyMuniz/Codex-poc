@@ -286,7 +286,7 @@
       "label": "execute_apply_promotion_decision",
       "source_ref": {
         "path": "sessions/store.py",
-        "line": 3073
+        "line": 3218
       },
       "attributes": {
         "symbol_kind": "function"
@@ -481,7 +481,7 @@
       "label": "test_store_can_execute_controlled_apply_promotion_with_explicit_approved_decision",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 661
+        "line": 804
       }
     },
     {
@@ -490,7 +490,7 @@
       "label": "test_store_rejects_apply_promotion_destination_outside_authoritative_workspace",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 729
+        "line": 872
       }
     },
     {
@@ -499,7 +499,7 @@
       "label": "test_store_rejects_apply_promotion_into_accepted_truth_surface",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 796
+        "line": 939
       }
     },
     {
@@ -508,7 +508,7 @@
       "label": "test_store_rejects_apply_promotion_into_governance_or_forbidden_paths",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 761
+        "line": 904
       }
     },
     {
@@ -517,7 +517,7 @@
       "label": "test_store_rejects_apply_promotion_into_protected_control_path_code_surface",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 833
+        "line": 976
       }
     },
     {
@@ -526,7 +526,7 @@
       "label": "test_store_rejects_apply_promotion_self_promotion_paths",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 910
+        "line": 1053
       }
     },
     {
@@ -535,7 +535,7 @@
       "label": "test_store_rejects_apply_promotion_with_missing_or_ambiguous_destination_mappings",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 870
+        "line": 1013
       }
     },
     {
@@ -544,7 +544,7 @@
       "label": "test_store_rejects_apply_promotion_without_explicit_approved_decision",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 697
+        "line": 840
       }
     }
   ],
@@ -708,7 +708,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "sessions/store.py",
-        "line": 3073
+        "line": 3218
       }
     },
     {
@@ -870,7 +870,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 661
+        "line": 804
       }
     },
     {
@@ -879,7 +879,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 729
+        "line": 872
       }
     },
     {
@@ -888,7 +888,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 796
+        "line": 939
       }
     },
     {
@@ -897,7 +897,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 761
+        "line": 904
       }
     },
     {
@@ -906,7 +906,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 833
+        "line": 976
       }
     },
     {
@@ -915,7 +915,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 910
+        "line": 1053
       }
     },
     {
@@ -924,7 +924,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 870
+        "line": 1013
       }
     },
     {
@@ -933,7 +933,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 697
+        "line": 840
       }
     },
     {
@@ -996,7 +996,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 661
+        "line": 804
       }
     },
     {
@@ -1005,7 +1005,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 729
+        "line": 872
       }
     },
     {
@@ -1014,7 +1014,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 796
+        "line": 939
       }
     },
     {
@@ -1023,7 +1023,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 761
+        "line": 904
       }
     },
     {
@@ -1032,7 +1032,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 833
+        "line": 976
       }
     },
     {
@@ -1041,7 +1041,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 910
+        "line": 1053
       }
     },
     {
@@ -1050,7 +1050,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 870
+        "line": 1013
       }
     },
     {
@@ -1059,7 +1059,7 @@
       "relationship_class": "exercised_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 697
+        "line": 840
       }
     },
     {
@@ -1257,7 +1257,7 @@
       "relationship_class": "verified_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 824
+        "line": 967
       }
     },
     {
@@ -1266,7 +1266,7 @@
       "relationship_class": "verified_by",
       "source_ref": {
         "path": "tests/test_control_kernel_store.py",
-        "line": 861
+        "line": 1004
       }
     }
   ],
@@ -1360,7 +1360,7 @@
         "message": "This baseline artifact does not upgrade readiness or widen workflow proof beyond architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 33
+          "line": 34
         }
       },
       {
@@ -1368,7 +1368,7 @@
         "message": "Current live workflow proof still stops at architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 35
+          "line": 36
         }
       }
     ]

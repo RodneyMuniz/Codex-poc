@@ -9,7 +9,7 @@
 - accepted pre-rebaseline / pre-implementation `M13` source commit: `c5a3da56f89b9b45265ec885207153978ae9bf9f`
 - accepted starting-point snapshot branch: `snapshot/aioffice-m12-closeout-2026-04-16`
 - no dedicated post-`M12`, post-`M13`, or post-`M14` checkpoint tag is currently ratified in committed governance
-- the current committed branch tip carries the accepted post-`M13` review and active `M14` planning state
+- the current committed branch tip carries the accepted post-`M14` review and active `M15` planning state
 
 ## Current Accepted Posture
 - `M1` through `M12` are complete.
@@ -29,7 +29,8 @@
 - `AIO-070` is complete as one bounded repo-governed milestone publication and verification rehearsal against authoritative branch truth.
 - `AIO-071` is complete as the post-`M14` hook and automation discipline review and next-slice ratification task.
 - `AIO-072` is complete as the design-lane contract-definition task.
-- `AIO-073` is the next active task; `AIO-074` and `AIO-075` remain seeded only.
+- `AIO-073` is complete as the narrow sanctioned design-artifact path implementation task.
+- `AIO-074` is the next active task; `AIO-075` remains seeded only.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -111,10 +112,12 @@
 - `AIO-071` did not prove design-lane execution, broad automation rollout, readiness change, or workflow proof beyond `architect`.
 - `AIO-072` now makes design-lane inputs, outputs, handoff boundaries, and fail-closed source-of-truth precedence explicit in committed governance.
 - `AIO-072` did not implement a design-artifact path, execute a rehearsal, change readiness, or widen workflow proof beyond `architect`.
+- `AIO-073` now implements one sanctioned persisted design-artifact path in `sessions/store.py` that requires explicit architect-stage artifact linkage, a sanctioned `projects/aioffice/artifacts/design/...` path, and remains subordinate to governance and approval surfaces.
+- `AIO-073` did not execute the rehearsal, authorize downstream implementation, change readiness, or widen workflow proof beyond `architect`.
 - no post-`M15` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-073` - Implement one narrow sanctioned design-artifact path for the design lane
+- `AIO-074` - Rehearse one bounded design-lane artifact path and record evidence
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

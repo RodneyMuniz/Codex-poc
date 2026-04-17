@@ -90,6 +90,69 @@ def _prepare_pending_review_apply_bundle(tmp_path):
     }
 
 
+def _prepare_design_artifact_context(tmp_path):
+    repo_root = _prepare_repo(tmp_path)
+    store = SessionStore(repo_root)
+
+    workflow = store.create_workflow_run(
+        "aioffice",
+        task_id="AIO-073",
+        objective="Persist one bounded design artifact path.",
+        authoritative_workspace_root="projects/aioffice",
+        current_stage="design",
+    )
+    architect_stage = store.create_stage_run(
+        workflow["id"],
+        stage_name="architect",
+        status="completed",
+    )
+    design_stage = store.create_stage_run(
+        workflow["id"],
+        stage_name="design",
+        status="in_progress",
+    )
+
+    architect_artifact_path = "projects/aioffice/artifacts/workflow_review/architect/architecture_decision_v1.md"
+    architect_artifact_file = (
+        repo_root
+        / "projects"
+        / "aioffice"
+        / "artifacts"
+        / "workflow_review"
+        / "architect"
+        / "architecture_decision_v1.md"
+    )
+    architect_artifact_file.parent.mkdir(parents=True, exist_ok=True)
+    architect_artifact_file.write_text("# Architecture Decision\n\nBounded design input.\n", encoding="utf-8")
+    architect_artifact = store.create_workflow_artifact(
+        "aioffice",
+        workflow_run_id=workflow["id"],
+        stage_run_id=architect_stage["id"],
+        task_id="AIO-073",
+        contract_name="architecture_decision_v1",
+        kind="document",
+        content=architect_artifact_file.read_text(encoding="utf-8"),
+        proof_value="architecture_output",
+        artifact_path=architect_artifact_path,
+        produced_by="Architect",
+    )
+
+    design_artifact_path = "projects/aioffice/artifacts/design/design_proposal_v1.md"
+    design_artifact_file = repo_root / "projects" / "aioffice" / "artifacts" / "design" / "design_proposal_v1.md"
+    design_artifact_file.parent.mkdir(parents=True, exist_ok=True)
+    design_artifact_file.write_text("# Design Proposal\n\nBounded lane output.\n", encoding="utf-8")
+
+    return {
+        "repo_root": repo_root,
+        "store": store,
+        "workflow": workflow,
+        "architect_stage": architect_stage,
+        "design_stage": design_stage,
+        "architect_artifact": architect_artifact,
+        "design_artifact_path": design_artifact_path,
+    }
+
+
 def test_store_persists_control_kernel_entities_without_canonical_task_rows(tmp_path):
     repo_root = _prepare_repo(tmp_path)
     store = SessionStore(repo_root)
@@ -164,6 +227,86 @@ def test_store_persists_control_kernel_entities_without_canonical_task_rows(tmp_
     records = store.list_question_or_assumptions(workflow["id"])
     assert {item["record_type"] for item in records} == {"question", "assumption"}
     assert trace["payload"]["allowed_write_paths"] == ["sessions/store.py"]
+
+
+def test_store_persists_design_artifact_with_explicit_architect_basis(tmp_path):
+    context = _prepare_design_artifact_context(tmp_path)
+    store = context["store"]
+
+    design_artifact = store.create_design_artifact(
+        "aioffice",
+        workflow_run_id=context["workflow"]["id"],
+        stage_run_id=context["design_stage"]["id"],
+        task_id="AIO-073",
+        source_architect_artifact_id=context["architect_artifact"]["id"],
+        artifact_path=context["design_artifact_path"],
+        summary="Bounded design proposal for review only.",
+        produced_by="Designer",
+    )
+    listed = store.list_design_artifacts(
+        context["workflow"]["id"],
+        stage_run_id=context["design_stage"]["id"],
+        task_id="AIO-073",
+    )
+
+    assert design_artifact["workflow_run_id"] == context["workflow"]["id"]
+    assert design_artifact["stage_run_id"] == context["design_stage"]["id"]
+    assert design_artifact["task_id"] == "AIO-073"
+    assert design_artifact["source_architect_artifact_id"] == context["architect_artifact"]["id"]
+    assert design_artifact["artifact_path"] == context["design_artifact_path"]
+    assert design_artifact["artifact_kind"] == "document"
+    assert design_artifact["summary"] == "Bounded design proposal for review only."
+    assert design_artifact["produced_by"] == "Designer"
+    assert design_artifact["artifact_sha256"]
+    assert listed[0]["id"] == design_artifact["id"]
+    assert store.get_design_artifact(design_artifact["id"])["id"] == design_artifact["id"]
+
+
+def test_store_design_artifact_fails_closed_without_explicit_architect_basis(tmp_path):
+    context = _prepare_design_artifact_context(tmp_path)
+
+    try:
+        context["store"].create_design_artifact(
+            "aioffice",
+            workflow_run_id=context["workflow"]["id"],
+            stage_run_id=context["design_stage"]["id"],
+            task_id="AIO-073",
+            source_architect_artifact_id="",
+            artifact_path=context["design_artifact_path"],
+            summary="This write should fail closed.",
+        )
+    except ValueError as exc:
+        assert "source_architect_artifact_id" in str(exc)
+    else:
+        raise AssertionError("Expected create_design_artifact to reject missing source_architect_artifact_id.")
+
+
+def test_store_design_artifact_path_does_not_auto_authorize_or_advance_stage(tmp_path):
+    context = _prepare_design_artifact_context(tmp_path)
+    store = context["store"]
+    before_stage_runs = store.list_stage_runs(context["workflow"]["id"])
+    before_handoffs = store.list_handoffs(context["workflow"]["id"])
+
+    design_artifact = store.create_design_artifact(
+        "aioffice",
+        workflow_run_id=context["workflow"]["id"],
+        stage_run_id=context["design_stage"]["id"],
+        task_id="AIO-073",
+        source_architect_artifact_id=context["architect_artifact"]["id"],
+        artifact_path=context["design_artifact_path"],
+        summary="Stay reviewable without downstream authorization.",
+    )
+
+    after_stage_runs = store.list_stage_runs(context["workflow"]["id"])
+    refreshed_workflow = store.get_workflow_run(context["workflow"]["id"])
+    refreshed_design_stage = store.get_stage_run(context["design_stage"]["id"])
+
+    assert design_artifact["id"]
+    assert refreshed_workflow["current_stage"] == "design"
+    assert refreshed_design_stage["status"] == "in_progress"
+    assert [item["id"] for item in after_stage_runs] == [item["id"] for item in before_stage_runs]
+    assert before_handoffs == []
+    assert store.list_handoffs(context["workflow"]["id"]) == []
 
 
 def test_store_defaults_skip_legacy_bootstrap_side_effects_for_isolated_rehearsal_roots(tmp_path):

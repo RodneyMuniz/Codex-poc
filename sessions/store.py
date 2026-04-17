@@ -165,6 +165,7 @@ REQUIRED_TABLES = (
     "workflow_runs",
     "stage_runs",
     "workflow_artifacts",
+    "design_artifacts",
     "handoffs",
     "blockers",
     "question_or_assumptions",
@@ -944,6 +945,26 @@ class SessionStore:
                     created_at TEXT NOT NULL,
                     FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
                     FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS design_artifacts (
+                    id TEXT PRIMARY KEY,
+                    workflow_run_id TEXT NOT NULL,
+                    stage_run_id TEXT NOT NULL,
+                    project_name TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    source_architect_artifact_id TEXT NOT NULL,
+                    artifact_kind TEXT NOT NULL DEFAULT 'document',
+                    summary TEXT NOT NULL,
+                    artifact_path TEXT NOT NULL,
+                    artifact_sha256 TEXT,
+                    bytes_written INTEGER,
+                    produced_by TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(workflow_run_id) REFERENCES workflow_runs(id),
+                    FOREIGN KEY(stage_run_id) REFERENCES stage_runs(id),
+                    FOREIGN KEY(source_architect_artifact_id) REFERENCES workflow_artifacts(id)
                 );
 
                 CREATE TABLE IF NOT EXISTS handoffs (
@@ -2509,6 +2530,130 @@ class SessionStore:
         with self._connect() as connection:
             rows = connection.execute(query, tuple(params)).fetchall()
         return [self._deserialize_workflow_artifact(row) for row in rows]
+
+    def create_design_artifact(
+        self,
+        project_name: str,
+        *,
+        workflow_run_id: str,
+        stage_run_id: str,
+        task_id: str,
+        source_architect_artifact_id: str,
+        artifact_path: str,
+        summary: str,
+        artifact_kind: str = "document",
+        produced_by: str | None = None,
+    ) -> dict[str, Any]:
+        self._ensure_project(project_name)
+        workflow_run = self.get_workflow_run(workflow_run_id)
+        if workflow_run is None:
+            raise ValueError(f"Workflow run not found: {workflow_run_id}")
+        if workflow_run["project_name"] != project_name:
+            raise ValueError("workflow_run project_name does not match design artifact project_name.")
+
+        normalized_task_id = _require_non_empty_text("task_id", task_id)
+        if workflow_run.get("task_id") and workflow_run["task_id"] != normalized_task_id:
+            raise ValueError("task_id must match the workflow_run task_id when the workflow_run is task-scoped.")
+
+        stage_run = self.get_stage_run(stage_run_id)
+        if stage_run is None:
+            raise ValueError(f"Stage run not found: {stage_run_id}")
+        if stage_run["workflow_run_id"] != workflow_run_id:
+            raise ValueError("stage_run_id must belong to the same workflow_run.")
+        if stage_run["project_name"] != project_name:
+            raise ValueError("stage_run project_name does not match design artifact project_name.")
+        if stage_run["stage_name"] != "design":
+            raise ValueError("Design artifacts must be recorded against a design stage_run.")
+        if stage_run.get("task_id") and stage_run["task_id"] != normalized_task_id:
+            raise ValueError("task_id must match the design stage_run task_id when the stage_run is task-scoped.")
+
+        normalized_source_architect_artifact_id = _require_non_empty_text(
+            "source_architect_artifact_id",
+            source_architect_artifact_id,
+        )
+        source_artifact = self.get_workflow_artifact(normalized_source_architect_artifact_id)
+        if source_artifact is None:
+            raise ValueError(
+                f"source_architect_artifact_id must reference an existing workflow artifact: "
+                f"{normalized_source_architect_artifact_id}"
+            )
+        if source_artifact["workflow_run_id"] != workflow_run_id:
+            raise ValueError("source_architect_artifact_id must belong to the same workflow_run.")
+        if source_artifact["project_name"] != project_name:
+            raise ValueError("source_architect_artifact_id must match the same project_name.")
+        if source_artifact.get("task_id") and source_artifact["task_id"] != normalized_task_id:
+            raise ValueError("task_id must match the source architect artifact task_id when it is task-scoped.")
+        source_stage_run_id = str(source_artifact.get("stage_run_id") or "").strip()
+        if not source_stage_run_id:
+            raise ValueError("source_architect_artifact_id must reference a persisted architect-stage artifact.")
+        source_stage_run = self.get_stage_run(source_stage_run_id)
+        if source_stage_run is None:
+            raise ValueError(f"Architect stage run not found for source artifact: {source_stage_run_id}")
+        if source_stage_run["workflow_run_id"] != workflow_run_id:
+            raise ValueError("source_architect_artifact_id must belong to the same workflow_run.")
+        if source_stage_run["stage_name"] != "architect":
+            raise ValueError("source_architect_artifact_id must reference an architect-stage artifact.")
+
+        normalized_artifact_path = self._normalize_design_artifact_path(project_name, artifact_path)
+        metadata = self.file_metadata(normalized_artifact_path)
+        design_artifact_id = _new_id("design_artifact")
+        now = _utc_now()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO design_artifacts (
+                    id, workflow_run_id, stage_run_id, project_name, task_id, source_architect_artifact_id,
+                    artifact_kind, summary, artifact_path, artifact_sha256, bytes_written, produced_by,
+                    created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    design_artifact_id,
+                    workflow_run_id,
+                    stage_run_id,
+                    project_name,
+                    normalized_task_id,
+                    normalized_source_architect_artifact_id,
+                    _require_non_empty_text("artifact_kind", artifact_kind),
+                    _require_non_empty_text("summary", summary),
+                    normalized_artifact_path,
+                    metadata["artifact_sha256"],
+                    metadata["bytes_written"],
+                    produced_by,
+                    now,
+                    now,
+                ),
+            )
+        design_artifact = self.get_design_artifact(design_artifact_id)
+        if design_artifact is None:
+            raise ValueError(f"Failed to create design artifact: {design_artifact_id}")
+        return design_artifact
+
+    def get_design_artifact(self, design_artifact_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM design_artifacts WHERE id = ?", (design_artifact_id,)).fetchone()
+        return self._deserialize_design_artifact(row) if row else None
+
+    def list_design_artifacts(
+        self,
+        workflow_run_id: str,
+        *,
+        stage_run_id: str | None = None,
+        task_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM design_artifacts WHERE workflow_run_id = ?"
+        params: list[Any] = [workflow_run_id]
+        if stage_run_id is not None:
+            query += " AND stage_run_id = ?"
+            params.append(stage_run_id)
+        if task_id is not None:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        query += " ORDER BY created_at ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._deserialize_design_artifact(row) for row in rows]
 
     def create_handoff(
         self,
@@ -5871,6 +6016,13 @@ class SessionStore:
             raise ValueError(f"Visual artifacts must live under {expected_prefix}")
         return normalized
 
+    def _normalize_design_artifact_path(self, project_name: str, artifact_path: str) -> str:
+        normalized = self._normalize_repo_relative_path(artifact_path, field_name="artifact_path")
+        expected_prefix = f"projects/{project_name}/artifacts/design/"
+        if not normalized.startswith(expected_prefix):
+            raise ValueError(f"Design artifacts must live under {expected_prefix}")
+        return normalized
+
     def record_artifact(
         self,
         run_id: str,
@@ -7592,6 +7744,9 @@ class SessionStore:
         artifact = dict(row)
         artifact["input_artifact_paths"] = _json_loads(artifact.get("input_artifact_paths_json"), default=[])
         return artifact
+
+    def _deserialize_design_artifact(self, row: sqlite3.Row) -> dict[str, Any]:
+        return dict(row)
 
     def _deserialize_handoff(self, row: sqlite3.Row) -> dict[str, Any]:
         handoff = dict(row)
