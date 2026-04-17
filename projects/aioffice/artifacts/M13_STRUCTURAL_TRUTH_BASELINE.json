@@ -30,7 +30,7 @@
       "attributes": {
         "task_id": "AIO-066",
         "exists_in_bounded_inputs": false,
-        "exists_in_repo": false
+        "exists_in_repo": true
       }
     },
     {
@@ -90,7 +90,7 @@
       "label": "scripts/generate_structural_truth.py",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1459
+        "line": 1445
       },
       "attributes": {
         "task_id": "AIO-065",
@@ -439,11 +439,11 @@
       "label": "AIO-065: Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1451
+        "line": 1437
       },
       "attributes": {
         "milestone": "M13 - Structural Truth Layer Baseline",
-        "status": "backlog",
+        "status": "completed",
         "expected_artifact_path": "scripts/generate_structural_truth.py"
       }
     },
@@ -843,7 +843,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1451
+        "line": 1437
       }
     },
     {
@@ -969,7 +969,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1465
+        "line": 1451
       }
     },
     {
@@ -1086,7 +1086,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1459
+        "line": 1445
       }
     },
     {
@@ -1203,7 +1203,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1454
+        "line": 1440
       }
     },
     {
@@ -1212,7 +1212,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1454
+        "line": 1440
       }
     },
     {
@@ -1221,7 +1221,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1454
+        "line": 1440
       }
     },
     {
@@ -1230,7 +1230,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1454
+        "line": 1440
       }
     },
     {
@@ -1239,7 +1239,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1461
+        "line": 1447
       }
     },
     {
@@ -1248,7 +1248,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1463
+        "line": 1449
       }
     },
     {
@@ -1360,7 +1360,7 @@
         "message": "This baseline artifact does not upgrade readiness or widen workflow proof beyond architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 24
+          "line": 25
         }
       },
       {
@@ -1368,7 +1368,7 @@
         "message": "Current live workflow proof still stops at architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 26
+          "line": 27
         }
       }
     ]
