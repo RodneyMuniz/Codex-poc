@@ -1624,20 +1624,6 @@ Ledger status:
   - AIO-073
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Record post-M15 design-lane review and ratify the next conservative slice
 - id: AIO-075
 - item_type: task
@@ -1655,10 +1641,27 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-074
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+_No items_
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- design-lane operationalization is now the active conservative workflow-breadth slice
-- no post-`M15` milestone is ratified yet
+- `M15 - Design Lane Operationalization` is complete from committed evidence only
+- no post-`M15` milestone is ratified in this pass
+- future backlog refinement and prioritization are pending operator review before any next-milestone ratification

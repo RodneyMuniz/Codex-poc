@@ -9,7 +9,7 @@
 - accepted pre-rebaseline / pre-implementation `M13` source commit: `c5a3da56f89b9b45265ec885207153978ae9bf9f`
 - accepted starting-point snapshot branch: `snapshot/aioffice-m12-closeout-2026-04-16`
 - no dedicated post-`M12`, post-`M13`, or post-`M14` checkpoint tag is currently ratified in committed governance
-- the current committed branch tip carries the accepted post-`M14` review and active `M15` planning state
+- the current committed branch tip carries the accepted post-`M15` review and operator-directed pause state
 
 ## Current Accepted Posture
 - `M1` through `M12` are complete.
@@ -19,7 +19,7 @@
 - `M13` completed as a narrow structural truth layer baseline slice.
 - `M14` completed as a narrow hook and automation discipline slice for the repo-governed milestone loop.
 - `M13` was originally ratified as `Design Lane Operationalization` and was explicitly rebaselined before implementation.
-- `M15` is active as a narrow design-lane operationalization slice.
+- `M15` is complete as a narrow design-lane operationalization slice.
 - `AIO-064` is complete as the structural truth layer contract-definition task.
 - `AIO-065` is complete as the deterministic structural truth baseline-generation task.
 - `AIO-066` is complete as one bounded graph-backed impact and coverage review rehearsal against the `bundle-decision` control surface.
@@ -31,7 +31,7 @@
 - `AIO-072` is complete as the design-lane contract-definition task.
 - `AIO-073` is complete as the narrow sanctioned design-artifact path implementation task.
 - `AIO-074` is complete as one bounded design-lane artifact-path rehearsal task.
-- `AIO-075` is the next active task and remains seeded only.
+- `AIO-075` is complete as the post-`M15` design-lane review and operator-directed transition-pause task.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -117,10 +117,14 @@
 - `AIO-073` did not execute the rehearsal, authorize downstream implementation, change readiness, or widen workflow proof beyond `architect`.
 - `AIO-074` now proves one bounded rehearsal path where a persisted design-stage artifact was linked explicitly to an architect-stage artifact in the same workflow, remained inspectable through sanctioned read paths, and did not create an implicit handoff or workflow advancement beyond `design`.
 - `AIO-074` did not prove readiness change, workflow proof beyond `architect`, downstream implementation authorization, broad design-lane operation, or that artifact existence equals approval.
-- no post-`M15` milestone is ratified yet.
+- `AIO-075` now proves `M15` closed from committed evidence only and records an operator-directed pause before any post-`M15` milestone selection, cleanup pass, or backlog reprioritization.
+- `AIO-075` did not ratify `M16`, seed post-`M15` tasks, change readiness, or widen workflow proof beyond `architect`.
+- no post-`M15` milestone is ratified in this pass.
+- future post-`M15` backlog refinement and prioritization are pending operator review.
 
 ## Current Active Task Order
-- `AIO-075` - Record post-M15 design-lane review and ratify the next conservative slice
+- no post-`M15` task is active in this pass
+- future backlog refinement and prioritization are pending operator review before any next-milestone ratification
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
