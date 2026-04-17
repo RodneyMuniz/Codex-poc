@@ -1451,20 +1451,6 @@ Ledger status:
   - AIO-064
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence
 - id: AIO-066
 - item_type: task
@@ -1481,7 +1467,21 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-065
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Record post-M13 structural truth review and ratify the next conservative slice
 - id: AIO-067

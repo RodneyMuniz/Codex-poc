@@ -25,7 +25,7 @@
       "label": "projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1477
+        "line": 1463
       },
       "attributes": {
         "task_id": "AIO-066",
@@ -453,11 +453,11 @@
       "label": "AIO-066: Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1469
+        "line": 1455
       },
       "attributes": {
         "milestone": "M13 - Structural Truth Layer Baseline",
-        "status": "backlog",
+        "status": "completed",
         "expected_artifact_path": "projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md"
       }
     },
@@ -852,7 +852,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1469
+        "line": 1455
       }
     },
     {
@@ -978,7 +978,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1483
+        "line": 1469
       }
     },
     {
@@ -1095,7 +1095,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1477
+        "line": 1463
       }
     },
     {
@@ -1360,7 +1360,7 @@
         "message": "This baseline artifact does not upgrade readiness or widen workflow proof beyond architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 25
+          "line": 26
         }
       },
       {
@@ -1368,7 +1368,7 @@
         "message": "Current live workflow proof still stops at architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 27
+          "line": 28
         }
       }
     ]
