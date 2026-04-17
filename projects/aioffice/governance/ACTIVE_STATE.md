@@ -30,7 +30,8 @@
 - `AIO-071` is complete as the post-`M14` hook and automation discipline review and next-slice ratification task.
 - `AIO-072` is complete as the design-lane contract-definition task.
 - `AIO-073` is complete as the narrow sanctioned design-artifact path implementation task.
-- `AIO-074` is the next active task; `AIO-075` remains seeded only.
+- `AIO-074` is complete as one bounded design-lane artifact-path rehearsal task.
+- `AIO-075` is the next active task and remains seeded only.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -114,10 +115,12 @@
 - `AIO-072` did not implement a design-artifact path, execute a rehearsal, change readiness, or widen workflow proof beyond `architect`.
 - `AIO-073` now implements one sanctioned persisted design-artifact path in `sessions/store.py` that requires explicit architect-stage artifact linkage, a sanctioned `projects/aioffice/artifacts/design/...` path, and remains subordinate to governance and approval surfaces.
 - `AIO-073` did not execute the rehearsal, authorize downstream implementation, change readiness, or widen workflow proof beyond `architect`.
+- `AIO-074` now proves one bounded rehearsal path where a persisted design-stage artifact was linked explicitly to an architect-stage artifact in the same workflow, remained inspectable through sanctioned read paths, and did not create an implicit handoff or workflow advancement beyond `design`.
+- `AIO-074` did not prove readiness change, workflow proof beyond `architect`, downstream implementation authorization, broad design-lane operation, or that artifact existence equals approval.
 - no post-`M15` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-074` - Rehearse one bounded design-lane artifact path and record evidence
+- `AIO-075` - Record post-M15 design-lane review and ratify the next conservative slice
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

@@ -1606,20 +1606,6 @@ Ledger status:
   - AIO-072
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Rehearse one bounded design-lane artifact path and record evidence
 - id: AIO-074
 - item_type: task
@@ -1636,7 +1622,21 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-073
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Record post-M15 design-lane review and ratify the next conservative slice
 - id: AIO-075
