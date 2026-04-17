@@ -161,3 +161,25 @@
   - this decision does not ratify a post-`M14` milestone
   - this decision does not claim that the structural-truth layer is authoritative over source systems
   - this decision does not authorize design-lane implementation, graph-runtime implementation, or broad hook or automation rollout by itself
+
+### AIO-D-016
+- date: 2026-04-17
+- status: reviewed
+- decision: after the post-`M14` hook and automation discipline review, `M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop` is complete and `M15 - Design Lane Operationalization` is ratified as the next active conservative slice.
+- rationale:
+  - committed `M14` evidence now proves the repo-governed milestone publication and verification law is explicit in governance, one bounded helper exists over the authoritative branch and remote review surface, and one bounded rehearsal path was executed with both an aligned `ok` result and a fail-closed `blocked_missing_remote_commit` result
+  - the operational failure that outranked workflow breadth after `M13` was publication and verification discipline rather than repo corruption, and `M14` has now narrowed that gap enough to resume one conservative breadth lane
+  - design-lane operationalization remains the accepted first workflow-breadth lane from earlier directional context, and resuming one lane is narrower and safer than ratifying broader automation rollout or multi-lane workflow expansion
+  - this decision does not authorize readiness upgrades, workflow proof beyond `architect`, broad automation rollout, milestone auto-ratification, or any claim that helper output outranks GitHub or governance source systems
+- accepted review anchor facts:
+  - active planning branch: `feature/aioffice-m13-design-lane-operationalization`
+  - accepted `M14` ratification commit: `78a37c7359eae8abe024219031a749627e992545`
+  - accepted repo-loop discipline commit: `3bf4385f034df8a7219159345d48e7a0befa7222`
+  - accepted repo publication helper commit: `ff71704e7fcd01644a5849649f140c518a7ce3b6`
+  - accepted `M14` rehearsal evidence commit: `a8ce415ea0a4f843128b815a3669944c46b138fb`
+- non-claims:
+  - no readiness or workflow-proof upgrade is authorized
+  - this decision does not ratify a post-`M15` milestone
+  - this decision does not authorize broad automation rollout or generic CI/CD strategy
+  - this decision does not claim that helper output outranks GitHub or governance source systems
+  - this decision does not claim that design-lane breadth is already proven

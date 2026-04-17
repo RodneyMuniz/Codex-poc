@@ -17,8 +17,9 @@
 - `M11` completed as a narrow recovery-discipline operationalization slice.
 - `M12` completed as a narrow protected core product/state surfaces enforcement slice.
 - `M13` completed as a narrow structural truth layer baseline slice.
+- `M14` completed as a narrow hook and automation discipline slice for the repo-governed milestone loop.
 - `M13` was originally ratified as `Design Lane Operationalization` and was explicitly rebaselined before implementation.
-- `M14` is active as a narrow hook and automation discipline slice for the repo-governed milestone loop.
+- `M15` is active as a narrow design-lane operationalization slice.
 - `AIO-064` is complete as the structural truth layer contract-definition task.
 - `AIO-065` is complete as the deterministic structural truth baseline-generation task.
 - `AIO-066` is complete as one bounded graph-backed impact and coverage review rehearsal against the `bundle-decision` control surface.
@@ -26,8 +27,8 @@
 - `AIO-068` is complete as the repo-governed milestone-loop discipline-definition task.
 - `AIO-069` is complete as the narrow repo-truth publication and verification helper implementation task.
 - `AIO-070` is complete as one bounded repo-governed milestone publication and verification rehearsal against authoritative branch truth.
-- `AIO-071` is the next active task and remains seeded only.
-- design-lane work is deferred, not canceled.
+- `AIO-071` is complete as the post-`M14` hook and automation discipline review and next-slice ratification task.
+- `AIO-072` is the next active task; `AIO-073` through `AIO-075` remain seeded only.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -98,17 +99,19 @@
   - design-lane proof or workflow breadth beyond `architect`
   - readiness upgrade or structural-truth authority over source systems
 - `M13` did not change readiness posture or live workflow proof boundaries.
-- `M14` is now the active conservative slice because recent operational failures were about repo publication and verification discipline, and the committed `M13` evidence now supports one narrower safer hardening pass there before design-lane breadth resumes.
+- `M14` completed as the conservative hardening slice because recent operational failures were about repo publication and verification discipline, and the committed `M13` evidence supported one narrower safer hardening pass there before design-lane breadth resumed.
 - `AIO-068` now makes repo-governed milestone-loop publication, verification, reporting, and bounded helper or hook law explicit in committed governance.
 - `AIO-068` did not implement a helper, execute a rehearsal, change readiness, or widen workflow proof.
 - `AIO-069` now implements one bounded diagnostic helper for local-head, remote-head, and reported-SHA verification on the authoritative branch.
 - `AIO-069` did not execute the rehearsal, widen automation scope, change readiness, or widen workflow proof.
 - `AIO-070` now proves one bounded rehearsal path where the committed helper returned `ok` for matched published truth and `blocked_missing_remote_commit` for missing remote publication evidence on the authoritative branch.
 - `AIO-070` did not prove automated closeout, broad automation rollout, readiness change, or workflow proof beyond `architect`.
-- no post-`M14` milestone is ratified yet.
+- `AIO-071` now proves `M14` closed from committed evidence only and ratifies `M15 - Design Lane Operationalization` as the next active conservative slice.
+- `AIO-071` did not prove design-lane execution, broad automation rollout, readiness change, or workflow proof beyond `architect`.
+- no post-`M15` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-071` - Record post-M14 hook and automation discipline review and ratify the next conservative slice
+- `AIO-072` - Define design-lane artifact contract, handoff boundary, and fail-closed source-of-truth rules
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`

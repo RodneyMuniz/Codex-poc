@@ -1551,20 +1551,6 @@ Ledger status:
   - AIO-069
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Record post-M14 hook and automation discipline review and ratify the next conservative slice
 - id: AIO-071
 - item_type: task
@@ -1582,10 +1568,97 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-070
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Define design-lane artifact contract, handoff boundary, and fail-closed source-of-truth rules
+- id: AIO-072
+- item_type: task
+- title: Define design-lane artifact contract, handoff boundary, and fail-closed source-of-truth rules
+- details: define the narrow governance contract for design-stage artifacts, allowed inputs from the architect stage, bounded outputs, review surfaces, and fail-closed non-claims so design-lane work becomes explicit without pretending later-stage workflow is already proven
+- objective: make the first design-lane boundary explicit before any sanctioned design-path implementation is added
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M15 - Design Lane Operationalization
+- expected_artifact_path: projects/aioffice/governance/DESIGN_LANE_CONTRACT.md
+- acceptance:
+  - design-lane inputs, outputs, and handoff boundaries are explicit
+  - source-of-truth precedence and approval boundaries remain fail-closed
+  - the contract does not claim workflow proof beyond architect or upgrade readiness
+- dependencies:
+  - AIO-071
+- status: backlog
+
+### Implement one narrow sanctioned design-artifact path for the design lane
+- id: AIO-073
+- item_type: task
+- title: Implement one narrow sanctioned design-artifact path for the design lane
+- details: implement one bounded path for persisting and inspecting a design-stage artifact on sanctioned surfaces without auto-advancing later workflow stages or widening into general UI generation
+- objective: give the design lane one real reviewable artifact path before rehearsal
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M15 - Design Lane Operationalization
+- expected_artifact_path: sessions/store.py
+- acceptance:
+  - one sanctioned persisted design-artifact path exists
+  - the path remains bounded and subordinate to governance and approval surfaces
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-072
+- status: backlog
+
+### Rehearse one bounded design-lane artifact path and record evidence
+- id: AIO-074
+- item_type: task
+- title: Rehearse one bounded design-lane artifact path and record evidence
+- details: execute one bounded rehearsal that exercises the sanctioned design-artifact path using explicit architect inputs and records proven and unproven boundaries without claiming broader workflow proof
+- objective: prove one conservative design-lane path before review
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M15 - Design Lane Operationalization
+- expected_artifact_path: projects/aioffice/artifacts/M15_DESIGN_LANE_REHEARSAL.md
+- acceptance:
+  - one bounded design-lane artifact path is exercised and recorded factually
+  - proven and unproven boundaries are explicit
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-073
+- status: backlog
+
+### Record post-M15 design-lane review and ratify the next conservative slice
+- id: AIO-075
+- item_type: task
+- title: Record post-M15 design-lane review and ratify the next conservative slice
+- details: produce one explicit post-M15 review grounded only in committed evidence, state what the design-lane slice proved and what remains unproven, and ratify exactly one next conservative slice if the evidence supports it
+- objective: close the design-lane slice conservatively without widening readiness or workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M15 - Design Lane Operationalization
+- expected_artifact_path: projects/aioffice/governance/M15_DESIGN_LANE_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - the proven and unproven design-lane boundaries are explicit
+  - exactly one next conservative slice is ratified only if the evidence supports it
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-074
 - status: backlog
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- design-lane operationalization is deferred, not canceled, and remains a later likely workflow-breadth slice
-- no post-`M14` milestone is ratified yet
+- design-lane operationalization is now the active conservative workflow-breadth slice
+- no post-`M15` milestone is ratified yet
