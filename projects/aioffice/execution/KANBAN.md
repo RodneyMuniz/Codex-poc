@@ -1514,20 +1514,6 @@ Ledger status:
   - AIO-067
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Implement one narrow repo-truth publication and verification helper for the milestone loop
 - id: AIO-069
 - item_type: task
@@ -1545,7 +1531,21 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-068
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Rehearse bounded repo-governed milestone publication and verification discipline and record evidence
 - id: AIO-070

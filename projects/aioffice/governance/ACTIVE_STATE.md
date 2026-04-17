@@ -24,7 +24,8 @@
 - `AIO-066` is complete as one bounded graph-backed impact and coverage review rehearsal against the `bundle-decision` control surface.
 - `AIO-067` is complete as the post-`M13` structural truth review and next-slice ratification task.
 - `AIO-068` is complete as the repo-governed milestone-loop discipline-definition task.
-- `AIO-069` is the next active task; `AIO-070` and `AIO-071` remain seeded only.
+- `AIO-069` is complete as the narrow repo-truth publication and verification helper implementation task.
+- `AIO-070` is the next active task; `AIO-071` remains seeded only.
 - design-lane work is deferred, not canceled.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
@@ -99,10 +100,12 @@
 - `M14` is now the active conservative slice because recent operational failures were about repo publication and verification discipline, and the committed `M13` evidence now supports one narrower safer hardening pass there before design-lane breadth resumes.
 - `AIO-068` now makes repo-governed milestone-loop publication, verification, reporting, and bounded helper or hook law explicit in committed governance.
 - `AIO-068` did not implement a helper, execute a rehearsal, change readiness, or widen workflow proof.
+- `AIO-069` now implements one bounded diagnostic helper for local-head, remote-head, and reported-SHA verification on the authoritative branch.
+- `AIO-069` did not execute the rehearsal, widen automation scope, change readiness, or widen workflow proof.
 - no post-`M14` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-069` - Implement one narrow repo-truth publication and verification helper for the milestone loop
+- `AIO-070` - Rehearse bounded repo-governed milestone publication and verification discipline and record evidence
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
