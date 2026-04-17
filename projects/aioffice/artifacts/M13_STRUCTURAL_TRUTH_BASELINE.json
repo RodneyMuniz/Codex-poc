@@ -1360,7 +1360,7 @@
         "message": "This baseline artifact does not upgrade readiness or widen workflow proof beyond architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 30
+          "line": 31
         }
       },
       {
@@ -1368,7 +1368,7 @@
         "message": "Current live workflow proof still stops at architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 32
+          "line": 33
         }
       }
     ]

@@ -1533,20 +1533,6 @@ Ledger status:
   - AIO-068
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Rehearse bounded repo-governed milestone publication and verification discipline and record evidence
 - id: AIO-070
 - item_type: task
@@ -1563,7 +1549,21 @@ _No items_
   - readiness and workflow-proof boundaries remain unchanged
 - dependencies:
   - AIO-069
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Record post-M14 hook and automation discipline review and ratify the next conservative slice
 - id: AIO-071
