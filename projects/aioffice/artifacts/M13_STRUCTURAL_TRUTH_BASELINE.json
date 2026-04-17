@@ -67,7 +67,7 @@
       "attributes": {
         "task_id": "AIO-067",
         "exists_in_bounded_inputs": false,
-        "exists_in_repo": false
+        "exists_in_repo": true
       }
     },
     {
