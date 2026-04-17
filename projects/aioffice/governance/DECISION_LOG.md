@@ -142,3 +142,22 @@
   - no readiness or workflow-proof upgrade is authorized
   - this decision does not ratify a post-`M13` milestone
   - this decision does not authorize design-lane, hook, automation, or graph-runtime implementation by itself
+
+### AIO-D-015
+- date: 2026-04-17
+- status: reviewed
+- decision: after the post-`M13` structural-truth review, `M13 - Structural Truth Layer Baseline` is complete and `M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop` is ratified as the next active conservative slice.
+- rationale:
+  - committed `M13` evidence now proves the structural-truth layer contract, source-of-truth precedence, and maturity rubric are explicit; a deterministic bounded-input baseline can be generated without inventing unsupported links; and one bounded review-usable rehearsal path exists with explicit proven and unproven boundaries
+  - the committed `M13` rehearsal also proved that source-of-truth precedence behaved fail-closed in practice when the derived baseline drifted behind authoritative task truth, which makes the repo-governed milestone publication and verification loop a narrower safer next hardening target than resuming workflow breadth immediately
+  - hook and automation discipline for the repo-governed milestone loop now outranks design-lane breadth because the recent operational failures were about publication and verification discipline rather than repo corruption, while design-lane operationalization remains deferred, not canceled, as a later likely breadth slice
+  - this decision does not authorize readiness upgrades, workflow proof beyond `architect`, design-lane implementation yet, graph-runtime implementation, or broad automation deployment by itself
+- accepted review anchor facts:
+  - active planning branch: `feature/aioffice-m13-design-lane-operationalization`
+  - accepted structural-truth closeout commit: `db7b78a67ac40cca6d8379026623bd75698b04ac`
+  - accepted post-`M13` review evidence commit: `3edce9d6add13996a1ae2eda0b5e6b41869c2ee9`
+- non-claims:
+  - no readiness or workflow-proof upgrade is authorized
+  - this decision does not ratify a post-`M14` milestone
+  - this decision does not claim that the structural-truth layer is authoritative over source systems
+  - this decision does not authorize design-lane implementation, graph-runtime implementation, or broad hook or automation rollout by itself

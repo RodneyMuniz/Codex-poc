@@ -25,7 +25,7 @@
       "label": "projects/aioffice/artifacts/M13_STRUCTURAL_TRUTH_REHEARSAL.md",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1463
+        "line": 1470
       },
       "attributes": {
         "task_id": "AIO-066",
@@ -39,7 +39,7 @@
       "label": "projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1408
+        "line": 1415
       },
       "attributes": {
         "task_id": "AIO-063",
@@ -62,7 +62,7 @@
       "label": "projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1495
+        "line": 1488
       },
       "attributes": {
         "task_id": "AIO-067",
@@ -76,7 +76,7 @@
       "label": "projects/aioffice/governance/STRUCTURAL_TRUTH_LAYER_CONTRACT.md",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1426
+        "line": 1433
       },
       "attributes": {
         "task_id": "AIO-064",
@@ -90,7 +90,7 @@
       "label": "scripts/generate_structural_truth.py",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1445
+        "line": 1452
       },
       "attributes": {
         "task_id": "AIO-065",
@@ -397,7 +397,7 @@
       "label": "AIO-062: Rehearse blocked ordinary-lane attempts against a protected surface and record evidence",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1382
+        "line": 1389
       },
       "attributes": {
         "milestone": "M12 - Protected Core Surfaces Enforcement",
@@ -411,7 +411,7 @@
       "label": "AIO-063: Record post-M12 protected-surface enforcement review and ratify the next conservative slice",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1400
+        "line": 1407
       },
       "attributes": {
         "milestone": "M12 - Protected Core Surfaces Enforcement",
@@ -425,7 +425,7 @@
       "label": "AIO-064: Define structural truth layer contract, source-of-truth boundaries, and gold-standard maturity rubric",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1418
+        "line": 1425
       },
       "attributes": {
         "milestone": "M13 - Structural Truth Layer Baseline",
@@ -439,7 +439,7 @@
       "label": "AIO-065: Implement deterministic structural truth artifact generation for the current control kernel and protected surfaces",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1437
+        "line": 1444
       },
       "attributes": {
         "milestone": "M13 - Structural Truth Layer Baseline",
@@ -453,7 +453,7 @@
       "label": "AIO-066: Rehearse graph-backed impact and coverage review on one bounded protected/control change and record evidence",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1455
+        "line": 1462
       },
       "attributes": {
         "milestone": "M13 - Structural Truth Layer Baseline",
@@ -467,11 +467,11 @@
       "label": "AIO-067: Record post-M13 structural truth review and ratify the next conservative slice",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1487
+        "line": 1480
       },
       "attributes": {
         "milestone": "M13 - Structural Truth Layer Baseline",
-        "status": "backlog",
+        "status": "completed",
         "expected_artifact_path": "projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md"
       }
     },
@@ -645,7 +645,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1426
+        "line": 1433
       }
     },
     {
@@ -816,7 +816,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1382
+        "line": 1389
       }
     },
     {
@@ -825,7 +825,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1400
+        "line": 1407
       }
     },
     {
@@ -834,7 +834,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1418
+        "line": 1425
       }
     },
     {
@@ -843,7 +843,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1437
+        "line": 1444
       }
     },
     {
@@ -852,7 +852,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1455
+        "line": 1462
       }
     },
     {
@@ -861,7 +861,7 @@
       "relationship_class": "defined_in",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1487
+        "line": 1480
       }
     },
     {
@@ -951,7 +951,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1414
+        "line": 1421
       }
     },
     {
@@ -960,7 +960,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1433
+        "line": 1440
       }
     },
     {
@@ -969,7 +969,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1451
+        "line": 1458
       }
     },
     {
@@ -978,7 +978,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1469
+        "line": 1476
       }
     },
     {
@@ -987,7 +987,7 @@
       "relationship_class": "depends_on",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1502
+        "line": 1495
       }
     },
     {
@@ -1068,7 +1068,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1408
+        "line": 1415
       }
     },
     {
@@ -1077,7 +1077,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1426
+        "line": 1433
       }
     },
     {
@@ -1086,7 +1086,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1445
+        "line": 1452
       }
     },
     {
@@ -1095,7 +1095,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1463
+        "line": 1470
       }
     },
     {
@@ -1104,7 +1104,7 @@
       "relationship_class": "implemented_by",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1495
+        "line": 1488
       }
     },
     {
@@ -1149,7 +1149,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1430
+        "line": 1437
       }
     },
     {
@@ -1158,7 +1158,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1431
+        "line": 1438
       }
     },
     {
@@ -1167,7 +1167,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1417
+        "line": 1424
       }
     },
     {
@@ -1176,7 +1176,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1429
+        "line": 1436
       }
     },
     {
@@ -1185,7 +1185,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1430
+        "line": 1437
       }
     },
     {
@@ -1194,7 +1194,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1428
+        "line": 1435
       }
     },
     {
@@ -1203,7 +1203,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1440
+        "line": 1447
       }
     },
     {
@@ -1212,7 +1212,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1440
+        "line": 1447
       }
     },
     {
@@ -1221,7 +1221,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1440
+        "line": 1447
       }
     },
     {
@@ -1230,7 +1230,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1440
+        "line": 1447
       }
     },
     {
@@ -1239,7 +1239,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1447
+        "line": 1454
       }
     },
     {
@@ -1248,7 +1248,7 @@
       "relationship_class": "touches",
       "source_ref": {
         "path": "projects/aioffice/execution/KANBAN.md",
-        "line": 1449
+        "line": 1456
       }
     },
     {
@@ -1360,7 +1360,7 @@
         "message": "This baseline artifact does not upgrade readiness or widen workflow proof beyond architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 26
+          "line": 28
         }
       },
       {
@@ -1368,7 +1368,7 @@
         "message": "Current live workflow proof still stops at architect.",
         "source_ref": {
           "path": "projects/aioffice/governance/ACTIVE_STATE.md",
-          "line": 28
+          "line": 30
         }
       }
     ]

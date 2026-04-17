@@ -8,20 +8,22 @@
 - active planning branch: `feature/aioffice-m13-design-lane-operationalization`
 - accepted pre-rebaseline / pre-implementation `M13` source commit: `c5a3da56f89b9b45265ec885207153978ae9bf9f`
 - accepted starting-point snapshot branch: `snapshot/aioffice-m12-closeout-2026-04-16`
-- no dedicated post-`M12` or post-`M13` checkpoint tag is currently ratified in committed governance
-- the current committed branch tip carries the active `M13` planning and rebaseline state
+- no dedicated post-`M12`, post-`M13`, or post-`M14` checkpoint tag is currently ratified in committed governance
+- the current committed branch tip carries the accepted post-`M13` review and active `M14` planning state
 
 ## Current Accepted Posture
 - `M1` through `M12` are complete.
 - `M10` completed as a narrow change-governance, recovery, and maintainability hardening slice.
 - `M11` completed as a narrow recovery-discipline operationalization slice.
 - `M12` completed as a narrow protected core product/state surfaces enforcement slice.
-- `M13` is active as a narrow structural truth layer baseline slice.
+- `M13` completed as a narrow structural truth layer baseline slice.
 - `M13` was originally ratified as `Design Lane Operationalization` and was explicitly rebaselined before implementation.
+- `M14` is active as a narrow hook and automation discipline slice for the repo-governed milestone loop.
 - `AIO-064` is complete as the structural truth layer contract-definition task.
 - `AIO-065` is complete as the deterministic structural truth baseline-generation task.
 - `AIO-066` is complete as one bounded graph-backed impact and coverage review rehearsal against the `bundle-decision` control surface.
-- `AIO-067` remains seeded only; no post-`M13` review has started yet.
+- `AIO-067` is complete as the post-`M13` structural truth review and next-slice ratification task.
+- `AIO-068` is the next active task; `AIO-069` through `AIO-071` remain seeded only.
 - design-lane work is deferred, not canceled.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
@@ -81,11 +83,23 @@
   - a separate admin-only mutation lane in code
   - later-stage workflow, UI readiness, or multi-lane breadth
 - `M12` did not change readiness posture or live workflow proof boundaries.
-- `M13` is now the active conservative slice because traceability, dependency-impact truth, system-map maturity, and stronger verification of LLM claims still lag behind control-surface maturity.
-- no post-`M13` milestone is ratified yet.
+- `M13` proved:
+  - the structural-truth layer contract, source-of-truth precedence, and bounded maturity rubric are explicit in committed governance
+  - a deterministic bounded-input structural-truth baseline can be generated for current governance, accepted-truth, protected/control, and linked-test surfaces
+  - unresolved links and classification gaps are surfaced explicitly without inventing unsupported relationships
+  - one bounded review-usable rehearsal path exists against the operator-facing `bundle-decision` control surface
+  - source-of-truth precedence behaved fail-closed in practice when derived baseline status lagged authoritative task truth
+- `M13` did not prove:
+  - exhaustive dependency, classification, or command-to-test coverage
+  - hook or automation discipline implementation
+  - design-lane proof or workflow breadth beyond `architect`
+  - readiness upgrade or structural-truth authority over source systems
+- `M13` did not change readiness posture or live workflow proof boundaries.
+- `M14` is now the active conservative slice because recent operational failures were about repo publication and verification discipline, and the committed `M13` evidence now supports one narrower safer hardening pass there before design-lane breadth resumes.
+- no post-`M14` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-067` - Record post-M13 structural truth review and ratify the next conservative slice
+- `AIO-068` - Define repo-governed milestone-loop hook and automation discipline, source-of-truth boundaries, and fail-closed publication rules
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
@@ -106,6 +120,7 @@
 - `projects/aioffice/governance/M10_RECOVERY_PRIORITY_REVIEW.md`
 - `projects/aioffice/governance/M11_RECOVERY_REVIEW.md`
 - `projects/aioffice/governance/M12_PROTECTED_SURFACE_REVIEW.md`
+- `projects/aioffice/governance/M13_STRUCTURAL_TRUTH_REVIEW.md`
 - `projects/aioffice/governance/PRODUCT_CHANGE_GOVERNANCE.md`
 - `projects/aioffice/governance/RECOVERY_AND_ROLLBACK_CONTRACT.md`
 - `projects/aioffice/governance/CODEX_CHANGE_ISOLATION_CONTRACT.md`

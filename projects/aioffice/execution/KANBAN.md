@@ -119,6 +119,13 @@ Ledger status:
 - entry_goal: `M12` proved bounded protected-surface enforcement on the current sanctioned ordinary mutation path, but the repo still lacks a deterministic structural truth layer for dependency mapping, change impact analysis, QA traceability, and stronger verification of LLM claims. The next work should reduce that ambiguity before workflow breadth expands.
 - exit_goal: a narrow deterministic structural truth layer is defined, generated for the current AIOffice control kernel and protected surfaces, exercised in at least one bounded review/rehearsal path, and reviewed explicitly without changing readiness or widening workflow proof.
 - owner_role: Project Orchestrator
+- status: completed
+
+### M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop
+- milestone_order: 14
+- entry_goal: `M13` has closed with a deterministic derived structural-truth layer and one bounded review-usable rehearsal path, but repo-governed milestone publication, remote verification, and closeout discipline still depends heavily on manual operator vigilance. The next work should harden that loop conservatively before later workflow breadth expands.
+- exit_goal: hook and automation discipline for the repo-governed milestone loop is defined, one narrow repo-truth publication or verification helper exists over the authoritative branch and remote review surface, one bounded rehearsal is recorded, and the resulting boundary is reviewed explicitly without changing readiness or widening workflow proof.
+- owner_role: Project Orchestrator
 - status: in_progress
 
 ## Completed
@@ -1469,20 +1476,6 @@ Ledger status:
   - AIO-065
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Record post-M13 structural truth review and ratify the next conservative slice
 - id: AIO-067
 - item_type: task
@@ -1500,11 +1493,99 @@ _No items_
   - no readiness or workflow-proof inflation is introduced
 - dependencies:
   - AIO-066
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
+
+### Define repo-governed milestone-loop hook and automation discipline, source-of-truth boundaries, and fail-closed publication rules
+- id: AIO-068
+- item_type: task
+- title: Define repo-governed milestone-loop hook and automation discipline, source-of-truth boundaries, and fail-closed publication rules
+- details: define the governance contract for hook and automation use over the repo-governed milestone loop so publication, remote verification, and closeout discipline remain authoritative, fail-closed, and reviewable without widening beyond the accepted branch and review surfaces
+- objective: make hook and automation discipline explicit before any helper or rehearsal is implemented
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop
+- expected_artifact_path: projects/aioffice/governance/REPO_MILESTONE_LOOP_DISCIPLINE.md
+- acceptance:
+  - hook and automation use over the repo-governed milestone loop is bounded explicitly in committed governance
+  - source-of-truth precedence between local git state, remote GitHub truth, and review surfaces is explicit
+  - publication and verification rules fail closed on local or remote mismatch or missing remote evidence
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-067
+- status: backlog
+
+### Implement one narrow repo-truth publication and verification helper for the milestone loop
+- id: AIO-069
+- item_type: task
+- title: Implement one narrow repo-truth publication and verification helper for the milestone loop
+- details: implement one narrow helper that checks local branch and head, remote branch head, and GitHub-visible commit truth for the authoritative milestone loop without creating a second truth surface or widening automation scope
+- objective: reduce manual publication and verification drift on the authoritative branch before broader automation work is considered
+- owner_role: Project Orchestrator
+- assigned_role: Architect
+- milestone: M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop
+- expected_artifact_path: scripts/verify_repo_publication.py
+- acceptance:
+  - the helper reports exact local head, remote head, and remote visibility for a reported commit
+  - the helper fails closed when local and remote truth diverge or remote commit evidence is missing
+  - the helper remains bounded to the authoritative branch and existing review surfaces
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-068
+- status: backlog
+
+### Rehearse bounded repo-governed milestone publication and verification discipline and record evidence
+- id: AIO-070
+- item_type: task
+- title: Rehearse bounded repo-governed milestone publication and verification discipline and record evidence
+- details: execute one bounded rehearsal of the repo-governed milestone publication and verification discipline using the narrow helper and authoritative branch truth, then record what the slice proved and what remained manual or unproven
+- objective: prove one conservative repo-truth publication and verification path in practice before the slice is reviewed
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop
+- expected_artifact_path: projects/aioffice/artifacts/M14_REPO_PUBLICATION_REHEARSAL.md
+- acceptance:
+  - one bounded rehearsal exercises the defined publication and verification discipline against authoritative branch truth
+  - evidence records proven and unproven boundaries factually
+  - readiness and workflow-proof boundaries remain unchanged
+- dependencies:
+  - AIO-069
+- status: backlog
+
+### Record post-M14 hook and automation discipline review and ratify the next conservative slice
+- id: AIO-071
+- item_type: task
+- title: Record post-M14 hook and automation discipline review and ratify the next conservative slice
+- details: produce one explicit post-M14 review artifact grounded only in committed evidence, state what the hook and automation discipline slice proved, what remains unproven, and ratify exactly one next conservative slice if the evidence supports it
+- objective: close the repo-governed milestone-loop discipline slice conservatively without widening readiness or workflow proof
+- owner_role: Project Orchestrator
+- assigned_role: QA
+- milestone: M14 - Hook And Automation Discipline For The Repo-Governed Milestone Loop
+- expected_artifact_path: projects/aioffice/governance/M14_HOOK_AND_AUTOMATION_REVIEW.md
+- acceptance:
+  - the review uses committed evidence only
+  - the proven and unproven hook and automation discipline boundaries are explicit
+  - exactly one next conservative slice is ratified only if the evidence supports it
+  - no readiness or workflow-proof inflation is introduced
+- dependencies:
+  - AIO-070
 - status: backlog
 
 ## Open Planning Notes
 - decide whether and when to mirror these tasks into the canonical SQLite task store
 - record any blocker or deferred states explicitly instead of inventing silent transitions
-- likely next slice after `M13` is hook and automation discipline for the repo-governed milestone loop, but this is directional only and not ratified
 - design-lane operationalization is deferred, not canceled, and remains a later likely workflow-breadth slice
-- no post-`M13` milestone is ratified yet
+- no post-`M14` milestone is ratified yet
