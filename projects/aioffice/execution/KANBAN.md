@@ -1570,20 +1570,6 @@ Ledger status:
   - AIO-070
 - status: completed
 
-## In Review
-
-_No items_
-
-## In Progress
-
-_No items_
-
-## Ready
-
-_No items_
-
-## Backlog
-
 ### Define design-lane artifact contract, handoff boundary, and fail-closed source-of-truth rules
 - id: AIO-072
 - item_type: task
@@ -1600,7 +1586,21 @@ _No items_
   - the contract does not claim workflow proof beyond architect or upgrade readiness
 - dependencies:
   - AIO-071
-- status: backlog
+- status: completed
+
+## In Review
+
+_No items_
+
+## In Progress
+
+_No items_
+
+## Ready
+
+_No items_
+
+## Backlog
 
 ### Implement one narrow sanctioned design-artifact path for the design lane
 - id: AIO-073

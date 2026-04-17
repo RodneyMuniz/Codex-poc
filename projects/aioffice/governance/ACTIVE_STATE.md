@@ -28,7 +28,8 @@
 - `AIO-069` is complete as the narrow repo-truth publication and verification helper implementation task.
 - `AIO-070` is complete as one bounded repo-governed milestone publication and verification rehearsal against authoritative branch truth.
 - `AIO-071` is complete as the post-`M14` hook and automation discipline review and next-slice ratification task.
-- `AIO-072` is the next active task; `AIO-073` through `AIO-075` remain seeded only.
+- `AIO-072` is complete as the design-lane contract-definition task.
+- `AIO-073` is the next active task; `AIO-074` and `AIO-075` remain seeded only.
 - Current readiness is `ready only for narrow supervised bounded operation`.
 - AIOffice is not ready for a bounded supervised semi-autonomous cycle.
 - Current live workflow proof stops at `architect`.
@@ -108,10 +109,12 @@
 - `AIO-070` did not prove automated closeout, broad automation rollout, readiness change, or workflow proof beyond `architect`.
 - `AIO-071` now proves `M14` closed from committed evidence only and ratifies `M15 - Design Lane Operationalization` as the next active conservative slice.
 - `AIO-071` did not prove design-lane execution, broad automation rollout, readiness change, or workflow proof beyond `architect`.
+- `AIO-072` now makes design-lane inputs, outputs, handoff boundaries, and fail-closed source-of-truth precedence explicit in committed governance.
+- `AIO-072` did not implement a design-artifact path, execute a rehearsal, change readiness, or widen workflow proof beyond `architect`.
 - no post-`M15` milestone is ratified yet.
 
 ## Current Active Task Order
-- `AIO-072` - Define design-lane artifact contract, handoff boundary, and fail-closed source-of-truth rules
+- `AIO-073` - Implement one narrow sanctioned design-artifact path for the design lane
 
 ## Authoritative Grounding Files
 - `projects/aioffice/governance/PROJECT.md`
